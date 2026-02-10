@@ -28,8 +28,25 @@ interface ReferenceImage {
     mimeType: string;
 }
 
-// --- Initialization ---
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// --- Initialization Logic ---
+// Removed global initialization to prevent crashes on shared links
+let userApiKey = localStorage.getItem('gemini_api_key') || process.env.API_KEY || '';
+
+const getGenAI = () => {
+    // If running in a strict environment where key might be injected later (AI Studio), this logic is fine.
+    // But for shared web links, we prioritize user key.
+    if (!userApiKey || userApiKey.includes('PLACEHOLDER')) {
+         const key = prompt("Vui lòng nhập Google Gemini API Key của bạn để tiếp tục (được lưu cục bộ):", "");
+         if (key && key.trim().length > 10) {
+             userApiKey = key.trim();
+             localStorage.setItem('gemini_api_key', userApiKey);
+         } else {
+             alert("Không tìm thấy API Key. Ứng dụng có thể không hoạt động.");
+             throw new Error("Missing API Key");
+         }
+    }
+    return new GoogleGenAI({ apiKey: userApiKey });
+}
 
 // --- DOM Elements ---
 const statusEl = document.querySelector('#status') as HTMLDivElement;
@@ -46,6 +63,9 @@ const closeOutputBtn = document.querySelector('#close-output-btn') as HTMLButton
 const globalResetBtn = document.querySelector('#global-reset-btn') as HTMLButtonElement;
 const historyList = document.querySelector('#history-list') as HTMLDivElement;
 const miniGenerateBtn = document.querySelector('#mini-generate-btn') as HTMLButtonElement;
+
+// API Key Button
+const apiKeyBtn = document.querySelector('#api-key-btn') as HTMLButtonElement;
 
 // Help Elements
 const helpBtn = document.querySelector('#help-btn') as HTMLButtonElement;
@@ -171,6 +191,18 @@ const loadedFilesContent: Record<string, string> = {
     'view-manual': ''
 };
 
+// --- API Key Logic ---
+if (apiKeyBtn) {
+    apiKeyBtn.addEventListener('click', () => {
+        const key = prompt("Nhập Google Gemini API Key mới:", userApiKey);
+        if (key !== null) {
+            userApiKey = key.trim();
+            localStorage.setItem('gemini_api_key', userApiKey);
+            alert("API Key đã được cập nhật!");
+        }
+    });
+}
+
 // --- Helper Functions ---
 
 function autoResize(el: HTMLTextAreaElement) {
@@ -251,6 +283,9 @@ async function translatePrompt(targetLang: 'VN' | 'EN') {
             ? `You are a professional translator. Translate the values in the provided JSON object to Vietnamese. Keep technical terms if appropriate. Return ONLY valid JSON.`
             : `You are a professional translator. Translate the values in the provided JSON object to English. Optimize for AI image generation. Return ONLY valid JSON.`;
 
+        // Use local Helper to get Key
+        const ai = getGenAI();
+
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview', 
             contents: { parts: [{ text: `Translate this JSON: ${jsonStr}` }] },
@@ -269,8 +304,8 @@ async function translatePrompt(targetLang: 'VN' | 'EN') {
         }
     } catch (e) {
         console.error("Translation failed", e);
-        if (statusEl) statusEl.innerText = "Translation Error";
-        alert("Translation failed. Please try again.");
+        if (statusEl) statusEl.innerText = "Translation Error / Missing Key";
+        alert("Translation failed. Check API Key quota.");
     } finally {
         if(megaEl) megaEl.disabled = false;
         if(lightEl) lightEl.disabled = false;
@@ -304,6 +339,7 @@ pasteBtns.forEach(btn => {
         const el = document.getElementById(targetId!) as HTMLTextAreaElement;
         if (el) {
             try {
+                window.focus();
                 const text = await navigator.clipboard.readText();
                 el.value = text;
                 autoResize(el);
@@ -816,6 +852,7 @@ if (pastePngInfoBtn) {
     pastePngInfoBtn.addEventListener('click', async () => {
         try {
             // Changed: Read text from clipboard instead of image
+            window.focus();
             const text = await navigator.clipboard.readText();
             if (!text || !text.trim()) {
                 alert("Clipboard is empty or does not contain text.");
@@ -1223,6 +1260,8 @@ async function runGeneration() {
     }
 
     if (!uploadedImageData) { alert("Please upload a main image first."); return; }
+    
+    // Check for Pro API Key requirement
     if (typeof window.aistudio !== 'undefined' && window.aistudio.hasSelectedApiKey) {
         const hasKey = await window.aistudio.hasSelectedApiKey();
         if (!hasKey && window.aistudio.openSelectKey) await window.aistudio.openSelectKey();
@@ -1257,6 +1296,9 @@ async function runGeneration() {
         let imageConfig: any = { aspectRatio: sizeSelect.value || '1:1' };
         if (selectedResolution === '2K' || selectedResolution === '4K') { modelId = 'gemini-3-pro-image-preview'; imageConfig.imageSize = selectedResolution; }
 
+        // Use local Helper
+        const ai = getGenAI();
+
         const result = await ai.models.generateContent({ model: modelId, contents: { parts: parts }, config: { imageConfig: imageConfig } });
         if (abortController.signal.aborted) return;
         clearInterval(currentProgressInterval); generateProgress.style.width = '100%'; generateLabel.innerText = "STOP GENERATING (100%)";
@@ -1279,7 +1321,16 @@ async function runGeneration() {
                 }
             }
         }
-    } catch (e) { if (!abortController?.signal.aborted) { console.error(e); if(statusEl) statusEl.innerText = "Error encountered"; }
+    } catch (e: any) { 
+        if (!abortController?.signal.aborted) { 
+            console.error(e); 
+            if(statusEl) statusEl.innerText = "Error encountered"; 
+            if (e.message.includes("429")) {
+                alert("Bạn đã dùng quá giới hạn của API Key. Hãy thử đổi Key khác bằng nút 'API KEY' trên menu.");
+            } else if (e.message.includes("API Key")) {
+                alert("API Key không hợp lệ hoặc bị thiếu. Hãy nhập lại.");
+            }
+        }
     } finally {
         if (isGenerating && !abortController?.signal.aborted) {
             setTimeout(() => {
