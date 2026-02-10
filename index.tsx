@@ -1,5 +1,8 @@
 /* tslint:disable */
-import { GoogleGenAI } from '@google/genai';
+// Removed direct import of GoogleGenAI since we are proxying
+// import { GoogleGenAI } from '@google/genai'; 
+
+export {};
 
 // --- Global Types & Interfaces ---
 declare global {
@@ -28,24 +31,38 @@ interface ReferenceImage {
     mimeType: string;
 }
 
-// --- Initialization Logic ---
-// Removed global initialization to prevent crashes on shared links
-let userApiKey = localStorage.getItem('gemini_api_key') || process.env.API_KEY || '';
+// --- Initialization Logic (Backend Proxy) ---
+// API Key is managed by the backend via process.env.API_KEY or injected externally.
 
 const getGenAI = () => {
-    // If running in a strict environment where key might be injected later (AI Studio), this logic is fine.
-    // But for shared web links, we prioritize user key.
-    if (!userApiKey || userApiKey.includes('PLACEHOLDER')) {
-         const key = prompt("Vui lòng nhập Google Gemini API Key của bạn để tiếp tục (được lưu cục bộ):", "");
-         if (key && key.trim().length > 10) {
-             userApiKey = key.trim();
-             localStorage.setItem('gemini_api_key', userApiKey);
-         } else {
-             alert("Không tìm thấy API Key. Ứng dụng có thể không hoạt động.");
-             throw new Error("Missing API Key");
-         }
-    }
-    return new GoogleGenAI({ apiKey: userApiKey });
+    return {
+        models: {
+            generateContent: async (params: any) => {
+                // Prepare headers
+                const headers: Record<string, string> = {
+                    'Content-Type': 'application/json'
+                };
+
+                try {
+                    const response = await fetch('/api/generate', {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify(params)
+                    });
+
+                    if (!response.ok) {
+                        const errData = await response.json().catch(() => ({}));
+                        throw new Error(errData.error || `Server Error: ${response.statusText}`);
+                    }
+
+                    return await response.json();
+                } catch (err: any) {
+                    console.error("Generate Content Error:", err);
+                    throw err;
+                }
+            }
+        }
+    };
 }
 
 // --- DOM Elements ---
@@ -193,14 +210,8 @@ const loadedFilesContent: Record<string, string> = {
 
 // --- API Key Logic ---
 if (apiKeyBtn) {
-    apiKeyBtn.addEventListener('click', () => {
-        const key = prompt("Nhập Google Gemini API Key mới:", userApiKey);
-        if (key !== null) {
-            userApiKey = key.trim();
-            localStorage.setItem('gemini_api_key', userApiKey);
-            alert("API Key đã được cập nhật!");
-        }
-    });
+    // We do not support manual key entry; key must be in env.
+    apiKeyBtn.style.display = 'none';
 }
 
 // --- Helper Functions ---
@@ -283,7 +294,7 @@ async function translatePrompt(targetLang: 'VN' | 'EN') {
             ? `You are a professional translator. Translate the values in the provided JSON object to Vietnamese. Keep technical terms if appropriate. Return ONLY valid JSON.`
             : `You are a professional translator. Translate the values in the provided JSON object to English. Optimize for AI image generation. Return ONLY valid JSON.`;
 
-        // Use local Helper to get Key
+        // Use local Helper to get Key (via Proxy)
         const ai = getGenAI();
 
         const response = await ai.models.generateContent({
@@ -304,8 +315,8 @@ async function translatePrompt(targetLang: 'VN' | 'EN') {
         }
     } catch (e) {
         console.error("Translation failed", e);
-        if (statusEl) statusEl.innerText = "Translation Error / Missing Key";
-        alert("Translation failed. Check API Key quota.");
+        if (statusEl) statusEl.innerText = "Translation Error";
+        alert("Translation failed. Check console/network.");
     } finally {
         if(megaEl) megaEl.disabled = false;
         if(lightEl) lightEl.disabled = false;
@@ -1296,7 +1307,7 @@ async function runGeneration() {
         let imageConfig: any = { aspectRatio: sizeSelect.value || '1:1' };
         if (selectedResolution === '2K' || selectedResolution === '4K') { modelId = 'gemini-3-pro-image-preview'; imageConfig.imageSize = selectedResolution; }
 
-        // Use local Helper
+        // Use local Helper (PROXY)
         const ai = getGenAI();
 
         const result = await ai.models.generateContent({ model: modelId, contents: { parts: parts }, config: { imageConfig: imageConfig } });
@@ -1326,9 +1337,9 @@ async function runGeneration() {
             console.error(e); 
             if(statusEl) statusEl.innerText = "Error encountered"; 
             if (e.message.includes("429")) {
-                alert("Bạn đã dùng quá giới hạn của API Key. Hãy thử đổi Key khác bằng nút 'API KEY' trên menu.");
-            } else if (e.message.includes("API Key")) {
-                alert("API Key không hợp lệ hoặc bị thiếu. Hãy nhập lại.");
+                alert("API Quota exceeded. Please try again later.");
+            } else if (e.message.includes("API Key") || e.message.includes("401")) {
+                alert("API Key invalid or missing on server.");
             }
         }
     } finally {
