@@ -1,0 +1,116 @@
+
+:root {
+  --font-body: 'Plus Jakarta Sans', sans-serif;
+  --primary-color: #262380; /* rgb(38, 35, 128) */
+  --dark-input: #1a1a1c;
+}
+
+body {
+    background-color: #0D0D0E;
+    color: #E2E8F0;
+    font-family: var(--font-body);
+}
+
+/* Precision Pencil Cursor */
+#brush-cursor {
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 10px rgba(38, 35, 128, 0.5);
+    transition: width 0.05s ease, height 0.05s ease;
+    background-color: rgba(38, 35, 128, 0.2);
+}
+
+#brush-cursor svg {
+    filter: drop-shadow(0 0 1px white);
+}
+
+/* Tool Buttons Active States */
+.tool-btn.active {
+    background-color: var(--primary-color) !important;
+    color: white !important;
+    box-shadow: 0 4px 15px rgba(38, 35, 128, 0.5);
+    transform: scale(1.08);
+}
+
+/* File Slots */
+.file-display-slot {
+    border: 1px dashed #2d2d30;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.file-display-slot:hover {
+    border-color: rgba(38, 35, 128, 0.5);
+    background-color: rgba(38, 35, 128, 0.05);
+}
+
+/* Manual Context Textareas */
+.prompt-textarea {
+    background-color: var(--dark-input);
+    color: #f1f5f9;
+    font-weight: 500;
+    scrollbar-width: thin;
+    scrollbar-color: #3f3f46 transparent;
+    transition: border-color 0.2s ease;
+}
+
+/* Clear Buttons */
+.clear-text-btn, .delete-file-btn {
+    transition: all 0.2s ease;
+}
+
+/* --- Banner --- */
+.app-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: rgba(13, 13, 14, 0.98);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  padding: 0.9rem 2rem;
+  z-index: 100;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Status Pulse Animation */
+@keyframes pulse-indigo {
+  0% { box-shadow: 0 0 0 0 rgba(38, 35, 128, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(38, 35, 128, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(38, 35, 128, 0); }
+}
+
+.status-generating {
+    background-color: rgba(38, 35, 128, 0.2) !important;
+    color: #a5b4fc !important; /* Indigo-200ish for text readability */
+    border-color: rgba(38, 35, 128, 0.6) !important;
+    animation: pulse-indigo 2s infinite;
+}
+
+/* Progress Bar Stripes Animation */
+.progress-striped {
+    background-image: linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent);
+    background-size: 1rem 1rem;
+    animation: progress-bar-stripes 1s linear infinite;
+}
+
+@keyframes progress-bar-stripes {
+    0% { background-position: 1rem 0; }
+    100% { background-position: 0 0; }
+}
+
+/* --- Form Elements --- */
+textarea:focus, select:focus, button:focus, input:focus {
+    outline: none;
+}
+
+/* Animate In */
+.animate-in {
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Panning Utilities */
+.cursor-grab { cursor: grab; }
+.cursor-grabbing { cursor: grabbing; }
+
+@media (max-width: 640px) {
+  .app-banner-content { justify-content: center; }
+}
