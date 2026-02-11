@@ -1,8 +1,5 @@
 /* tslint:disable */
-// Removed direct import of GoogleGenAI since we are proxying
-// import { GoogleGenAI } from '@google/genai'; 
-
-export {};
+import { GoogleGenAI } from '@google/genai';
 
 // --- Global Types & Interfaces ---
 declare global {
@@ -12,6 +9,7 @@ declare global {
   }
   interface Window {
     aistudio?: AIStudio;
+    saveApiKey?: () => void;
   }
 }
 
@@ -31,39 +29,67 @@ interface ReferenceImage {
     mimeType: string;
 }
 
-// --- Initialization Logic (Backend Proxy) ---
-// API Key is managed by the backend via process.env.API_KEY or injected externally.
+// --- Initialization Logic ---
+let userApiKey = localStorage.getItem('gemini_api_key') || '';
 
-const getGenAI = () => {
-    return {
-        models: {
-            generateContent: async (params: any) => {
-                // Prepare headers
-                const headers: Record<string, string> = {
-                    'Content-Type': 'application/json'
-                };
+const showApiKeyModal = () => {
+    // Check if modal already exists
+    if (document.getElementById('api-key-modal')) return;
 
-                try {
-                    const response = await fetch('/api/generate', {
-                        method: 'POST',
-                        headers: headers,
-                        body: JSON.stringify(params)
-                    });
+    const modal = document.createElement('div');
+    modal.id = 'api-key-modal';
+    modal.innerHTML = `
+        <div style="position:fixed; inset:0; background:rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; z-index:9999; backdrop-filter: blur(5px);">
+            <div style="background:#121214; padding:2rem; border-radius:16px; max-width:500px; width:90%; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+                <h3 style="color:white; margin-bottom:1rem; font-weight: 800; font-size: 1.25rem; text-transform: uppercase; letter-spacing: 0.05em;">🔑 Cần Google Gemini API Key</h3>
+                <p style="color:#9ca3af; margin-bottom:1.5rem; font-size: 0.875rem; line-height: 1.6;">
+                    1. Vào <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#818cf8; text-decoration: none; font-weight: bold;">Google AI Studio</a><br>
+                    2. Tạo API Key mới (miễn phí)<br>
+                    3. Dán key vào đây:
+                </p>
+                <input type="password" id="api-key-input" placeholder="AIzaSy..." style="width:100%; padding:0.75rem; background:#09090a; border:1px solid #27272a; color:white; border-radius:8px; margin-bottom:1.5rem; outline: none; font-family: monospace; font-size: 0.875rem;">
+                <div style="display:flex; gap:0.75rem; justify-content: flex-end;">
+                    <button id="cancel-api-key" style="background:transparent; color:#9ca3af; padding:0.6rem 1.2rem; border:1px solid #27272a; border-radius:8px; cursor:pointer; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; transition: all 0.2s;">Hủy</button>
+                    <button onclick="saveApiKey()" style="background:#262380; color:white; padding:0.6rem 1.5rem; border:none; border-radius:8px; cursor:pointer; font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; box-shadow: 0 4px 6px -1px rgba(38, 35, 128, 0.3); transition: all 0.2s;">Lưu Key</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // Auto focus input
+    setTimeout(() => {
+        const input = document.getElementById('api-key-input') as HTMLInputElement;
+        if(input) input.focus();
+    }, 100);
 
-                    if (!response.ok) {
-                        const errData = await response.json().catch(() => ({}));
-                        throw new Error(errData.error || `Server Error: ${response.statusText}`);
-                    }
+    // Cancel button logic
+    document.getElementById('cancel-api-key')?.addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
 
-                    return await response.json();
-                } catch (err: any) {
-                    console.error("Generate Content Error:", err);
-                    throw err;
-                }
-            }
+    window.saveApiKey = () => {
+        const input = document.getElementById('api-key-input') as HTMLInputElement;
+        const key = input.value.trim();
+        if (key.length > 10) {
+            userApiKey = key;
+            localStorage.setItem('gemini_api_key', key);
+            document.body.removeChild(modal);
+            alert("✅ API Key đã được lưu! Bạn có thể sử dụng ứng dụng.");
+            // Reload page might be safer to ensure all singletons update, but we are dynamic here
+        } else {
+            alert("⚠️ Vui lòng nhập API Key hợp lệ");
         }
     };
-}
+};
+
+const getGenAI = () => {
+    if (!userApiKey) {
+        showApiKeyModal();
+        throw new Error("Vui lòng nhập API Key để tiếp tục");
+    }
+    return new GoogleGenAI({ apiKey: userApiKey });
+};
 
 // --- DOM Elements ---
 const statusEl = document.querySelector('#status') as HTMLDivElement;
@@ -210,8 +236,10 @@ const loadedFilesContent: Record<string, string> = {
 
 // --- API Key Logic ---
 if (apiKeyBtn) {
-    // We do not support manual key entry; key must be in env.
-    apiKeyBtn.style.display = 'none';
+    apiKeyBtn.style.display = 'block'; // Ensure visible
+    apiKeyBtn.addEventListener('click', () => {
+        showApiKeyModal();
+    });
 }
 
 // --- Helper Functions ---
@@ -294,7 +322,7 @@ async function translatePrompt(targetLang: 'VN' | 'EN') {
             ? `You are a professional translator. Translate the values in the provided JSON object to Vietnamese. Keep technical terms if appropriate. Return ONLY valid JSON.`
             : `You are a professional translator. Translate the values in the provided JSON object to English. Optimize for AI image generation. Return ONLY valid JSON.`;
 
-        // Use local Helper to get Key (via Proxy)
+        // Use local Helper to get Key
         const ai = getGenAI();
 
         const response = await ai.models.generateContent({
@@ -315,8 +343,9 @@ async function translatePrompt(targetLang: 'VN' | 'EN') {
         }
     } catch (e) {
         console.error("Translation failed", e);
-        if (statusEl) statusEl.innerText = "Translation Error";
-        alert("Translation failed. Check console/network.");
+        if (statusEl) statusEl.innerText = "Translation Error (Check API Key)";
+        // Error will likely be caught by getGenAI modal, but if it slips through:
+        // alert("Translation failed. Check console/network.");
     } finally {
         if(megaEl) megaEl.disabled = false;
         if(lightEl) lightEl.disabled = false;
@@ -1307,7 +1336,7 @@ async function runGeneration() {
         let imageConfig: any = { aspectRatio: sizeSelect.value || '1:1' };
         if (selectedResolution === '2K' || selectedResolution === '4K') { modelId = 'gemini-3-pro-image-preview'; imageConfig.imageSize = selectedResolution; }
 
-        // Use local Helper (PROXY)
+        // Use local Helper (SDK Client)
         const ai = getGenAI();
 
         const result = await ai.models.generateContent({ model: modelId, contents: { parts: parts }, config: { imageConfig: imageConfig } });
@@ -1339,7 +1368,7 @@ async function runGeneration() {
             if (e.message.includes("429")) {
                 alert("API Quota exceeded. Please try again later.");
             } else if (e.message.includes("API Key") || e.message.includes("401")) {
-                alert("API Key invalid or missing on server.");
+                showApiKeyModal(); // Prompt for key if invalid
             }
         }
     } finally {
