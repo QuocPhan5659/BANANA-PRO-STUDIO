@@ -635,15 +635,48 @@ function handleMainImage(file: File) {
     reader.onload = async (e) => {
         const result = e.target?.result as string;
         uploadedImageData = { data: result.split(',')[1], mimeType: file.type };
-        if (uploadPreview) {
-            uploadPreview.src = result;
-            uploadPreview.onload = () => {
-                 setupCanvas();
-                 uploadPlaceholder?.classList.add('hidden');
-                 inpaintingContainer?.classList.remove('hidden');
-                 if(statusEl) statusEl.innerText = "Image Loaded";
+        
+        // --- AUTO RATIO DETECTION LOGIC ---
+        const imgObj = new Image();
+        imgObj.onload = () => {
+            const ratio = imgObj.width / imgObj.height;
+            const ratios: Record<string, number> = {
+                '1:1': 1,
+                '3:2': 1.5,
+                '2:3': 0.666,
+                '16:9': 1.777,
+                '9:16': 0.5625,
+                '4:3': 1.333,
+                '3:4': 0.75
             };
-        }
+            
+            let closest = '1:1';
+            let minDiff = Infinity;
+            
+            for (const [key, val] of Object.entries(ratios)) {
+                const diff = Math.abs(ratio - val);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    closest = key;
+                }
+            }
+            
+            if (sizeSelect) {
+                sizeSelect.value = closest;
+                if(statusEl) statusEl.innerText = `Auto-set Ratio: ${closest}`;
+            }
+
+            if (uploadPreview) {
+                uploadPreview.src = result;
+                uploadPreview.onload = () => {
+                     setupCanvas();
+                     uploadPlaceholder?.classList.add('hidden');
+                     inpaintingContainer?.classList.remove('hidden');
+                     if(statusEl) setTimeout(() => statusEl.innerText = "Image Loaded", 1500);
+                };
+            }
+        };
+        imgObj.src = result;
     };
     reader.readAsDataURL(file);
 }
@@ -1521,9 +1554,39 @@ miniGenerateBtn?.addEventListener('click', runGeneration);
 closeOutputBtn?.addEventListener('click', () => { outputContainer.classList.add('hidden'); });
 downloadButtonMain?.addEventListener('click', () => { if (outputImage.src) { const a = document.createElement('a'); a.href = outputImage.src; a.download = `banana-pro-${Date.now()}.png`; a.click(); } });
 globalResetBtn?.addEventListener('click', () => {
-    if(promptEl) promptEl.value = ''; manualCtxEntries.forEach(e => { e.value = ''; autoResize(e); });
-    inpaintingPromptText.value = ''; inpaintingPromptText.classList.add('hidden'); inpaintingPromptToggle.checked = false;
-    referenceImages = []; renderRefs(); resetImage();
+    // 1. Reset Text Inputs
+    if(promptEl) promptEl.value = ''; 
+    manualCtxEntries.forEach(e => { e.value = ''; autoResize(e); });
+    
+    // 2. Clear Loaded Files Logic (but keep image inputs clean)
+    document.querySelectorAll('.file-display-slot').forEach(slot => {
+        const input = slot.querySelector('input[type="file"]') as HTMLInputElement;
+        if(input) input.value = '';
+        
+        const info = slot.querySelector('.loaded-file-info');
+        const status = slot.querySelector('.file-status');
+        
+        if(info) info.classList.add('hidden');
+        if(status) status.classList.remove('hidden');
+        slot.classList.remove('border-[#262380]/40', 'bg-[#262380]/5');
+    });
+    
+    // 3. Clear Internal File Content Memory
+    for (const key in loadedFilesContent) {
+        loadedFilesContent[key] = '';
+    }
+
+    // 4. Reset Inpainting Text
+    inpaintingPromptText.value = ''; 
+    inpaintingPromptText.classList.add('hidden'); 
+    inpaintingPromptToggle.checked = false;
+
+    // 5. Reset References
+    referenceImages = []; 
+    renderRefs();
+
+    // NOTE: Intentionally NOT calling resetImage() to keep the uploaded image/mask active.
+    if(statusEl) statusEl.innerText = "Text/Settings Reset (Image Kept)";
 });
 
 // --- Toolbar Buttons Wiring ---
