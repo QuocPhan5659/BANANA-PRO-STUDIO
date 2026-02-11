@@ -32,6 +32,11 @@ interface ReferenceImage {
 // --- Initialization Logic ---
 let userApiKey = localStorage.getItem('gemini_api_key') || '';
 
+// Attempt to load from env if available (for local dev)
+if (!userApiKey && process.env.API_KEY && process.env.API_KEY !== 'PLACEHOLDER_API_KEY') {
+    userApiKey = process.env.API_KEY;
+}
+
 const showApiKeyModal = () => {
     // Check if modal already exists
     if (document.getElementById('api-key-modal')) return;
@@ -434,25 +439,6 @@ resBtns.forEach(btn => {
 
     btn.addEventListener('click', async () => {
          const targetRes = btn.getAttribute('data-value');
-
-         // --- PRO FEATURE CHECK (Immediate Feedback on Click) ---
-         if (targetRes === '2K' || targetRes === '4K') {
-             if (typeof window.aistudio !== 'undefined' && window.aistudio.hasSelectedApiKey) {
-                 const hasPaid = await window.aistudio.hasSelectedApiKey();
-                 // If no paid key is selected, we do NOT switch state
-                 if (!hasPaid) {
-                     // NO ALERT here as requested - we handle logic during generation or just fail silently/log
-                     // But for UX, we probably shouldn't even let them select it visually if we want strictly strict.
-                     // HOWEVER, request says "Thong bao tra phi... khong hien lai".
-                     // And "Neu tai khoan Free tu dong mac dinh 1K".
-                     // So here we can allow selection but it will auto-downgrade later, OR auto-downgrade now.
-                     // Let's allow selection for now and handle "downgrade" at generation time as requested.
-                     // OR we can just silently not switch.
-                     // Let's proceed to switch UI state, but logic will catch it.
-                 }
-             }
-         }
-
          // Switch Logic 
          resBtns.forEach(b => {
             b.classList.remove('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
@@ -1380,21 +1366,24 @@ async function runGeneration() {
     }
 
     // --- PRO FEATURE CHECK (Gatekeeper for 2K/4K) ---
+    // Gatekeeper logic fixed to accept manual API key > 20 chars
     if (selectedResolution === '2K' || selectedResolution === '4K') {
         let hasPaidKey = false;
         
-        // Check if environment has a selected key (AI Studio context)
+        // 1. Check if environment has a selected key (AI Studio context)
         if (typeof window.aistudio !== 'undefined' && window.aistudio.hasSelectedApiKey) {
             try {
                 hasPaidKey = await window.aistudio.hasSelectedApiKey();
             } catch (e) { console.warn("Key check failed", e); }
-        } else {
-            // Local fallback
-            hasPaidKey = false; 
+        } 
+        
+        // 2. Check if user has manually entered a key (Local/Github/Deployment)
+        if (!hasPaidKey && userApiKey && userApiKey.length > 20) {
+            hasPaidKey = true;
         }
 
         if (!hasPaidKey) {
-            // User has Free account: Automatically downgrade to 1K (Silent, no alert)
+            // User has Free account AND no manual key: Automatically downgrade to 1K (Silent, no alert)
             selectedResolution = '1K';
             
             // Update UI to reflect change silently
