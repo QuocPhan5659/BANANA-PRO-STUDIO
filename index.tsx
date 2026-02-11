@@ -1,5 +1,8 @@
 /* tslint:disable */
-import { GoogleGenAI } from '@google/genai';
+// Removed direct import to use proxy
+// import { GoogleGenAI } from '@google/genai'; 
+
+export {};
 
 // --- Global Types & Interfaces ---
 declare global {
@@ -43,6 +46,7 @@ const showApiKeyModal = () => {
             <div style="background:#121214; padding:2rem; border-radius:16px; max-width:500px; width:90%; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
                 <h3 style="color:white; margin-bottom:1rem; font-weight: 800; font-size: 1.25rem; text-transform: uppercase; letter-spacing: 0.05em;">🔑 Cần Google Gemini API Key</h3>
                 <p style="color:#9ca3af; margin-bottom:1.5rem; font-size: 0.875rem; line-height: 1.6;">
+                    Server chưa được cấu hình API Key. Để tiếp tục, bạn cần nhập Key riêng:<br><br>
                     1. Vào <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#818cf8; text-decoration: none; font-weight: bold;">Google AI Studio</a><br>
                     2. Tạo API Key mới (miễn phí)<br>
                     3. Dán key vào đây:
@@ -57,13 +61,11 @@ const showApiKeyModal = () => {
     `;
     document.body.appendChild(modal);
     
-    // Auto focus input
     setTimeout(() => {
         const input = document.getElementById('api-key-input') as HTMLInputElement;
         if(input) input.focus();
     }, 100);
 
-    // Cancel button logic
     document.getElementById('cancel-api-key')?.addEventListener('click', () => {
         document.body.removeChild(modal);
     });
@@ -76,19 +78,50 @@ const showApiKeyModal = () => {
             localStorage.setItem('gemini_api_key', key);
             document.body.removeChild(modal);
             alert("✅ API Key đã được lưu! Bạn có thể sử dụng ứng dụng.");
-            // Reload page might be safer to ensure all singletons update, but we are dynamic here
         } else {
             alert("⚠️ Vui lòng nhập API Key hợp lệ");
         }
     };
 };
 
+// Modified: Proxy Client Logic
 const getGenAI = () => {
-    if (!userApiKey) {
-        showApiKeyModal();
-        throw new Error("Vui lòng nhập API Key để tiếp tục");
-    }
-    return new GoogleGenAI({ apiKey: userApiKey });
+    return {
+        models: {
+            generateContent: async (params: any) => {
+                const headers: Record<string, string> = {
+                    'Content-Type': 'application/json'
+                };
+                
+                // If user provided a key manually, use it. Otherwise, backend uses env key.
+                if (userApiKey) {
+                    headers['x-api-key'] = userApiKey;
+                }
+
+                try {
+                    const response = await fetch('/api/generate', {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify(params)
+                    });
+
+                    if (!response.ok) {
+                        const errData = await response.json().catch(() => ({}));
+                        throw new Error(errData.error || `Server Error: ${response.statusText}`);
+                    }
+
+                    return await response.json();
+                } catch (err: any) {
+                    console.error("Generate Content Error:", err);
+                    // Only show modal if the SERVER says authentication failed (missing env key)
+                    if (err.message.includes('401') || err.message.includes('Missing valid API Key')) {
+                         showApiKeyModal();
+                    }
+                    throw err;
+                }
+            }
+        }
+    };
 };
 
 // --- DOM Elements ---
@@ -290,6 +323,9 @@ async function translatePrompt(targetLang: 'VN' | 'EN') {
     // 1. UI Update
     updateLangButtonStyles(targetLang);
 
+    // Removed pre-check to allow server key to work
+    // if (!userApiKey) ...
+
     // 2. Gather inputs
     const megaEl = promptEl;
     const lightEl = document.getElementById('lighting-manual') as HTMLTextAreaElement;
@@ -341,11 +377,10 @@ async function translatePrompt(targetLang: 'VN' | 'EN') {
             if(sceneEl && result.scene) { sceneEl.value = result.scene; autoResize(sceneEl); }
             if(viewEl && result.view) { viewEl.value = result.view; autoResize(viewEl); }
         }
-    } catch (e) {
+    } catch (e: any) {
         console.error("Translation failed", e);
-        if (statusEl) statusEl.innerText = "Translation Error (Check API Key)";
-        // Error will likely be caught by getGenAI modal, but if it slips through:
-        // alert("Translation failed. Check console/network.");
+        if (statusEl) statusEl.innerText = "Translation Error";
+        // Error handling now moved to getGenAI logic
     } finally {
         if(megaEl) megaEl.disabled = false;
         if(lightEl) lightEl.disabled = false;
@@ -1301,6 +1336,9 @@ async function runGeneration() {
 
     if (!uploadedImageData) { alert("Please upload a main image first."); return; }
     
+    // Removed strict client-side API Key check.
+    // Backend will handle auth (Env Key OR User Key)
+
     // Check for Pro API Key requirement
     if (typeof window.aistudio !== 'undefined' && window.aistudio.hasSelectedApiKey) {
         const hasKey = await window.aistudio.hasSelectedApiKey();
@@ -1336,7 +1374,7 @@ async function runGeneration() {
         let imageConfig: any = { aspectRatio: sizeSelect.value || '1:1' };
         if (selectedResolution === '2K' || selectedResolution === '4K') { modelId = 'gemini-3-pro-image-preview'; imageConfig.imageSize = selectedResolution; }
 
-        // Use local Helper (SDK Client)
+        // Use local Helper (Proxy Client)
         const ai = getGenAI();
 
         const result = await ai.models.generateContent({ model: modelId, contents: { parts: parts }, config: { imageConfig: imageConfig } });
@@ -1367,9 +1405,8 @@ async function runGeneration() {
             if(statusEl) statusEl.innerText = "Error encountered"; 
             if (e.message.includes("429")) {
                 alert("API Quota exceeded. Please try again later.");
-            } else if (e.message.includes("API Key") || e.message.includes("401")) {
-                showApiKeyModal(); // Prompt for key if invalid
             }
+            // Logic moved to getGenAI to show modal if needed
         }
     } finally {
         if (isGenerating && !abortController?.signal.aborted) {
