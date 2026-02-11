@@ -439,19 +439,21 @@ resBtns.forEach(btn => {
          if (targetRes === '2K' || targetRes === '4K') {
              if (typeof window.aistudio !== 'undefined' && window.aistudio.hasSelectedApiKey) {
                  const hasPaid = await window.aistudio.hasSelectedApiKey();
-                 // If no paid key is selected, prevent switching and prompt user
+                 // If no paid key is selected, we do NOT switch state
                  if (!hasPaid) {
-                     const doUpgrade = confirm("⚠️ Tính năng 2K/4K yêu cầu tài khoản Trả Phí (Paid Tier).\n\nBạn có muốn chọn khóa trả phí ngay bây giờ không?");
-                     if (doUpgrade) {
-                         if (window.aistudio.openSelectKey) await window.aistudio.openSelectKey();
-                     } 
-                     // IMPORTANT: Return early to prevent the resolution from actually changing state
-                     return;
+                     // NO ALERT here as requested - we handle logic during generation or just fail silently/log
+                     // But for UX, we probably shouldn't even let them select it visually if we want strictly strict.
+                     // HOWEVER, request says "Thong bao tra phi... khong hien lai".
+                     // And "Neu tai khoan Free tu dong mac dinh 1K".
+                     // So here we can allow selection but it will auto-downgrade later, OR auto-downgrade now.
+                     // Let's allow selection for now and handle "downgrade" at generation time as requested.
+                     // OR we can just silently not switch.
+                     // Let's proceed to switch UI state, but logic will catch it.
                  }
              }
          }
 
-         // Switch Logic (Only if check passed or user is local)
+         // Switch Logic 
          resBtns.forEach(b => {
             b.classList.remove('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
             b.classList.add('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
@@ -1387,42 +1389,25 @@ async function runGeneration() {
                 hasPaidKey = await window.aistudio.hasSelectedApiKey();
             } catch (e) { console.warn("Key check failed", e); }
         } else {
-            // Local fallback: assume False if not on AI Studio to be safe, or just warn
-            // But since user explicitly asked for notification, we enforce strict check if possible.
-            // If running locally, we can't really check billing status easily without server.
-            // For now, let's assume if they are using the app, they should have seen the modal.
-            // However, the prompt specifically says "User has Free account".
-            // So we default hasPaidKey to false if we can't verify it via AI Studio SDK.
+            // Local fallback
             hasPaidKey = false; 
         }
 
         if (!hasPaidKey) {
-            // Prompt user: Upgrade or Downgrade?
-            const confirmPro = confirm("🌟 Tính năng 2K/4K yêu cầu API Key trả phí (Google AI Studio).\n\n• OK: Chọn khóa trả phí ngay.\n• Cancel: Dùng bản miễn phí (1K).");
+            // User has Free account: Automatically downgrade to 1K (Silent, no alert)
+            selectedResolution = '1K';
             
-            if (confirmPro) {
-                if (window.aistudio && window.aistudio.openSelectKey) {
-                    await window.aistudio.openSelectKey();
-                    // We optimistically proceed
+            // Update UI to reflect change silently
+            resBtns.forEach(b => {
+                if(b.getAttribute('data-value') === '1K') {
+                    b.classList.add('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
+                    b.classList.remove('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
                 } else {
-                    showApiKeyModal(); // Fallback for manual entry
+                    b.classList.remove('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
+                    b.classList.add('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
                 }
-            } else {
-                // User cancelled, downgrade to 1K
-                selectedResolution = '1K';
-                
-                // Update UI to reflect change
-                resBtns.forEach(b => {
-                    if(b.getAttribute('data-value') === '1K') {
-                        b.classList.add('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
-                        b.classList.remove('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
-                    } else {
-                        b.classList.remove('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
-                        b.classList.add('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
-                    }
-                });
-                if(statusEl) statusEl.innerText = "Downgraded to 1K (Free)";
-            }
+            });
+            if(statusEl) statusEl.innerText = "Downgraded to 1K (Free)";
         }
     }
 

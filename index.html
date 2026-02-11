@@ -209,6 +209,15 @@
                                 <button class="clear-text-btn p-0.5 text-orange-600" data-target="lighting-manual"><svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
                             </div>
                         </div>
+                        <!-- Added File Slot for Lighting -->
+                        <div class="file-display-slot border border-dashed border-gray-800 rounded-lg p-1 bg-black/20 flex flex-col items-center justify-center gap-1 group cursor-pointer hover:border-[#262380]/40 transition-all flex-none min-h-[30px]" data-target="lighting-file">
+                            <span class="file-status text-[7px] font-bold text-gray-500 group-hover:text-gray-300 uppercase">Drag .txt</span>
+                            <div class="loaded-file-info hidden flex items-center gap-1">
+                                 <span class="file-name text-[8px] font-bold text-[#818cf8] truncate max-w-[50px]">file</span>
+                                 <button class="delete-file-btn text-orange-500 hover:text-orange-400 transition-colors"><svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                            </div>
+                            <input type="file" class="hidden txt-file-input" data-target="lighting-manual" accept=".txt" />
+                        </div>
                         <textarea id="lighting-manual" class="manual-ctx-entry prompt-textarea w-full h-full rounded-lg p-2 text-[10px] placeholder-gray-600 font-medium resize-none border border-[#27272a] bg-black/40" placeholder="Manual entry..."></textarea>
                     </div>
 
@@ -220,6 +229,15 @@
                                 <button class="paste-text-btn p-0.5 text-orange-600" data-target="scene-manual"><svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg></button>
                                 <button class="clear-text-btn p-0.5 text-orange-600" data-target="scene-manual"><svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
                             </div>
+                        </div>
+                         <!-- Added File Slot for Scene -->
+                        <div class="file-display-slot border border-dashed border-gray-800 rounded-lg p-1 bg-black/20 flex flex-col items-center justify-center gap-1 group cursor-pointer hover:border-[#262380]/40 transition-all flex-none min-h-[30px]" data-target="scene-file">
+                            <span class="file-status text-[7px] font-bold text-gray-500 group-hover:text-gray-300 uppercase">Drag .txt</span>
+                            <div class="loaded-file-info hidden flex items-center gap-1">
+                                 <span class="file-name text-[8px] font-bold text-[#818cf8] truncate max-w-[50px]">file</span>
+                                 <button class="delete-file-btn text-orange-500 hover:text-orange-400 transition-colors"><svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                            </div>
+                            <input type="file" class="hidden txt-file-input" data-target="scene-manual" accept=".txt" />
                         </div>
                         <textarea id="scene-manual" class="manual-ctx-entry prompt-textarea w-full h-full rounded-lg p-2 text-[10px] placeholder-gray-600 font-medium resize-none border border-[#27272a] bg-black/40" placeholder="Manual entry..."></textarea>
                     </div>
@@ -376,7 +394,7 @@
             <div id="drop-zone" class="relative w-full h-full border-2 border-dashed border-gray-800 rounded-3xl bg-[#0D0D0E] transition-all hover:border-[#262380]/60 hover:bg-[#262380]/10 overflow-hidden shadow-2xl group cursor-pointer flex flex-col z-10">
                 <input type="file" id="image-input" class="hidden" accept="image/*" />
                 
-                <!-- Paste Image Button (Inserted Here) -->
+                <!-- Paste Image Button -->
                 <button id="paste-image-btn" class="absolute top-4 left-4 z-50 p-2.5 bg-[#262380]/20 hover:bg-[#262380] text-[#a5b4fc] hover:text-white rounded-xl border border-[#262380]/30 transition-all backdrop-blur-md shadow-lg group/paste" title="Paste Image from Clipboard">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
