@@ -1,8 +1,5 @@
 /* tslint:disable */
-// Removed direct import to use proxy
-// import { GoogleGenAI } from '@google/genai'; 
-
-export {};
+import { GoogleGenAI } from '@google/genai';
 
 // --- Global Types & Interfaces ---
 declare global {
@@ -46,7 +43,6 @@ const showApiKeyModal = () => {
             <div style="background:#121214; padding:2rem; border-radius:16px; max-width:500px; width:90%; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
                 <h3 style="color:white; margin-bottom:1rem; font-weight: 800; font-size: 1.25rem; text-transform: uppercase; letter-spacing: 0.05em;">🔑 Cần Google Gemini API Key</h3>
                 <p style="color:#9ca3af; margin-bottom:1.5rem; font-size: 0.875rem; line-height: 1.6;">
-                    Server chưa được cấu hình API Key. Để tiếp tục, bạn cần nhập Key riêng:<br><br>
                     1. Vào <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#818cf8; text-decoration: none; font-weight: bold;">Google AI Studio</a><br>
                     2. Tạo API Key mới (miễn phí)<br>
                     3. Dán key vào đây:
@@ -61,11 +57,13 @@ const showApiKeyModal = () => {
     `;
     document.body.appendChild(modal);
     
+    // Auto focus input
     setTimeout(() => {
         const input = document.getElementById('api-key-input') as HTMLInputElement;
         if(input) input.focus();
     }, 100);
 
+    // Cancel button logic
     document.getElementById('cancel-api-key')?.addEventListener('click', () => {
         document.body.removeChild(modal);
     });
@@ -84,44 +82,12 @@ const showApiKeyModal = () => {
     };
 };
 
-// Modified: Proxy Client Logic
 const getGenAI = () => {
-    return {
-        models: {
-            generateContent: async (params: any) => {
-                const headers: Record<string, string> = {
-                    'Content-Type': 'application/json'
-                };
-                
-                // If user provided a key manually, use it. Otherwise, backend uses env key.
-                if (userApiKey) {
-                    headers['x-api-key'] = userApiKey;
-                }
-
-                try {
-                    const response = await fetch('/api/generate', {
-                        method: 'POST',
-                        headers: headers,
-                        body: JSON.stringify(params)
-                    });
-
-                    if (!response.ok) {
-                        const errData = await response.json().catch(() => ({}));
-                        throw new Error(errData.error || `Server Error: ${response.statusText}`);
-                    }
-
-                    return await response.json();
-                } catch (err: any) {
-                    console.error("Generate Content Error:", err);
-                    // Only show modal if the SERVER says authentication failed (missing env key)
-                    if (err.message.includes('401') || err.message.includes('Missing valid API Key')) {
-                         showApiKeyModal();
-                    }
-                    throw err;
-                }
-            }
-        }
-    };
+    if (!userApiKey) {
+        showApiKeyModal();
+        throw new Error("Vui lòng nhập API Key để tiếp tục");
+    }
+    return new GoogleGenAI({ apiKey: userApiKey });
 };
 
 // --- DOM Elements ---
@@ -323,10 +289,14 @@ async function translatePrompt(targetLang: 'VN' | 'EN') {
     // 1. UI Update
     updateLangButtonStyles(targetLang);
 
-    // Removed pre-check to allow server key to work
-    // if (!userApiKey) ...
+    // 2. Pre-check API Key to avoid error
+    if (!userApiKey) {
+        showApiKeyModal();
+        if (statusEl) statusEl.innerText = "Please enter API Key to translate";
+        return;
+    }
 
-    // 2. Gather inputs
+    // 3. Gather inputs
     const megaEl = promptEl;
     const lightEl = document.getElementById('lighting-manual') as HTMLTextAreaElement;
     const sceneEl = document.getElementById('scene-manual') as HTMLTextAreaElement;
@@ -342,7 +312,7 @@ async function translatePrompt(targetLang: 'VN' | 'EN') {
     const hasContent = Object.values(dataToTranslate).some(v => v.trim() !== "");
     if (!hasContent) return;
 
-    // 3. Prepare Translation
+    // 4. Prepare Translation
     const loadingText = targetLang === 'VN' ? "Đang dịch..." : "Translating...";
     if(statusEl) statusEl.innerText = loadingText;
     
@@ -361,8 +331,9 @@ async function translatePrompt(targetLang: 'VN' | 'EN') {
         // Use local Helper to get Key
         const ai = getGenAI();
 
+        // Using gemini-1.5-flash for free tier text tasks as requested
         const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview', 
+            model: 'gemini-1.5-flash', 
             contents: { parts: [{ text: `Translate this JSON: ${jsonStr}` }] },
             config: { 
                 systemInstruction: systemPrompt,
@@ -380,7 +351,9 @@ async function translatePrompt(targetLang: 'VN' | 'EN') {
     } catch (e: any) {
         console.error("Translation failed", e);
         if (statusEl) statusEl.innerText = "Translation Error";
-        // Error handling now moved to getGenAI logic
+        if (e.message.includes("API Key") || e.message.includes("401")) {
+             showApiKeyModal();
+        }
     } finally {
         if(megaEl) megaEl.disabled = false;
         if(lightEl) lightEl.disabled = false;
@@ -449,14 +422,42 @@ exportBtns.forEach(btn => {
 
 // --- Resolution Switching ---
 resBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
+    // Add Pro Badge Logic
+    if (btn.getAttribute('data-value') === '2K' || btn.getAttribute('data-value') === '4K') {
+        const badge = document.createElement('span');
+        badge.className = "absolute -top-1 -right-1 bg-amber-500 text-black text-[6px] font-black px-1 rounded-sm shadow-sm pointer-events-none";
+        badge.innerText = "PRO";
+        btn.classList.add('relative');
+        btn.appendChild(badge);
+    }
+
+    btn.addEventListener('click', async () => {
+         const targetRes = btn.getAttribute('data-value');
+
+         // --- PRO FEATURE CHECK (Immediate Feedback on Click) ---
+         if (targetRes === '2K' || targetRes === '4K') {
+             if (typeof window.aistudio !== 'undefined' && window.aistudio.hasSelectedApiKey) {
+                 const hasPaid = await window.aistudio.hasSelectedApiKey();
+                 // If no paid key is selected, prevent switching and prompt user
+                 if (!hasPaid) {
+                     const doUpgrade = confirm("⚠️ Tính năng 2K/4K yêu cầu tài khoản Trả Phí (Paid Tier).\n\nBạn có muốn chọn khóa trả phí ngay bây giờ không?");
+                     if (doUpgrade) {
+                         if (window.aistudio.openSelectKey) await window.aistudio.openSelectKey();
+                     } 
+                     // IMPORTANT: Return early to prevent the resolution from actually changing state
+                     return;
+                 }
+             }
+         }
+
+         // Switch Logic (Only if check passed or user is local)
          resBtns.forEach(b => {
             b.classList.remove('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
             b.classList.add('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
          });
          btn.classList.add('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
          btn.classList.remove('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
-         selectedResolution = btn.getAttribute('data-value') || '1K';
+         selectedResolution = targetRes || '1K';
          if(statusEl) statusEl.innerText = `Res set to ${selectedResolution}`;
     });
 });
@@ -1323,7 +1324,9 @@ if (useAsMasterBtn) {
 async function runGeneration() {
     if (isGenerating) {
         if (abortController) { abortController.abort(); abortController = null; }
-        isGenerating = false; clearInterval(currentProgressInterval);
+        isGenerating = false; 
+        clearInterval(currentProgressInterval);
+        
         generateProgress.style.width = '0%';
         generateButton.classList.remove('bg-red-600'); generateButton.classList.add('bg-[#262380]');
         generateLabel.innerText = "GENERATE (PROCESS)";
@@ -1331,18 +1334,66 @@ async function runGeneration() {
              miniGenerateBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 group-hover:animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>`;
              miniGenerateBtn.classList.remove('bg-red-600'); miniGenerateBtn.classList.add('bg-[#262380]');
         }
-        if(statusEl) statusEl.innerText = "Generation Stopped"; return;
+        if(statusEl) statusEl.innerText = "Generation Stopped"; 
+        return;
     }
 
     if (!uploadedImageData) { alert("Please upload a main image first."); return; }
     
-    // Removed strict client-side API Key check.
-    // Backend will handle auth (Env Key OR User Key)
+    // 1. Check for API Key FIRST to avoid exception
+    if (!userApiKey) {
+        showApiKeyModal();
+        if(statusEl) statusEl.innerText = "Please enter API Key to start";
+        return;
+    }
 
-    // Check for Pro API Key requirement
-    if (typeof window.aistudio !== 'undefined' && window.aistudio.hasSelectedApiKey) {
-        const hasKey = await window.aistudio.hasSelectedApiKey();
-        if (!hasKey && window.aistudio.openSelectKey) await window.aistudio.openSelectKey();
+    // --- PRO FEATURE CHECK (Gatekeeper for 2K/4K) ---
+    if (selectedResolution === '2K' || selectedResolution === '4K') {
+        let hasPaidKey = false;
+        
+        // Check if environment has a selected key (AI Studio context)
+        if (typeof window.aistudio !== 'undefined' && window.aistudio.hasSelectedApiKey) {
+            try {
+                hasPaidKey = await window.aistudio.hasSelectedApiKey();
+            } catch (e) { console.warn("Key check failed", e); }
+        } else {
+            // Local fallback: assume False if not on AI Studio to be safe, or just warn
+            // But since user explicitly asked for notification, we enforce strict check if possible.
+            // If running locally, we can't really check billing status easily without server.
+            // For now, let's assume if they are using the app, they should have seen the modal.
+            // However, the prompt specifically says "User has Free account".
+            // So we default hasPaidKey to false if we can't verify it via AI Studio SDK.
+            hasPaidKey = false; 
+        }
+
+        if (!hasPaidKey) {
+            // Prompt user: Upgrade or Downgrade?
+            const confirmPro = confirm("🌟 Tính năng 2K/4K yêu cầu API Key trả phí (Google AI Studio).\n\n• OK: Chọn khóa trả phí ngay.\n• Cancel: Dùng bản miễn phí (1K).");
+            
+            if (confirmPro) {
+                if (window.aistudio && window.aistudio.openSelectKey) {
+                    await window.aistudio.openSelectKey();
+                    // We optimistically proceed
+                } else {
+                    showApiKeyModal(); // Fallback for manual entry
+                }
+            } else {
+                // User cancelled, downgrade to 1K
+                selectedResolution = '1K';
+                
+                // Update UI to reflect change
+                resBtns.forEach(b => {
+                    if(b.getAttribute('data-value') === '1K') {
+                        b.classList.add('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
+                        b.classList.remove('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
+                    } else {
+                        b.classList.remove('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
+                        b.classList.add('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
+                    }
+                });
+                if(statusEl) statusEl.innerText = "Downgraded to 1K (Free)";
+            }
+        }
     }
 
     isGenerating = true; abortController = new AbortController(); 
@@ -1354,9 +1405,13 @@ async function runGeneration() {
     }
     if(statusEl) statusEl.innerText = "Generating...";
     generateProgress.style.width = '0%'; let progressVal = 0;
+    
+    // Start Progress Interval
     currentProgressInterval = setInterval(() => {
-        progressVal += 1; if(progressVal > 95) progressVal = 95;
-        generateProgress.style.width = `${progressVal}%`; generateLabel.innerText = `STOP GENERATING (${progressVal}%)`;
+        progressVal += 1; 
+        if(progressVal > 95) progressVal = 95;
+        generateProgress.style.width = `${progressVal}%`; 
+        generateLabel.innerText = `STOP GENERATING (${progressVal}%)`;
     }, 100);
 
     try {
@@ -1370,16 +1425,27 @@ async function runGeneration() {
         referenceImages.forEach(ref => { parts.push({ inlineData: { mimeType: ref.mimeType, data: ref.data } }); });
         parts.push({ inlineData: { mimeType: uploadedImageData.mimeType, data: uploadedImageData.data } });
         parts.push({ text: fullPrompt });
-        let modelId = 'gemini-2.5-flash-image';
+        
+        let modelId = 'gemini-2.5-flash-image'; // Default Free Model (1K)
         let imageConfig: any = { aspectRatio: sizeSelect.value || '1:1' };
-        if (selectedResolution === '2K' || selectedResolution === '4K') { modelId = 'gemini-3-pro-image-preview'; imageConfig.imageSize = selectedResolution; }
+        
+        // Select Pro Model if Resolution > 1K
+        if (selectedResolution === '2K' || selectedResolution === '4K') { 
+            modelId = 'gemini-3-pro-image-preview'; 
+            imageConfig.imageSize = selectedResolution; 
+        }
 
-        // Use local Helper (Proxy Client)
+        // Use local Helper (SDK Client)
         const ai = getGenAI();
 
         const result = await ai.models.generateContent({ model: modelId, contents: { parts: parts }, config: { imageConfig: imageConfig } });
+        
         if (abortController.signal.aborted) return;
-        clearInterval(currentProgressInterval); generateProgress.style.width = '100%'; generateLabel.innerText = "STOP GENERATING (100%)";
+        
+        // Success - Set 100% immediately
+        clearInterval(currentProgressInterval); 
+        generateProgress.style.width = '100%'; 
+        generateLabel.innerText = "STOP GENERATING (100%)";
 
         const cand = result.candidates?.[0];
         if (cand) {
@@ -1405,21 +1471,34 @@ async function runGeneration() {
             if(statusEl) statusEl.innerText = "Error encountered"; 
             if (e.message.includes("429")) {
                 alert("API Quota exceeded. Please try again later.");
+            } else if (e.message.includes("API Key") || e.message.includes("401") || e.message.includes("403")) {
+                // If we hit a permission error (likely Pro model access), prompt again
+                if (selectedResolution === '2K' || selectedResolution === '4K') {
+                     alert("Lỗi: Không thể truy cập model Pro (2K/4K). Vui lòng kiểm tra lại khóa API trả phí hoặc chuyển về chế độ 1K.");
+                } else {
+                     showApiKeyModal(); 
+                }
+            } else {
+                alert(`Generation failed: ${e.message}`);
             }
-            // Logic moved to getGenAI to show modal if needed
         }
     } finally {
+        // CRITICAL FIX: Ensure cleanup runs regardless of success or error
+        clearInterval(currentProgressInterval);
+        
         if (isGenerating && !abortController?.signal.aborted) {
             setTimeout(() => {
-                isGenerating = false; generateProgress.style.width = '0%';
+                isGenerating = false; 
+                generateProgress.style.width = '0%';
                 generateButton.classList.remove('bg-red-600'); generateButton.classList.add('bg-[#262380]');
                 generateLabel.innerText = "GENERATE (PROCESS)";
                 if (miniGenerateBtn) {
                      miniGenerateBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 group-hover:animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>`;
                      miniGenerateBtn.classList.remove('bg-red-600'); miniGenerateBtn.classList.add('bg-[#262380]');
                 }
-                if(statusEl) statusEl.innerText = "System Standby"; abortController = null;
-            }, 800);
+                if(statusEl) statusEl.innerText = "System Standby"; 
+                abortController = null;
+            }, 500); // Reduced timeout for snappier UI
         }
     }
 }
@@ -1461,8 +1540,15 @@ toolBtns.forEach(btn => {
         
         if(brushCursor) {
              brushCursor.classList.remove('hidden');
-             const e = new MouseEvent('mousemove', {clientX: parseInt(brushCursor.style.left)+15, clientY: parseInt(brushCursor.style.top)+15});
-             updateBrushCursor(e);
+             const left = parseInt(brushCursor.style.left);
+             const top = parseInt(brushCursor.style.top);
+             if (!isNaN(left) && !isNaN(top)) {
+                 const e = new MouseEvent('mousemove', {
+                     clientX: left + (currentBrushSize / 2), 
+                     clientY: top + (currentBrushSize / 2)
+                 });
+                 updateBrushCursor(e);
+             }
         }
         
         // Sync Zoom Tools UI
