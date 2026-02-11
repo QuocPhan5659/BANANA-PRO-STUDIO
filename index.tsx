@@ -126,6 +126,7 @@ const imageInput = document.querySelector('#image-input') as HTMLInputElement;
 const uploadPlaceholder = document.querySelector('#upload-placeholder') as HTMLDivElement;
 const inpaintingContainer = document.querySelector('#inpainting-container') as HTMLDivElement;
 const uploadPreview = document.querySelector('#upload-preview') as HTMLImageElement;
+const pasteImageBtn = document.querySelector('#paste-image-btn') as HTMLButtonElement;
 
 // Canvas Elements
 const maskCanvas = document.querySelector('#mask-canvas') as HTMLCanvasElement;
@@ -664,6 +665,35 @@ if (dropZone) {
     });
 }
 imageInput?.addEventListener('change', () => { if (imageInput.files?.[0]) handleMainImage(imageInput.files[0]); });
+
+// Paste Image Button Handler
+if (pasteImageBtn) {
+    pasteImageBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        try {
+            const clipboardItems = await navigator.clipboard.read();
+            let foundImage = false;
+            for (const item of clipboardItems) {
+                const imageTypes = item.types.filter(type => type.startsWith('image/'));
+                if (imageTypes.length > 0) {
+                    // Get the first image type available
+                    const blob = await item.getType(imageTypes[0]);
+                    const file = new File([blob], "pasted_image.png", { type: imageTypes[0] });
+                    handleMainImage(file);
+                    foundImage = true;
+                    break;
+                }
+            }
+            if (!foundImage) {
+                alert("Không tìm thấy hình ảnh trong bộ nhớ đệm (Clipboard)!");
+            }
+        } catch (err) {
+            console.error('Paste failed:', err);
+            alert("Lỗi: Không thể truy cập bộ nhớ đệm. Hãy đảm bảo bạn đã cấp quyền hoặc đang sử dụng trình duyệt hỗ trợ.");
+        }
+    });
+}
 
 function resetImage() {
     uploadedImageData = null;

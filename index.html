@@ -375,6 +375,14 @@
         <div class="flex-1 relative w-full p-4 overflow-hidden">
             <div id="drop-zone" class="relative w-full h-full border-2 border-dashed border-gray-800 rounded-3xl bg-[#0D0D0E] transition-all hover:border-[#262380]/60 hover:bg-[#262380]/10 overflow-hidden shadow-2xl group cursor-pointer flex flex-col z-10">
                 <input type="file" id="image-input" class="hidden" accept="image/*" />
+                
+                <!-- Paste Image Button -->
+                <button id="paste-image-btn" class="absolute top-4 left-4 z-20 p-2.5 bg-[#262380]/20 hover:bg-[#262380] text-[#a5b4fc] hover:text-white rounded-xl border border-[#262380]/30 transition-all backdrop-blur-md shadow-lg group/paste" title="Paste Image from Clipboard">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                </button>
+
                 <div id="upload-placeholder" class="flex-1 flex flex-col items-center justify-center space-y-4 transition-transform group-hover:scale-105 pointer-events-none">
                     <div class="w-20 h-20 bg-[#262380]/10 rounded-3xl flex items-center justify-center mb-2 shadow-lg shadow-[#262380]/10">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-[#262380]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
@@ -452,51 +460,3 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Output Container -->
-            <div id="output-container" class="hidden absolute inset-0 z-50 p-4 flex flex-col bg-[#0D0D0E] animate-in fade-in zoom-in-95 duration-300">
-                <div class="relative flex-1 bg-black rounded-2xl overflow-hidden group/output flex items-center justify-center border border-white/5 min-h-0">
-                    <img id="output-image" class="max-h-full max-w-full object-contain cursor-zoom-in" alt="Output" />
-                    <button id="zoom-output-btn" class="absolute bottom-4 left-4 z-30 p-3 bg-black/60 hover:bg-[#262380] text-white rounded-xl opacity-0 group-hover/output:opacity-100 transition-all backdrop-blur-md border border-white/10 shadow-lg transform translate-y-2 group-hover/output:translate-y-0 duration-300">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
-                    </button>
-                </div>
-                <button id="close-output-btn" class="w-full flex justify-between items-center mt-2 flex-none p-3 bg-[#121214] hover:bg-[#262380] border border-white/5 rounded-xl transition-all cursor-pointer group text-left">
-                    <span class="text-[10px] font-black uppercase tracking-[0.3em] text-[#818cf8] group-hover:text-white transition-colors">Generation Result &mdash; Click to Close</span>
-                    <div class="text-gray-400 group-hover:text-white transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </div>
-                </button>
-            </div>
-        </div>
-        
-        <!-- BOTTOM SECTION -->
-        <div class="h-[120px] flex-none bg-[#0D0D0E] border-t border-white/5 flex flex-col">
-            <div class="flex items-center justify-between px-6 py-1.5 border-b border-white/5 bg-[#121214]">
-                 <div class="flex items-center gap-4">
-                     <span class="bg-[#262380] text-white text-[9px] font-black uppercase px-2 py-0.5 rounded">MASTER VIEW</span>
-                 </div>
-                 <div class="flex gap-2">
-                    <button id="use-as-master" class="px-4 py-1.5 bg-white/5 hover:bg-[#262380] text-white text-[9px] font-black uppercase tracking-widest rounded-lg transition-all border border-white/5">Use as Master</button>
-                    <button id="download-button-main" class="flex items-center gap-2 px-4 py-1.5 bg-[#262380] hover:bg-[#1e1b66] text-white rounded-lg transition-all text-[9px] font-black uppercase tracking-widest">
-                        <span>Download</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                    </button>
-                 </div>
-            </div>
-            <div class="flex-1 overflow-x-auto p-2 flex gap-3 items-center min-w-0" id="history-container">
-                <div class="h-full flex flex-col justify-center px-4 border-r border-white/5 shrink-0 cursor-pointer group" id="history-label-container" title="Click to Clear All History">
-                    <span id="history-header" class="text-[9px] font-black uppercase tracking-widest text-[#818cf8] group-hover:text-red-500 transition-colors">History</span>
-                </div>
-                <div id="history-list" class="flex gap-2 h-full items-center">
-                    <div class="text-[9px] text-gray-700 font-bold uppercase tracking-widest px-4">No history yet</div>
-                </div>
-            </div>
-        </div>
-      </div>
-    </div>
-    <script type="module" src="index.tsx"></script>
-    <div id="banner-root"></div>
-<script type="module" src="/index.tsx"></script>
-</body>
-</html>
