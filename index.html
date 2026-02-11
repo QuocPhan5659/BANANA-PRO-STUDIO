@@ -19,10 +19,7 @@
     "dotenv": "https://esm.sh/dotenv@^17.2.4",
     "path": "https://esm.sh/path@^0.12.7",
     "url": "https://esm.sh/url@^0.11.4",
-    "vite": "https://esm.sh/vite@^7.3.1",
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react/": "https://esm.sh/react@^19.2.4/"
+    "vite": "https://esm.sh/vite@^7.3.1"
   }
 }
 </script>
@@ -151,14 +148,14 @@
     </header>
 
     <!-- MAIN GRID LAYOUT -->
-    <!-- Changed grid-cols from 600px to 480px for better balance -->
-    <div class="flex-1 w-full grid grid-cols-1 lg:grid-cols-[480px_1fr] gap-0 overflow-hidden h-full min-h-0">
+    <!-- Changed grid-cols from 480px to 540px for wider left column -->
+    <div class="flex-1 w-full grid grid-cols-1 lg:grid-cols-[540px_1fr] gap-0 overflow-hidden h-full min-h-0">
         
       <!-- LEFT COLUMN: CONFIGURATION -->
-      <div class="p-3 border-r border-white/5 flex flex-col gap-3 bg-[#0D0D0E] overflow-y-auto h-full min-h-0 custom-scrollbar">
+      <div class="p-3 border-r border-white/5 flex flex-col gap-3 bg-[#0D0D0E] overflow-y-auto h-full min-h-0 custom-scrollbar relative">
           
           <!-- Mega Prompt -->
-          <div class="space-y-2 flex-none">
+          <div class="space-y-2 flex-none z-10 relative">
             <div class="flex items-center justify-between px-1">
               <div class="flex items-center gap-2">
                  <label class="text-[10px] font-black uppercase tracking-[0.3em] text-gray-300" data-i18n="megaPrompt">Mô tả Chi Tiết (Mega Prompt)</label>
@@ -192,19 +189,20 @@
                 </div>
                 <input type="file" class="hidden txt-file-input" data-target="prompt-manual" accept=".txt" />
             </div>
-            <textarea id="prompt-manual" rows="4" class="manual-ctx-entry prompt-textarea w-full rounded-2xl p-3 placeholder-gray-600 focus:ring-1 focus:ring-[#262380] focus:border-[#262380] transition-all resize-none text-xs leading-relaxed border border-[#27272a] bg-[#09090A]" placeholder="Nhập yêu cầu sáng tạo (hoặc kéo thả file .txt)..."></textarea>
+            <!-- Changed text-xs to text-sm for better readability -->
+            <textarea id="prompt-manual" rows="4" class="manual-ctx-entry prompt-textarea w-full rounded-2xl p-3 placeholder-gray-600 focus:ring-1 focus:ring-[#262380] focus:border-[#262380] transition-all resize-none text-sm font-medium leading-relaxed border border-[#27272a] bg-[#09090A]" placeholder="Nhập yêu cầu sáng tạo (hoặc kéo thả file .txt)..."></textarea>
           </div>
 
           <!-- Contextual Parameters Grid (Flexible Height) -->
-          <!-- Removed fixed h-[420px], using flex-grow to let it expand naturally -->
-          <div class="flex flex-col gap-2 flex-grow min-h-[250px]">
+          <!-- Replaced fixed height/flex-grow with simple spacing to let inputs push down -->
+          <div class="flex flex-col gap-2 flex-none z-10 relative">
             <label class="text-[10px] font-black uppercase tracking-[0.3em] text-gray-300 px-1" data-i18n="contextParams">Contextual Parameters</label>
             
-            <div class="grid grid-cols-2 gap-2 h-full">
+            <div class="grid grid-cols-2 gap-2">
                 <!-- Left Sub-column: Lighting & Scene -->
-                <div class="flex flex-col gap-2 h-full">
+                <div class="flex flex-col gap-2">
                     <!-- Lighting -->
-                    <div class="flex flex-col gap-1.5 flex-1 min-h-0 bg-[#121214] p-2 rounded-xl border border-white/5">
+                    <div class="flex flex-col gap-1.5 bg-[#121214] p-2 rounded-xl border border-white/5">
                         <div class="flex items-center justify-between px-1 flex-none">
                             <span class="text-[9px] font-black uppercase text-gray-400 tracking-widest">Lighting</span>
                             <div class="flex gap-1">
@@ -212,7 +210,6 @@
                                 <button class="clear-text-btn p-0.5 text-orange-600" data-target="lighting-manual"><svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
                             </div>
                         </div>
-                        <!-- Added File Slot for Lighting -->
                         <div class="file-display-slot border border-dashed border-gray-800 rounded-lg p-1 bg-black/20 flex flex-col items-center justify-center gap-1 group cursor-pointer hover:border-[#262380]/40 transition-all flex-none min-h-[30px]" data-target="lighting-file">
                             <span class="file-status text-[7px] font-bold text-gray-500 group-hover:text-gray-300 uppercase">Drag .txt</span>
                             <div class="loaded-file-info hidden flex items-center gap-1">
@@ -221,11 +218,12 @@
                             </div>
                             <input type="file" class="hidden txt-file-input" data-target="lighting-manual" accept=".txt" />
                         </div>
-                        <textarea id="lighting-manual" class="manual-ctx-entry prompt-textarea w-full h-full rounded-lg p-2 text-[10px] placeholder-gray-600 font-medium resize-none border border-[#27272a] bg-black/40" placeholder="Manual entry..."></textarea>
+                        <!-- Removed h-full, added min-h, changed text size -->
+                        <textarea id="lighting-manual" class="manual-ctx-entry prompt-textarea w-full min-h-[60px] rounded-lg p-2 text-sm font-medium placeholder-gray-600 resize-none border border-[#27272a] bg-black/40" placeholder="Manual entry..."></textarea>
                     </div>
 
                     <!-- Scene -->
-                    <div class="flex flex-col gap-1.5 flex-1 min-h-0 bg-[#121214] p-2 rounded-xl border border-white/5">
+                    <div class="flex flex-col gap-1.5 bg-[#121214] p-2 rounded-xl border border-white/5">
                         <div class="flex items-center justify-between px-1 flex-none">
                             <span class="text-[9px] font-black uppercase text-gray-400 tracking-widest">Scene</span>
                             <div class="flex gap-1">
@@ -233,7 +231,6 @@
                                 <button class="clear-text-btn p-0.5 text-orange-600" data-target="scene-manual"><svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
                             </div>
                         </div>
-                         <!-- Added File Slot for Scene -->
                         <div class="file-display-slot border border-dashed border-gray-800 rounded-lg p-1 bg-black/20 flex flex-col items-center justify-center gap-1 group cursor-pointer hover:border-[#262380]/40 transition-all flex-none min-h-[30px]" data-target="scene-file">
                             <span class="file-status text-[7px] font-bold text-gray-500 group-hover:text-gray-300 uppercase">Drag .txt</span>
                             <div class="loaded-file-info hidden flex items-center gap-1">
@@ -242,13 +239,14 @@
                             </div>
                             <input type="file" class="hidden txt-file-input" data-target="scene-manual" accept=".txt" />
                         </div>
-                        <textarea id="scene-manual" class="manual-ctx-entry prompt-textarea w-full h-full rounded-lg p-2 text-[10px] placeholder-gray-600 font-medium resize-none border border-[#27272a] bg-black/40" placeholder="Manual entry..."></textarea>
+                        <!-- Removed h-full, added min-h, changed text size -->
+                        <textarea id="scene-manual" class="manual-ctx-entry prompt-textarea w-full min-h-[60px] rounded-lg p-2 text-sm font-medium placeholder-gray-600 resize-none border border-[#27272a] bg-black/40" placeholder="Manual entry..."></textarea>
                     </div>
                 </div>
 
                 <!-- Right Sub-column: Shot View -->
-                <div class="flex flex-col h-full gap-2">
-                    <div class="flex flex-col h-full bg-[#121214] p-2 rounded-xl border border-white/5">
+                <div class="flex flex-col gap-2 h-full">
+                    <div class="flex flex-col gap-2 bg-[#121214] p-2 rounded-xl border border-white/5 h-full">
                         <div class="flex items-center justify-between px-1 flex-none mb-1">
                             <span class="text-[9px] font-black uppercase text-gray-400 tracking-widest">Shot View</span>
                             <div class="flex items-center gap-2">
@@ -269,14 +267,15 @@
                             </div>
                             <input type="file" class="hidden txt-file-input" data-target="view-manual" accept=".txt" />
                         </div>
-                        <textarea id="view-manual" class="manual-ctx-entry prompt-textarea w-full h-full rounded-lg p-2 text-[10px] placeholder-gray-600 font-medium resize-none border border-[#27272a] bg-black/40 mt-1" placeholder="Manual entry..."></textarea>
+                        <!-- Removed h-full, added min-h, changed text size -->
+                        <textarea id="view-manual" class="manual-ctx-entry prompt-textarea w-full h-full min-h-[140px] rounded-lg p-2 text-sm font-medium placeholder-gray-600 resize-none border border-[#27272a] bg-black/40 mt-1" placeholder="Manual entry..."></textarea>
                     </div>
                 </div>
             </div>
           </div>
           
           <!-- REFERENCE IMAGE UPLOAD SECTION -->
-          <div class="space-y-2 pt-2 border-t border-white/5 flex-none">
+          <div class="space-y-2 pt-2 border-t border-white/5 flex-none z-10 relative">
               <div class="flex gap-2">
                   <!-- Left Column: References -->
                   <div class="flex-1 flex flex-col gap-1">
@@ -326,7 +325,7 @@
           </div>
           
           <!-- SETTINGS SECTION: Ratio & Resolution -->
-          <div class="space-y-4 pt-4 border-t border-white/5 flex-none">
+          <div class="space-y-4 pt-4 border-t border-white/5 flex-none z-10 relative">
               <!-- Master Ratio -->
               <div class="space-y-2">
                    <label class="text-[10px] font-black uppercase tracking-[0.3em] text-gray-300 px-1" data-i18n="masterRatio">Master Ratio</label>
@@ -358,7 +357,7 @@
           </div>
           
           <!-- Inpainting Custom Prompt -->
-          <div class="space-y-2 pt-2 border-t border-white/5 flex-none">
+          <div class="space-y-2 pt-2 border-t border-white/5 flex-none z-10 relative">
               <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
                       <input type="checkbox" id="inpainting-prompt-toggle" class="w-3.5 h-3.5 rounded border-gray-600 bg-[#121214] text-[#262380] focus:ring-[#262380]/50 cursor-pointer accent-[#262380]">
@@ -368,11 +367,11 @@
                     <button class="paste-text-btn p-1 text-orange-600" data-target="inpainting-prompt-text"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg></button>
                   </div>
               </div>
-              <textarea id="inpainting-prompt-text" rows="2" class="hidden prompt-textarea w-full rounded-xl p-3 text-xs placeholder-gray-600 transition-all resize-none border border-[#27272a] bg-[#09090A]" placeholder="Nhập hướng dẫn tô vẽ..."></textarea>
+              <textarea id="inpainting-prompt-text" rows="2" class="hidden prompt-textarea w-full rounded-xl p-3 text-sm font-medium placeholder-gray-600 transition-all resize-none border border-[#27272a] bg-[#09090A]" placeholder="Nhập hướng dẫn tô vẽ..."></textarea>
           </div>
 
           <!-- Actions -->
-          <div class="flex flex-col gap-2 mt-auto pb-4 flex-none">
+          <div class="flex flex-col gap-2 mt-auto pb-4 flex-none z-10 relative">
               <button id="generate-button" class="group relative w-full bg-[#262380] hover:bg-[#1e1b66] rounded-2xl transition-all duration-300 shadow-lg shadow-[#262380]/30 active:scale-[0.98] disabled:opacity-50 overflow-hidden h-[50px]">
                   <div id="generate-progress" class="absolute top-0 left-0 h-full w-0 bg-amber-600 transition-[width] duration-100 ease-linear"></div>
                   <span id="generate-label" class="relative z-10 text-amber-500 font-black text-xs tracking-[0.2em] pointer-events-none drop-shadow-md">GENERATE (PROCESS)</span>

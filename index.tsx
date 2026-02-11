@@ -337,9 +337,9 @@ async function translatePrompt(targetLang: 'VN' | 'EN') {
         // Use local Helper to get Key
         const ai = getGenAI();
 
-        // Using gemini-1.5-flash for free tier text tasks as requested
+        // Using gemini-3-flash-preview for text tasks as requested
         const response = await ai.models.generateContent({
-            model: 'gemini-1.5-flash', 
+            model: 'gemini-3-flash-preview', 
             contents: { parts: [{ text: `Translate this JSON: ${jsonStr}` }] },
             config: { 
                 systemInstruction: systemPrompt,
@@ -348,7 +348,15 @@ async function translatePrompt(targetLang: 'VN' | 'EN') {
         });
 
         if (response.text) {
-            const result = JSON.parse(response.text);
+            // Clean up Markdown code blocks if present
+            let cleanText = response.text.trim();
+            if (cleanText.startsWith('```json')) {
+                cleanText = cleanText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+            } else if (cleanText.startsWith('```')) {
+                 cleanText = cleanText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+            }
+
+            const result = JSON.parse(cleanText);
             if(megaEl && result.mega) { megaEl.value = result.mega; autoResize(megaEl); }
             if(lightEl && result.lighting) { lightEl.value = result.lighting; autoResize(lightEl); }
             if(sceneEl && result.scene) { sceneEl.value = result.scene; autoResize(sceneEl); }
@@ -810,7 +818,7 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
         }
     });
 
-    window.addEventListener('mouseup', () => {
+    window.addEventListener('mouseup', (e) => {
         if (isPanning) {
             isPanning = false;
             zoomViewport.style.cursor = 'grab';
