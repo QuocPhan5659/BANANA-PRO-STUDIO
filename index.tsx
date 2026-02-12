@@ -898,6 +898,7 @@ document.addEventListener('keydown', (e) => {
         case 'a': document.getElementById('tool-arrow')?.click(); break;
         case 'o': document.getElementById('tool-ellipse')?.click(); break; // O for Ellipse/Oval
         case 'x': document.getElementById('clear-mask')?.click(); break; // Reset
+        case 'u': document.getElementById('paste-image-btn')?.click(); break; // Paste Image Shortcut
     }
 });
 
