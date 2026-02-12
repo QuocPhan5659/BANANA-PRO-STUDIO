@@ -772,8 +772,15 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
             // Show canvas overlays in zoom
             zoomPreviewCanvas?.classList.remove('hidden');
 
-            // Reset Zoom/Pan
-            zoomScale = 1; panX = 0; panY = 0;
+            // Calculate Fit Scale
+            const vw = zoomViewport.clientWidth;
+            const vh = zoomViewport.clientHeight;
+            const iw = uploadPreview.naturalWidth;
+            const ih = uploadPreview.naturalHeight;
+            const scale = Math.min(vw / iw, vh / ih) * 0.9;
+
+            // Reset Zoom/Pan to Fit
+            zoomScale = scale; panX = 0; panY = 0;
             updateZoomTransform();
         }
     });
@@ -797,9 +804,18 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
             zoomGuideCanvas?.classList.add('hidden');
             zoomPreviewCanvas?.classList.add('hidden');
 
-            // Reset Zoom/Pan
-            zoomScale = 1; panX = 0; panY = 0;
-            updateZoomTransform();
+            // Calculate Fit Scale
+            const vw = zoomViewport.clientWidth;
+            const vh = zoomViewport.clientHeight;
+            const img = new Image();
+            img.src = outputImage.src;
+            img.onload = () => {
+                const iw = img.naturalWidth;
+                const ih = img.naturalHeight;
+                const scale = Math.min(vw / iw, vh / ih) * 0.9;
+                zoomScale = scale; panX = 0; panY = 0;
+                updateZoomTransform();
+            };
         }
     };
 
@@ -1047,8 +1063,9 @@ fileDisplaySlots.forEach((slot) => {
             const text = await file.text();
             if (targetKey) {
                 loadedFilesContent[targetKey] = text;
-                const textarea = document.getElementById(targetKey) as HTMLTextAreaElement;
-                if (textarea) { textarea.value = text; autoResize(textarea); }
+                // REMOVED: Auto-population of textarea
+                // const textarea = document.getElementById(targetKey) as HTMLTextAreaElement;
+                // if (textarea) { textarea.value = text; autoResize(textarea); }
             }
             if (nameSpan) nameSpan.innerText = file.name;
             infoDiv?.classList.remove('hidden'); statusSpan?.classList.add('hidden');
@@ -1461,10 +1478,20 @@ async function runGeneration() {
     }, 100);
 
     try {
-        const p = promptEl?.value || '';
-        const l = (document.getElementById('lighting-manual') as HTMLTextAreaElement)?.value || '';
-        const s = (document.getElementById('scene-manual') as HTMLTextAreaElement)?.value || '';
-        const v = (document.getElementById('view-manual') as HTMLTextAreaElement)?.value || '';
+        // Updated Logic: Combine text box value with loaded file content (if any)
+        // This allows the user to have a file attached (hidden from box) but still used, 
+        // OR override/add to it with the text box.
+        const getCombinedText = (elId: string, fileKey: string) => {
+            const elVal = (document.getElementById(elId) as HTMLTextAreaElement)?.value || '';
+            const fileVal = loadedFilesContent[fileKey] || '';
+            // If both exist, join them. If one exists, use it.
+            return [elVal, fileVal].filter(Boolean).join('\n').trim();
+        };
+
+        const p = getCombinedText('prompt-manual', 'prompt-manual');
+        const l = getCombinedText('lighting-manual', 'lighting-manual');
+        const s = getCombinedText('scene-manual', 'scene-manual');
+        const v = getCombinedText('view-manual', 'view-manual');
         const i = inpaintingPromptToggle.checked ? inpaintingPromptText.value : '';
         const fullPrompt = `${p}\nLighting: ${l}\nScene: ${s}\nView: ${v}\n${i ? 'Inpainting Instructions: ' + i : ''}\n${cameraProjectionEnabled ? 'Apply Camera Projection correction.' : ''}`.trim();
         const parts: any[] = [];
