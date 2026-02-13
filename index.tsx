@@ -1773,15 +1773,14 @@ async function runGeneration() {
         if(statusEl) statusEl.innerText = `Generating with Gemini 3.0 Pro (${selectedResolution})...`;
     } else {
         // --- FREE TIER ---
-        // Restricted to Gemini 1.5 (2.5 Flash Image)
-        // Restricted to 1K resolution
+        // Logic requested: Auto 1K, Model 2.5/1.5
         modelId = 'gemini-2.5-flash-image';
         
-        // Enforce 1K limit
+        // Force 1K resolution regardless of previous selection
         if (selectedResolution !== '1K') {
             selectedResolution = '1K';
             
-            // Visual Update for Resolution Buttons
+            // UI Update: Visually switch buttons to 1K
             resBtns.forEach(b => {
                 if(b.getAttribute('data-value') === '1K') {
                     b.classList.add('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
@@ -1791,14 +1790,15 @@ async function runGeneration() {
                     b.classList.add('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
                 }
             });
-            // Alert user about downgrade
-            alert("Tài khoản Free chỉ hỗ trợ độ phân giải 1K. Đã tự động chuyển về Model 1.5 Free (Flash Image). Đăng nhập API Key Pro để mở khóa 2K/4K.");
+            
+            // Notify user via status instead of blocking alert for smoother flow
+            if(statusEl) statusEl.innerText = "Free Tier: Auto-set to 1K Resolution";
         }
         
-        // Flash Image model does not support imageSize param
+        // Flash Image model (1.5/2.5) does not support imageSize param
         delete imageConfig.imageSize;
         
-        if(statusEl) statusEl.innerText = "Generating with Model 1.5 Free (1K)...";
+        if(statusEl && statusEl.innerText === "System Standby") statusEl.innerText = "Generating with Gemini 2.5 Flash...";
     }
 
     isGenerating = true; abortController = new AbortController(); 
