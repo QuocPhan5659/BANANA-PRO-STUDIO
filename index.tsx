@@ -10,8 +10,18 @@ declare global {
   interface Window {
     aistudio?: AIStudio;
     saveApiKey?: () => void;
+    sketchup?: {
+        dialog_ready: () => void;
+    };
   }
 }
+
+// --- SketchUp Integration ---
+document.addEventListener("DOMContentLoaded", function () {
+  if (window.sketchup) {
+    window.sketchup.dialog_ready();
+  }
+});
 
 interface PromptData {
     mega: string;
@@ -30,69 +40,11 @@ interface ReferenceImage {
 }
 
 // --- Initialization Logic ---
-let userApiKey = localStorage.getItem('gemini_api_key') || '';
-
-// Attempt to load from env if available (for local dev)
-if (!userApiKey && process.env.API_KEY && process.env.API_KEY !== 'PLACEHOLDER_API_KEY') {
-    userApiKey = process.env.API_KEY;
-}
-
-const showApiKeyModal = () => {
-    // Check if modal already exists
-    if (document.getElementById('api-key-modal')) return;
-
-    const modal = document.createElement('div');
-    modal.id = 'api-key-modal';
-    modal.innerHTML = `
-        <div style="position:fixed; inset:0; background:rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; z-index:9999; backdrop-filter: blur(5px);">
-            <div style="background:#121214; padding:2rem; border-radius:16px; max-width:500px; width:90%; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
-                <h3 style="color:white; margin-bottom:1rem; font-weight: 800; font-size: 1.25rem; text-transform: uppercase; letter-spacing: 0.05em;">🔑 Cần Google Gemini API Key</h3>
-                <p style="color:#9ca3af; margin-bottom:1.5rem; font-size: 0.875rem; line-height: 1.6;">
-                    1. Vào <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#818cf8; text-decoration: none; font-weight: bold;">Google AI Studio</a><br>
-                    2. Tạo API Key mới (miễn phí)<br>
-                    3. Dán key vào đây:
-                </p>
-                <input type="password" id="api-key-input" placeholder="AIzaSy..." style="width:100%; padding:0.75rem; background:#09090a; border:1px solid #27272a; color:white; border-radius:8px; margin-bottom:1.5rem; outline: none; font-family: monospace; font-size: 0.875rem;">
-                <div style="display:flex; gap:0.75rem; justify-content: flex-end;">
-                    <button id="cancel-api-key" style="background:transparent; color:#9ca3af; padding:0.6rem 1.2rem; border:1px solid #27272a; border-radius:8px; cursor:pointer; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; transition: all 0.2s;">Hủy</button>
-                    <button onclick="saveApiKey()" style="background:#262380; color:white; padding:0.6rem 1.5rem; border:none; border-radius:8px; cursor:pointer; font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; box-shadow: 0 4px 6px -1px rgba(38, 35, 128, 0.3); transition: all 0.2s;">Lưu Key</button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-    
-    // Auto focus input
-    setTimeout(() => {
-        const input = document.getElementById('api-key-input') as HTMLInputElement;
-        if(input) input.focus();
-    }, 100);
-
-    // Cancel button logic
-    document.getElementById('cancel-api-key')?.addEventListener('click', () => {
-        document.body.removeChild(modal);
-    });
-
-    window.saveApiKey = () => {
-        const input = document.getElementById('api-key-input') as HTMLInputElement;
-        const key = input.value.trim();
-        if (key.length > 10) {
-            userApiKey = key;
-            localStorage.setItem('gemini_api_key', key);
-            document.body.removeChild(modal);
-            alert("✅ API Key đã được lưu! Bạn có thể sử dụng ứng dụng.");
-        } else {
-            alert("⚠️ Vui lòng nhập API Key hợp lệ");
-        }
-    };
-};
+// API Key handled via process.env.API_KEY
 
 const getGenAI = () => {
-    if (!userApiKey) {
-        showApiKeyModal();
-        throw new Error("Vui lòng nhập API Key để tiếp tục");
-    }
-    return new GoogleGenAI({ apiKey: userApiKey });
+    // Guidelines: API Key must be obtained exclusively from process.env.API_KEY
+    return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
 // --- DOM Elements ---
@@ -111,8 +63,9 @@ const globalResetBtn = document.querySelector('#global-reset-btn') as HTMLButton
 const historyList = document.querySelector('#history-list') as HTMLDivElement;
 const miniGenerateBtn = document.querySelector('#mini-generate-btn') as HTMLButtonElement;
 
-// API Key Button
+// API Key Button (Hidden as per guidelines)
 const apiKeyBtn = document.querySelector('#api-key-btn') as HTMLButtonElement;
+if (apiKeyBtn) apiKeyBtn.style.display = 'none';
 
 // Help Elements
 const helpBtn = document.querySelector('#help-btn') as HTMLButtonElement;
@@ -250,14 +203,6 @@ const loadedFilesContent: Record<string, string> = {
     'view-manual': ''
 };
 
-// --- API Key Logic ---
-if (apiKeyBtn) {
-    apiKeyBtn.style.display = 'block'; // Ensure visible
-    apiKeyBtn.addEventListener('click', () => {
-        showApiKeyModal();
-    });
-}
-
 // --- Helper Functions ---
 
 function autoResize(el: HTMLTextAreaElement) {
@@ -306,14 +251,7 @@ async function translatePrompt(targetLang: 'VN' | 'EN') {
     // 1. UI Update
     updateLangButtonStyles(targetLang);
 
-    // 2. Pre-check API Key to avoid error
-    if (!userApiKey) {
-        showApiKeyModal();
-        if (statusEl) statusEl.innerText = "Please enter API Key to translate";
-        return;
-    }
-
-    // 3. Gather inputs
+    // 2. Gather inputs
     const megaEl = promptEl;
     const lightEl = document.getElementById('lighting-manual') as HTMLTextAreaElement;
     const sceneEl = document.getElementById('scene-manual') as HTMLTextAreaElement;
@@ -329,7 +267,7 @@ async function translatePrompt(targetLang: 'VN' | 'EN') {
     const hasContent = Object.values(dataToTranslate).some(v => v.trim() !== "");
     if (!hasContent) return;
 
-    // 4. Prepare Translation
+    // 3. Prepare Translation
     const loadingText = targetLang === 'VN' ? "Đang dịch..." : "Translating...";
     if(statusEl) statusEl.innerText = loadingText;
     
@@ -376,9 +314,6 @@ async function translatePrompt(targetLang: 'VN' | 'EN') {
     } catch (e: any) {
         console.error("Translation failed", e);
         if (statusEl) statusEl.innerText = "Translation Error";
-        if (e.message.includes("API Key") || e.message.includes("401")) {
-             showApiKeyModal();
-        }
     } finally {
         if(megaEl) megaEl.disabled = false;
         if(lightEl) lightEl.disabled = false;
@@ -1054,11 +989,6 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
         if (e.key === 'Escape' && !zoomOverlay.classList.contains('hidden')) {
             closeZoomBtn.click();
         }
-        // ESC to close screenshot overlay if active
-        if (e.key === 'Escape' && !screenshotOverlay.classList.contains('hidden')) {
-            screenshotOverlay.classList.add('hidden');
-            isSnipping = false;
-        }
         // Space to Exit Zoom
         if (e.key === ' ' && !zoomOverlay.classList.contains('hidden')) {
              e.preventDefault();
@@ -1096,7 +1026,6 @@ document.addEventListener('keydown', (e) => {
         case 'o': document.getElementById('tool-ellipse')?.click(); break; // O for Ellipse/Oval
         case 'x': document.getElementById('clear-mask')?.click(); break; // Reset
         case 'u': document.getElementById('paste-image-btn')?.click(); break; // Paste Image Shortcut
-        case 's': document.getElementById('screenshot-btn')?.click(); break; // Screenshot Shortcut
     }
 });
 
@@ -1599,46 +1528,18 @@ async function runGeneration() {
 
     if (!uploadedImageData) { alert("Please upload a main image first."); return; }
     
-    // 1. Check for API Key FIRST to avoid exception
-    if (!userApiKey) {
-        showApiKeyModal();
-        if(statusEl) statusEl.innerText = "Please enter API Key to start";
-        return;
-    }
-
     // --- PRO FEATURE CHECK (Gatekeeper for 2K/4K) ---
-    // Gatekeeper logic fixed to accept manual API key > 20 chars
+    // Strictly checks window.aistudio for 2K/4K selection or assumes environment key
     if (selectedResolution === '2K' || selectedResolution === '4K') {
-        let hasPaidKey = false;
-        
         // 1. Check if environment has a selected key (AI Studio context)
         if (typeof window.aistudio !== 'undefined' && window.aistudio.hasSelectedApiKey) {
-            try {
-                hasPaidKey = await window.aistudio.hasSelectedApiKey();
-            } catch (e) { console.warn("Key check failed", e); }
+            const hasKey = await window.aistudio.hasSelectedApiKey();
+            if (!hasKey) {
+                 try {
+                     await window.aistudio.openSelectKey();
+                 } catch(e) { console.warn(e); }
+            }
         } 
-        
-        // 2. Check if user has manually entered a key (Local/Github/Deployment)
-        if (!hasPaidKey && userApiKey && userApiKey.length > 20) {
-            hasPaidKey = true;
-        }
-
-        if (!hasPaidKey) {
-            // User has Free account AND no manual key: Automatically downgrade to 1K (Silent, no alert)
-            selectedResolution = '1K';
-            
-            // Update UI to reflect change silently
-            resBtns.forEach(b => {
-                if(b.getAttribute('data-value') === '1K') {
-                    b.classList.add('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
-                    b.classList.remove('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
-                } else {
-                    b.classList.remove('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
-                    b.classList.add('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
-                }
-            });
-            if(statusEl) statusEl.innerText = "Downgraded to 1K (Free)";
-        }
     }
 
     isGenerating = true; abortController = new AbortController(); 
@@ -1661,8 +1562,6 @@ async function runGeneration() {
 
     try {
         // Updated Logic: Combine text box value with loaded file content (if any)
-        // This allows the user to have a file attached (hidden from box) but still used, 
-        // OR override/add to it with the text box.
         const getCombinedText = (elId: string, fileKey: string) => {
             const elVal = (document.getElementById(elId) as HTMLTextAreaElement)?.value || '';
             const fileVal = loadedFilesContent[fileKey] || '';
@@ -1726,13 +1625,9 @@ async function runGeneration() {
             if(statusEl) statusEl.innerText = "Error encountered"; 
             if (e.message.includes("429")) {
                 alert("API Quota exceeded. Please try again later.");
-            } else if (e.message.includes("API Key") || e.message.includes("401") || e.message.includes("403")) {
-                // If we hit a permission error (likely Pro model access), prompt again
-                if (selectedResolution === '2K' || selectedResolution === '4K') {
-                     alert("Lỗi: Không thể truy cập model Pro (2K/4K). Vui lòng kiểm tra lại khóa API trả phí hoặc chuyển về chế độ 1K.");
-                } else {
-                     showApiKeyModal(); 
-                }
+            } else if (e.message.includes("401") || e.message.includes("403")) {
+                // Permission error
+                alert(`API Error: ${e.message}. Check your API Key and billing.`);
             } else {
                 alert(`Generation failed: ${e.message}`);
             }
