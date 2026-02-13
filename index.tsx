@@ -39,46 +39,6 @@ interface ReferenceImage {
     mimeType: string;
 }
 
-// --- Global State Variables ---
-let uploadedImageData: { data: string; mimeType: string } | null = null;
-let referenceImages: ReferenceImage[] = [];
-let loadedFilesContent: Record<string, string> = {};
-let selectedResolution = '1K';
-let cameraProjectionEnabled = false;
-let isGenerating = false;
-let abortController: AbortController | null = null;
-let currentProgressInterval: any = null;
-
-// --- Canvas Contexts ---
-let ctx: CanvasRenderingContext2D | null = null;
-let previewCtx: CanvasRenderingContext2D | null = null;
-let guideCtx: CanvasRenderingContext2D | null = null;
-let zoomCtx: CanvasRenderingContext2D | null = null;
-let zoomPreviewCtx: CanvasRenderingContext2D | null = null;
-let zoomGuideCtx: CanvasRenderingContext2D | null = null;
-
-// --- Drawing State ---
-let isDrawing = false;
-let startX = 0;
-let startY = 0;
-let currentBrushSize = 50;
-let activeTool = 'brush';
-let lassoPoints: Array<{ x: number; y: number }> = [];
-
-// --- Screenshot State ---
-let snapshotImage: ImageBitmap | null = null;
-let isSnipping = false;
-let snipStartX = 0;
-let snipStartY = 0;
-
-// --- Zoom State ---
-let zoomScale = 1;
-let panX = 0;
-let panY = 0;
-let isPanning = false;
-let panStartX = 0;
-let panStartY = 0;
-
 // --- Initialization Logic ---
 // API Key handled via process.env.API_KEY OR Manual Input
 let manualApiKey = localStorage.getItem('manualApiKey') || '';
@@ -110,115 +70,9 @@ const apiKeyModal = document.querySelector('#api-key-modal') as HTMLDivElement;
 const closeApiKeyBtn = document.querySelector('#close-api-key-btn') as HTMLButtonElement;
 const saveApiKeyBtn = document.querySelector('#save-api-key-btn') as HTMLButtonElement;
 const manualApiKeyInput = document.querySelector('#manual-api-key-input') as HTMLInputElement;
-const accountTierBadge = document.querySelector('#account-tier-badge') as HTMLDivElement;
-
-// --- Helper Functions ---
-
-// Tier UI Update Function
-function updateAccountStatusUI() {
-    if (!accountTierBadge) return;
-    
-    // Refresh from storage
-    manualApiKey = localStorage.getItem('manualApiKey') || '';
-    
-    // Strict Check: Only show PRO/ULTRA if user has manually entered a key.
-    // We ignore process.env.API_KEY for the visual badge to allow "Free" state visibility.
-    const isPro = manualApiKey && manualApiKey.length > 10;
-
-    // Clear previous styles
-    accountTierBadge.className = '';
-    accountTierBadge.classList.remove('hidden');
-    accountTierBadge.innerHTML = ''; 
-
-    if (isPro) {
-        // Determine PRO vs ULTRA based on Resolution setting
-        // Logic: 4K generation requires "Ultra" capabilities (in this app's context)
-        const isUltraMode = selectedResolution === '4K';
-
-        if (isUltraMode) {
-            // ULTRA STATE - Gold/Amber Pill
-            accountTierBadge.className = 'flex items-center gap-2 px-4 py-1.5 rounded-full border border-amber-500/50 bg-amber-900/20 text-amber-100 shadow-[0_0_15px_rgba(245,158,11,0.3)] cursor-pointer hover:bg-amber-900/40 transition-all group';
-            accountTierBadge.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.8)]" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-                <span class="text-[10px] font-black tracking-[0.2em] drop-shadow-md">ULTRA</span>
-            `;
-        } else {
-            // PRO STATE - Blue/Purple Pill (Matches screenshot)
-            accountTierBadge.className = 'flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#4f46e5]/50 bg-[#1e1b4b]/60 text-white shadow-[0_0_15px_rgba(79,70,229,0.25)] cursor-pointer hover:bg-[#1e1b4b]/80 transition-all group';
-            accountTierBadge.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-cyan-400 drop-shadow-[0_0_2px_rgba(34,211,238,0.8)]" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                </svg>
-                <span class="text-[10px] font-black tracking-[0.2em] text-[#e0e7ff]">PRO</span>
-            `;
-        }
-        
-        // Ensure click opens modal to allow switching/updating key
-        accountTierBadge.onclick = () => {
-             // Directly open our custom modal, ignoring AI Studio default
-             if (apiKeyModal) {
-                manualApiKeyInput.value = manualApiKey; 
-                // Show Remove Key Button if Key exists
-                const removeBtn = document.getElementById('remove-key-btn');
-                if(removeBtn) removeBtn.classList.remove('hidden');
-                
-                apiKeyModal.classList.remove('hidden');
-                manualApiKeyInput.focus();
-            }
-        };
-
-    } else {
-        // FREE STATE - Grey Pill
-        accountTierBadge.className = 'flex items-center gap-2 px-4 py-1.5 rounded-full border border-gray-700 bg-gray-900/80 text-gray-400 cursor-pointer hover:border-gray-500 hover:text-white transition-all group';
-        accountTierBadge.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-500 group-hover:text-green-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            <span class="text-[10px] font-black tracking-[0.2em]">FREE</span>
-        `;
-        // Add click handler to open key modal for upgrade
-        accountTierBadge.onclick = () => {
-             // Directly open our custom modal, ignoring AI Studio default
-             if (apiKeyModal) {
-                manualApiKeyInput.value = manualApiKey; 
-                // Hide Remove Key Button if No Key
-                const removeBtn = document.getElementById('remove-key-btn');
-                if(removeBtn) removeBtn.classList.add('hidden');
-
-                apiKeyModal.classList.remove('hidden');
-                manualApiKeyInput.focus();
-            }
-        };
-    }
-}
-
-// Call on load
-updateAccountStatusUI();
 
 // --- API Key Modal Logic ---
 if (apiKeyModal && closeApiKeyBtn) {
-    // Inject Remove Button if not exists
-    if (!document.getElementById('remove-key-btn')) {
-        const btnContainer = manualApiKeyInput?.parentElement;
-        if(btnContainer) {
-            const removeBtn = document.createElement('button');
-            removeBtn.id = 'remove-key-btn';
-            removeBtn.className = 'w-full text-red-500 hover:text-red-400 text-[10px] font-bold uppercase tracking-wider py-2 transition-colors hidden';
-            removeBtn.innerText = 'Remove Key (Switch to Free)';
-            removeBtn.onclick = () => {
-                localStorage.removeItem('manualApiKey');
-                manualApiKey = '';
-                manualApiKeyInput.value = '';
-                updateAccountStatusUI();
-                apiKeyModal.classList.add('hidden');
-                if(statusEl) statusEl.innerText = "Key Removed. Switched to Free.";
-            };
-            btnContainer.appendChild(removeBtn);
-        }
-    }
-
     closeApiKeyBtn.addEventListener('click', () => {
         apiKeyModal.classList.add('hidden');
     });
@@ -232,62 +86,14 @@ if (saveApiKeyBtn && manualApiKeyInput) {
     // Pre-fill
     manualApiKeyInput.value = manualApiKey;
     
-    saveApiKeyBtn.addEventListener('click', async () => {
+    saveApiKeyBtn.addEventListener('click', () => {
         const key = manualApiKeyInput.value.trim();
-        if (key.length > 10) { 
-            // Validate Logic
-            const originalText = "SAVE KEY"; // Fixed text
-            saveApiKeyBtn.innerText = "VERIFYING...";
-            saveApiKeyBtn.disabled = true;
-            saveApiKeyBtn.classList.add('opacity-50', 'cursor-wait');
-
-            try {
-                // Perform a dummy check (lightweight generation)
-                const tempAi = new GoogleGenAI({ apiKey: key });
-                await tempAi.models.generateContent({
-                    model: 'gemini-3-flash-preview',
-                    contents: { parts: [{ text: "ping" }] },
-                    config: { maxOutputTokens: 1 }
-                });
-
-                // Valid - Update State
-                manualApiKey = key;
-                localStorage.setItem('manualApiKey', key);
-                
-                // Immediately update Badge UI
-                updateAccountStatusUI();
-                
-                // Visual Feedback on Button (Non-blocking)
-                saveApiKeyBtn.innerText = "SAVED!";
-                saveApiKeyBtn.classList.remove('opacity-50', 'cursor-wait');
-                saveApiKeyBtn.classList.add('bg-green-600', 'hover:bg-green-700', 'border-green-500');
-                
-                if(statusEl) statusEl.innerText = "API Key Verified. PRO features unlocked.";
-                
-                // Close modal automatically after short delay
-                setTimeout(() => {
-                    apiKeyModal.classList.add('hidden');
-                    // Reset button state for next time
-                    saveApiKeyBtn.innerText = originalText;
-                    saveApiKeyBtn.disabled = false;
-                    saveApiKeyBtn.classList.remove('bg-green-600', 'hover:bg-green-700', 'border-green-500');
-                }, 1000);
-
-            } catch (error: any) {
-                console.error("Key Validation Failed", error);
-                
-                // Error Feedback
-                saveApiKeyBtn.innerText = "INVALID KEY";
-                saveApiKeyBtn.classList.remove('opacity-50', 'cursor-wait');
-                saveApiKeyBtn.classList.add('bg-red-600', 'hover:bg-red-700');
-                
-                // Reset button after 2s
-                setTimeout(() => {
-                    saveApiKeyBtn.innerText = originalText;
-                    saveApiKeyBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
-                    saveApiKeyBtn.disabled = false;
-                }, 2000);
-            }
+        if (key.length > 5) { // Basic validation
+            manualApiKey = key;
+            localStorage.setItem('manualApiKey', key);
+            apiKeyModal.classList.add('hidden');
+            if(statusEl) statusEl.innerText = "API Key Saved Locally";
+            // Refresh page might be safer but dynamic update works for getGenAI
         } else {
             alert("Please enter a valid API Key.");
         }
@@ -299,20 +105,21 @@ if (apiKeyBtn) {
     // Always show button now
     apiKeyBtn.style.display = 'block';
     
-    // FORCE OPEN CUSTOM MODAL - Bypassing default AI Studio Dialog
-    apiKeyBtn.addEventListener('click', () => {
-        if (apiKeyModal) {
-            manualApiKeyInput.value = manualApiKey; 
-            
-            // Check visibility of Remove button
-            const removeBtn = document.getElementById('remove-key-btn');
-            if(removeBtn) {
-                if(manualApiKey && manualApiKey.length > 10) removeBtn.classList.remove('hidden');
-                else removeBtn.classList.add('hidden');
+    apiKeyBtn.addEventListener('click', async () => {
+        // If running in AI Studio context, try that first
+        if (typeof window.aistudio !== 'undefined') {
+            try {
+                await window.aistudio?.openSelectKey();
+            } catch (e) {
+                console.error("AI Studio Key Select failed", e);
+                // Fallback to manual if needed? No, let user choose.
             }
-
-            apiKeyModal.classList.remove('hidden');
-            manualApiKeyInput.focus();
+        } else {
+            // Outside AI Studio: Show Manual Modal
+            if (apiKeyModal) {
+                manualApiKeyInput.value = manualApiKey; // Refresh value
+                apiKeyModal.classList.remove('hidden');
+            }
         }
     });
 }
@@ -408,6 +215,53 @@ const cameraProjToggle = document.querySelector('#camera-projection-toggle') as 
 // History Label for Clear
 const historyLabelContainer = document.querySelector('#history-label-container') as HTMLDivElement;
 
+// --- State Variables ---
+let referenceImages: ReferenceImage[] = [];
+let uploadedImageData: { data: string; mimeType: string } | null = null;
+let isDrawing = false;
+let ctx: CanvasRenderingContext2D | null = null;
+let previewCtx: CanvasRenderingContext2D | null = null;
+let guideCtx: CanvasRenderingContext2D | null = null;
+
+// Zoom Contexts
+let zoomCtx: CanvasRenderingContext2D | null = null;
+let zoomPreviewCtx: CanvasRenderingContext2D | null = null;
+let zoomGuideCtx: CanvasRenderingContext2D | null = null;
+
+let currentBrushSize = 30;
+let activeTool: 'brush' | 'rect' | 'ellipse' | 'lasso' | 'eraser' | 'arrow' = 'brush';
+let startX = 0;
+let startY = 0;
+let lassoPoints: { x: number; y: number }[] = [];
+let isGenerating = false;
+let currentProgressInterval: any = null;
+let selectedResolution = '1K';
+let cameraProjectionEnabled = false;
+let abortController: AbortController | null = null;
+
+// Zoom State
+let zoomScale = 1;
+let panX = 0;
+let panY = 0;
+let isPanning = false;
+let panStartX = 0;
+let panStartY = 0;
+
+// Screenshot State
+let isSnipping = false;
+let snipStartX = 0;
+let snipStartY = 0;
+let snapshotImage: ImageBitmap | null = null;
+
+const loadedFilesContent: Record<string, string> = {
+    'prompt-manual': '',
+    'lighting-manual': '',
+    'scene-manual': '',
+    'view-manual': ''
+};
+
+// --- Helper Functions ---
+
 function autoResize(el: HTMLTextAreaElement) {
     if (!el) return;
     el.style.height = 'auto'; 
@@ -423,6 +277,15 @@ function setupAutoResize(el: HTMLTextAreaElement) {
 if (promptEl) setupAutoResize(promptEl);
 if (inpaintingPromptText) setupAutoResize(inpaintingPromptText);
 manualCtxEntries.forEach(el => setupAutoResize(el));
+
+// --- Help Modal Logic ---
+if (helpBtn && helpModal && closeHelpBtn) {
+    helpBtn.addEventListener('click', () => helpModal.classList.remove('hidden'));
+    closeHelpBtn.addEventListener('click', () => helpModal.classList.add('hidden'));
+    helpModal.addEventListener('click', (e) => {
+        if (e.target === helpModal) helpModal.classList.add('hidden');
+    });
+}
 
 // --- Translation Logic ---
 function updateLangButtonStyles(active: 'VN' | 'EN') {
@@ -596,9 +459,6 @@ resBtns.forEach(btn => {
          btn.classList.remove('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
          selectedResolution = targetRes || '1K';
          if(statusEl) statusEl.innerText = `Res set to ${selectedResolution}`;
-         
-         // Trigger UI Update for PRO/ULTRA badge check
-         updateAccountStatusUI();
     });
 });
 
@@ -1751,9 +1611,6 @@ async function runGeneration() {
             isPro = false; 
         }
     }
-    
-    // Update Badge UI just in case it wasn't refreshed
-    updateAccountStatusUI();
 
     let modelId = '';
     // Config for image generation
@@ -1773,14 +1630,15 @@ async function runGeneration() {
         if(statusEl) statusEl.innerText = `Generating with Gemini 3.0 Pro (${selectedResolution})...`;
     } else {
         // --- FREE TIER ---
-        // Logic requested: Auto 1K, Model 2.5/1.5
+        // Restricted to Gemini 1.5 (2.5 Flash Image)
+        // Restricted to 1K resolution
         modelId = 'gemini-2.5-flash-image';
         
-        // Force 1K resolution regardless of previous selection
+        // Enforce 1K limit
         if (selectedResolution !== '1K') {
             selectedResolution = '1K';
             
-            // UI Update: Visually switch buttons to 1K
+            // Visual Update for Resolution Buttons
             resBtns.forEach(b => {
                 if(b.getAttribute('data-value') === '1K') {
                     b.classList.add('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
@@ -1790,15 +1648,14 @@ async function runGeneration() {
                     b.classList.add('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
                 }
             });
-            
-            // Notify user via status instead of blocking alert for smoother flow
-            if(statusEl) statusEl.innerText = "Free Tier: Auto-set to 1K Resolution";
+            // Alert user about downgrade
+            alert("Tài khoản Free chỉ hỗ trợ độ phân giải 1K. Đã tự động chuyển về Model 1.5 Free (Flash Image). Đăng nhập API Key Pro để mở khóa 2K/4K.");
         }
         
-        // Flash Image model (1.5/2.5) does not support imageSize param
+        // Flash Image model does not support imageSize param
         delete imageConfig.imageSize;
         
-        if(statusEl && statusEl.innerText === "System Standby") statusEl.innerText = "Generating with Gemini 2.5 Flash...";
+        if(statusEl) statusEl.innerText = "Generating with Model 1.5 Free (1K)...";
     }
 
     isGenerating = true; abortController = new AbortController(); 
