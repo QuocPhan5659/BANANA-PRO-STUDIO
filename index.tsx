@@ -989,6 +989,11 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
         if (e.key === 'Escape' && !zoomOverlay.classList.contains('hidden')) {
             closeZoomBtn.click();
         }
+        // ESC to close screenshot overlay if active
+        if (e.key === 'Escape' && !screenshotOverlay.classList.contains('hidden')) {
+            screenshotOverlay.classList.add('hidden');
+            isSnipping = false;
+        }
         // Space to Exit Zoom
         if (e.key === ' ' && !zoomOverlay.classList.contains('hidden')) {
              e.preventDefault();
@@ -1026,6 +1031,7 @@ document.addEventListener('keydown', (e) => {
         case 'o': document.getElementById('tool-ellipse')?.click(); break; // O for Ellipse/Oval
         case 'x': document.getElementById('clear-mask')?.click(); break; // Reset
         case 'u': document.getElementById('paste-image-btn')?.click(); break; // Paste Image Shortcut
+        case 's': document.getElementById('screenshot-btn')?.click(); break; // Screenshot Shortcut
     }
 });
 
@@ -1528,18 +1534,57 @@ async function runGeneration() {
 
     if (!uploadedImageData) { alert("Please upload a main image first."); return; }
     
-    // --- PRO FEATURE CHECK (Gatekeeper for 2K/4K) ---
-    // Strictly checks window.aistudio for 2K/4K selection or assumes environment key
-    if (selectedResolution === '2K' || selectedResolution === '4K') {
-        // 1. Check if environment has a selected key (AI Studio context)
-        if (typeof window.aistudio !== 'undefined' && window.aistudio.hasSelectedApiKey) {
-            const hasKey = await window.aistudio.hasSelectedApiKey();
-            if (!hasKey) {
-                 try {
-                     await window.aistudio.openSelectKey();
-                 } catch(e) { console.warn(e); }
-            }
-        } 
+    // 1. Check for API Key FIRST to avoid exception
+    // REMOVED: if (!userApiKey) { ... } as per guidelines and error fix
+
+    // --- AUTOMATIC MODEL SELECTION & TIER CHECK ---
+    // Rule:
+    // PRO (Selected Key via AI Studio): Use Gemini 3 Pro for 1K, 2K, 4K.
+    // FREE (No Selected Key): Use Gemini 2.5 Flash, force 1K.
+    
+    let isPro = true; // Assume Pro/Valid for local env keys as default fallback
+    
+    // Strict check via AI Studio environment if available
+    if (typeof window.aistudio !== 'undefined' && window.aistudio.hasSelectedApiKey) {
+        isPro = await window.aistudio.hasSelectedApiKey();
+        
+        // If not Pro (Free Tier) but in AI Studio environment, we can treat as Free Tier.
+        // If user *should* be Pro but hasn't selected key, they remain "Free" logic or prompted.
+        // The prompt implies automatic fallback.
+    }
+
+    let modelId = '';
+    let imageConfig: any = { aspectRatio: sizeSelect.value || '1:1' };
+
+    if (isPro) {
+        // PRO TIER: Always use best model (Gemini 3 Pro) for any resolution
+        modelId = 'gemini-3-pro-image-preview';
+        imageConfig.imageSize = selectedResolution; // 1K, 2K, or 4K supported
+        if(statusEl) statusEl.innerText = `Generating with Gemini 3 Pro (${selectedResolution})...`;
+    } else {
+        // FREE TIER: Downgrade to Gemini 2.5 Flash (Nano Banana / 1.5 Replacement)
+        modelId = 'gemini-2.5-flash-image';
+        
+        // Force 1K Resolution if higher selected
+        if (selectedResolution !== '1K') {
+            selectedResolution = '1K';
+            
+            // Update UI Buttons to reflect downgrade
+            resBtns.forEach(b => {
+                if(b.getAttribute('data-value') === '1K') {
+                    b.classList.add('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
+                    b.classList.remove('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
+                } else {
+                    b.classList.remove('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
+                    b.classList.add('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
+                }
+            });
+            alert("Tài khoản Free chỉ hỗ trợ độ phân giải 1K. Đã tự động chuyển về Model 1.5 Free (Flash Image).");
+        }
+        
+        // Remove imageSize config as Flash Image model doesn't support specific sizing params like Pro
+        delete imageConfig.imageSize;
+        if(statusEl) statusEl.innerText = "Generating with Free Model (1K)...";
     }
 
     isGenerating = true; abortController = new AbortController(); 
@@ -1549,7 +1594,6 @@ async function runGeneration() {
         miniGenerateBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" /></svg>`;
         miniGenerateBtn.classList.remove('bg-[#262380]'); miniGenerateBtn.classList.add('bg-red-600');
     }
-    if(statusEl) statusEl.innerText = "Generating...";
     generateProgress.style.width = '0%'; let progressVal = 0;
     
     // Start Progress Interval
@@ -1579,15 +1623,6 @@ async function runGeneration() {
         referenceImages.forEach(ref => { parts.push({ inlineData: { mimeType: ref.mimeType, data: ref.data } }); });
         parts.push({ inlineData: { mimeType: uploadedImageData.mimeType, data: uploadedImageData.data } });
         parts.push({ text: fullPrompt });
-        
-        let modelId = 'gemini-2.5-flash-image'; // Default Free Model (1K)
-        let imageConfig: any = { aspectRatio: sizeSelect.value || '1:1' };
-        
-        // Select Pro Model if Resolution > 1K
-        if (selectedResolution === '2K' || selectedResolution === '4K') { 
-            modelId = 'gemini-3-pro-image-preview'; 
-            imageConfig.imageSize = selectedResolution; 
-        }
 
         // Use local Helper (SDK Client)
         const ai = getGenAI();
