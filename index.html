@@ -41,6 +41,14 @@
         </svg>
     </div>
 
+    <!-- Screenshot Cropper Overlay -->
+    <div id="screenshot-overlay" class="fixed inset-0 z-[9999] bg-black hidden cursor-crosshair">
+        <canvas id="screenshot-canvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+        <div class="absolute top-4 left-1/2 -translate-x-1/2 bg-black/80 text-white px-4 py-2 rounded-full text-xs font-bold border border-white/20 shadow-xl pointer-events-none">
+            DRAG TO CROP • ESC TO CANCEL
+        </div>
+    </div>
+
     <!-- Help Modal -->
     <div id="help-modal" class="fixed inset-0 z-[400] bg-black/80 backdrop-blur-sm hidden flex items-center justify-center animate-in fade-in duration-200">
         <div class="bg-[#121214] border border-white/10 p-6 rounded-2xl max-w-md w-full shadow-2xl relative">
@@ -51,6 +59,7 @@
             <ul class="space-y-3 text-xs font-medium text-gray-400">
                  <li class="flex justify-between items-center"><span class="text-gray-200">Generate / Run</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">Ctrl + Enter</span></li>
                  <li class="flex justify-between items-center"><span class="text-gray-200">Paste Image</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">U</span></li>
+                 <li class="flex justify-between items-center"><span class="text-gray-200">Snip Screen</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">S</span></li>
                  <li class="flex justify-between items-center"><span class="text-gray-200">Reset Mask</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">X</span></li>
                  <li class="flex justify-between items-center"><span class="text-gray-200">Clear Arrows</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">Alt + A</span></li>
                  <li class="flex justify-between items-center"><span class="text-gray-200">Brush / Eraser</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">B / E</span></li>
@@ -398,9 +407,17 @@
                 <input type="file" id="image-input" class="hidden" accept="image/*" />
                 
                 <!-- Paste Image Button -->
-                <button id="paste-image-btn" class="absolute top-4 left-4 z-50 p-2.5 bg-[#262380]/20 hover:bg-[#262380] text-[#a5b4fc] hover:text-white rounded-xl border border-[#262380]/30 transition-all backdrop-blur-md shadow-lg group/paste" title="Paste Image from Clipboard">
+                <button id="paste-image-btn" class="absolute top-4 left-4 z-50 p-2.5 bg-[#262380]/20 hover:bg-[#262380] text-[#a5b4fc] hover:text-white rounded-xl border border-[#262380]/30 transition-all backdrop-blur-md shadow-lg group/paste" title="Paste Image from Clipboard (U)">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                </button>
+
+                <!-- Screenshot Button -->
+                <button id="screenshot-btn" class="absolute top-4 left-16 z-50 p-2.5 bg-[#262380]/20 hover:bg-[#262380] text-[#a5b4fc] hover:text-white rounded-xl border border-[#262380]/30 transition-all backdrop-blur-md shadow-lg group/screenshot" title="Snip Screen (S)">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                 </button>
 

@@ -132,6 +132,11 @@ const uploadPlaceholder = document.querySelector('#upload-placeholder') as HTMLD
 const inpaintingContainer = document.querySelector('#inpainting-container') as HTMLDivElement;
 const uploadPreview = document.querySelector('#upload-preview') as HTMLImageElement;
 const pasteImageBtn = document.querySelector('#paste-image-btn') as HTMLButtonElement;
+const screenshotBtn = document.querySelector('#screenshot-btn') as HTMLButtonElement;
+
+// Screenshot Overlay
+const screenshotOverlay = document.querySelector('#screenshot-overlay') as HTMLDivElement;
+const screenshotCanvas = document.querySelector('#screenshot-canvas') as HTMLCanvasElement;
 
 // Canvas Elements
 const maskCanvas = document.querySelector('#mask-canvas') as HTMLCanvasElement;
@@ -231,6 +236,12 @@ let panY = 0;
 let isPanning = false;
 let panStartX = 0;
 let panStartY = 0;
+
+// Screenshot State
+let isSnipping = false;
+let snipStartX = 0;
+let snipStartY = 0;
+let snapshotImage: ImageBitmap | null = null;
 
 const loadedFilesContent: Record<string, string> = {
     'prompt-manual': '',
@@ -738,6 +749,171 @@ function resetImage() {
 removeImageBtn?.addEventListener('click', (e) => { e.stopPropagation(); resetImage(); });
 removeImageOverlayBtn?.addEventListener('click', (e) => { e.stopPropagation(); resetImage(); });
 
+// --- Screenshot Logic ---
+
+async function captureScreen() {
+    try {
+        // Fix: Cast video constraints to 'any' to allow 'cursor' property which is not in standard MediaTrackConstraints definition yet
+        const stream = await navigator.mediaDevices.getDisplayMedia({ 
+            video: { cursor: "never" } as any, // Don't capture cursor if possible
+            audio: false 
+        });
+        
+        // Create video element to grab frame
+        const video = document.createElement('video');
+        video.srcObject = stream;
+        video.onloadedmetadata = async () => {
+            video.play();
+            // Wait a tick for frame to render
+            await new Promise(r => setTimeout(r, 500));
+            
+            // Draw to temp canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            if(ctx) {
+                ctx.drawImage(video, 0, 0);
+                snapshotImage = await createImageBitmap(canvas);
+                initCropMode(canvas.width, canvas.height);
+            }
+            
+            // Stop stream
+            stream.getTracks().forEach(track => track.stop());
+        };
+    } catch (err: any) {
+        console.error("Screenshot error:", err);
+        if (err.name === 'NotAllowedError' && err.message.includes('permissions policy')) {
+             alert("Screen capture is disabled by the browser or embedding environment permission policy. Please check if 'display-capture' is allowed.");
+        } else if (err.name === 'NotAllowedError') {
+             alert("Screen capture cancelled by user.");
+        } else {
+             alert("Screen capture failed: " + err.message);
+        }
+    }
+}
+
+function initCropMode(w: number, h: number) {
+    if(!screenshotOverlay || !screenshotCanvas || !snapshotImage) return;
+    
+    screenshotCanvas.width = window.innerWidth;
+    screenshotCanvas.height = window.innerHeight;
+    
+    // Draw initial view
+    const ctx = screenshotCanvas.getContext('2d');
+    if(!ctx) return;
+    
+    // Draw the full image scaled to fit/fill
+    ctx.drawImage(snapshotImage, 0, 0, w, h, 0, 0, window.innerWidth, window.innerHeight);
+    // Draw dark overlay
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillRect(0, 0, screenshotCanvas.width, screenshotCanvas.height);
+    
+    screenshotOverlay.classList.remove('hidden');
+    isSnipping = false;
+}
+
+if(screenshotBtn) {
+    screenshotBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        captureScreen();
+    });
+}
+
+// Screenshot Canvas Events
+if(screenshotCanvas) {
+    screenshotCanvas.addEventListener('mousedown', (e) => {
+        isSnipping = true;
+        snipStartX = e.clientX;
+        snipStartY = e.clientY;
+    });
+
+    screenshotCanvas.addEventListener('mousemove', (e) => {
+        if(!isSnipping || !snapshotImage) return;
+        const ctx = screenshotCanvas.getContext('2d');
+        if(!ctx) return;
+        
+        // Redraw overlay
+        ctx.clearRect(0,0,screenshotCanvas.width, screenshotCanvas.height);
+        // Draw Image background
+        ctx.drawImage(snapshotImage, 0, 0, snapshotImage.width, snapshotImage.height, 0, 0, window.innerWidth, window.innerHeight);
+        
+        // Draw Dark overlay everywhere EXCEPT selection
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        
+        const currentX = e.clientX;
+        const currentY = e.clientY;
+        const w = currentX - snipStartX;
+        const h = currentY - snipStartY;
+        
+        // Complex clipping path to create "hole"
+        ctx.beginPath();
+        ctx.rect(0, 0, screenshotCanvas.width, screenshotCanvas.height); // Outer
+        ctx.rect(snipStartX, snipStartY, w, h); // Inner (Counter-clockwise implicitly handled by even-odd or direction if careful, but separate fillRects is easier)
+        
+        // Easier way: 4 Rects
+        // Top
+        ctx.fillRect(0, 0, screenshotCanvas.width, Math.min(snipStartY, currentY));
+        // Bottom
+        ctx.fillRect(0, Math.max(snipStartY, currentY), screenshotCanvas.width, screenshotCanvas.height - Math.max(snipStartY, currentY));
+        // Left
+        ctx.fillRect(0, Math.min(snipStartY, currentY), Math.min(snipStartX, currentX), Math.abs(h));
+        // Right
+        ctx.fillRect(Math.max(snipStartX, currentX), Math.min(snipStartY, currentY), screenshotCanvas.width - Math.max(snipStartX, currentX), Math.abs(h));
+        
+        // Stroke
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]);
+        ctx.strokeRect(snipStartX, snipStartY, w, h);
+    });
+
+    screenshotCanvas.addEventListener('mouseup', async (e) => {
+        if(!isSnipping || !snapshotImage) return;
+        isSnipping = false;
+        screenshotOverlay.classList.add('hidden');
+        
+        const endX = e.clientX;
+        const endY = e.clientY;
+        
+        const rectW = Math.abs(endX - snipStartX);
+        const rectH = Math.abs(endY - snipStartY);
+        
+        if (rectW < 10 || rectH < 10) return; // Ignore tiny clicks
+        
+        const startX = Math.min(snipStartX, endX);
+        const startY = Math.min(snipStartY, endY);
+        
+        // Calculate mapping from Screen Coordinates to Image Coordinates
+        // We drew image at 0,0 to window.innerWidth, window.innerHeight
+        const scaleX = snapshotImage.width / window.innerWidth;
+        const scaleY = snapshotImage.height / window.innerHeight;
+        
+        const cropX = startX * scaleX;
+        const cropY = startY * scaleY;
+        const cropW = rectW * scaleX;
+        const cropH = rectH * scaleY;
+        
+        // Crop
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = cropW;
+        tempCanvas.height = cropH;
+        const tCtx = tempCanvas.getContext('2d');
+        if(tCtx) {
+            tCtx.drawImage(snapshotImage, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+            
+            // Convert to file
+            tempCanvas.toBlob((blob) => {
+                if(blob) {
+                    const file = new File([blob], "screenshot_snip.png", { type: "image/png" });
+                    handleMainImage(file);
+                }
+            }, 'image/png');
+        }
+    });
+}
+
 // --- Zoom Logic (Enhanced) ---
 
 function updateZoomTransform() {
@@ -878,6 +1054,11 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
         if (e.key === 'Escape' && !zoomOverlay.classList.contains('hidden')) {
             closeZoomBtn.click();
         }
+        // ESC to close screenshot overlay if active
+        if (e.key === 'Escape' && !screenshotOverlay.classList.contains('hidden')) {
+            screenshotOverlay.classList.add('hidden');
+            isSnipping = false;
+        }
         // Space to Exit Zoom
         if (e.key === ' ' && !zoomOverlay.classList.contains('hidden')) {
              e.preventDefault();
@@ -915,6 +1096,7 @@ document.addEventListener('keydown', (e) => {
         case 'o': document.getElementById('tool-ellipse')?.click(); break; // O for Ellipse/Oval
         case 'x': document.getElementById('clear-mask')?.click(); break; // Reset
         case 'u': document.getElementById('paste-image-btn')?.click(); break; // Paste Image Shortcut
+        case 's': document.getElementById('screenshot-btn')?.click(); break; // Screenshot Shortcut
     }
 });
 
