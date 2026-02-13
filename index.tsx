@@ -1777,7 +1777,7 @@ async function runGeneration() {
         // Restricted to 1K resolution
         modelId = 'gemini-2.5-flash-image';
         
-        // Auto-enforce 1K without annoying alert
+        // Enforce 1K limit
         if (selectedResolution !== '1K') {
             selectedResolution = '1K';
             
@@ -1791,33 +1791,14 @@ async function runGeneration() {
                     b.classList.add('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
                 }
             });
-            // Update status text instead of alerting
-            if(statusEl) statusEl.innerText = "Free Tier: Auto-switched to 1K Resolution";
+            // Alert user about downgrade
+            alert("Tài khoản Free chỉ hỗ trợ độ phân giải 1K. Đã tự động chuyển về Model 1.5 Free (Flash Image). Đăng nhập API Key Pro để mở khóa 2K/4K.");
         }
         
         // Flash Image model does not support imageSize param
         delete imageConfig.imageSize;
-
-        // Valid Aspect Ratios for Gemini 2.5 Flash Image are limited
-        // "1:1", "3:4", "4:3", "9:16", "16:9"
-        // Our UI has 3:2 and 2:3 which are not supported. Map them to safe values.
-        const validRatios = ["1:1", "3:4", "4:3", "9:16", "16:9"];
-        if (!validRatios.includes(imageConfig.aspectRatio)) {
-             const ratioMap: Record<string, string> = {
-                 '3:2': '4:3', // 3:2 (1.5) -> 4:3 (1.33) closest
-                 '2:3': '3:4', // 2:3 (0.66) -> 3:4 (0.75) closest
-                 '3:4': '3:4', // safe
-                 '4:3': '4:3'  // safe
-             };
-             // Default to 1:1 if mapping fails
-             const newRatio = ratioMap[imageConfig.aspectRatio] || '1:1';
-             console.warn(`Ratio ${imageConfig.aspectRatio} not supported by Flash model. Auto-mapping to ${newRatio}`);
-             imageConfig.aspectRatio = newRatio;
-        }
         
-        if(statusEl && statusEl.innerText !== "Free Tier: Auto-switched to 1K Resolution") {
-             statusEl.innerText = "Generating with Model 2.5 Flash (Free)...";
-        }
+        if(statusEl) statusEl.innerText = "Generating with Model 1.5 Free (1K)...";
     }
 
     isGenerating = true; abortController = new AbortController(); 
@@ -1919,4 +1900,122 @@ async function runGeneration() {
             }, 500); // Reduced timeout for snappier UI
         }
     }
+}
+
+generateButton?.addEventListener('click', runGeneration);
+miniGenerateBtn?.addEventListener('click', runGeneration);
+
+closeOutputBtn?.addEventListener('click', () => { outputContainer.classList.add('hidden'); });
+downloadButtonMain?.addEventListener('click', () => { if (outputImage.src) { const a = document.createElement('a'); a.href = outputImage.src; a.download = `banana-pro-${Date.now()}.png`; a.click(); } });
+globalResetBtn?.addEventListener('click', () => {
+    // 1. Reset Text Inputs
+    if(promptEl) promptEl.value = ''; 
+    manualCtxEntries.forEach(e => { e.value = ''; autoResize(e); });
+    
+    // 2. Clear Loaded Files Logic (but keep image inputs clean)
+    document.querySelectorAll('.file-display-slot').forEach(slot => {
+        const input = slot.querySelector('input[type="file"]') as HTMLInputElement;
+        if(input) input.value = '';
+        
+        const info = slot.querySelector('.loaded-file-info');
+        const status = slot.querySelector('.file-status');
+        
+        if(info) info.classList.add('hidden');
+        if(status) status.classList.remove('hidden');
+        slot.classList.remove('border-[#262380]/40', 'bg-[#262380]/5');
+    });
+    
+    // 3. Clear Internal File Content Memory
+    for (const key in loadedFilesContent) {
+        loadedFilesContent[key] = '';
+    }
+
+    // 4. Reset Inpainting Text
+    inpaintingPromptText.value = ''; 
+    inpaintingPromptText.classList.add('hidden'); 
+    inpaintingPromptToggle.checked = false;
+
+    // 5. Reset References
+    referenceImages = []; 
+    renderRefs();
+
+    // NOTE: Intentionally NOT calling resetImage() to keep the uploaded image/mask active.
+    if(statusEl) statusEl.innerText = "Text/Settings Reset (Image Kept)";
+});
+
+// --- Toolbar Buttons Wiring ---
+
+if (clearMaskBtn) clearMaskBtn.addEventListener('click', () => { 
+    ctx?.clearRect(0, 0, maskCanvas.width, maskCanvas.height); 
+    zoomCtx?.clearRect(0, 0, zoomMaskCanvas.width, zoomMaskCanvas.height); 
+});
+if (toolbarClearBtn) toolbarClearBtn.addEventListener('click', () => clearMaskBtn.click());
+document.getElementById('clear-arrows-btn')?.addEventListener('click', () => {
+    guideCtx?.clearRect(0, 0, guideCanvas.width, guideCanvas.height);
+    zoomGuideCtx?.clearRect(0, 0, zoomGuideCanvas.width, zoomGuideCanvas.height);
+});
+
+// Main Tool Buttons
+toolBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        toolBtns.forEach(b => { b.classList.remove('active', 'bg-[#262380]', 'text-white'); b.classList.add('text-gray-400'); });
+        btn.classList.add('active', 'bg-[#262380]', 'text-white'); btn.classList.remove('text-gray-400');
+        if (btn.id.includes('brush')) activeTool = 'brush';
+        else if (btn.id.includes('rect')) activeTool = 'rect';
+        else if (btn.id.includes('ellipse')) activeTool = 'ellipse';
+        else if (btn.id.includes('lasso')) activeTool = 'lasso';
+        else if (btn.id.includes('arrow')) activeTool = 'arrow';
+        else if (btn.id.includes('eraser')) activeTool = 'eraser';
+        
+        if(brushCursor) {
+             brushCursor.classList.remove('hidden');
+             const left = parseInt(brushCursor.style.left);
+             const top = parseInt(brushCursor.style.top);
+             if (!isNaN(left) && !isNaN(top)) {
+                 const e = new MouseEvent('mousemove', {
+                     clientX: left + (currentBrushSize / 2), 
+                     clientY: top + (currentBrushSize / 2)
+                 });
+                 updateBrushCursor(e);
+             }
+        }
+        
+        // Sync Zoom Tools UI
+        const zoomBtns = document.querySelectorAll('#zoom-brush-panel .tool-btn');
+        zoomBtns.forEach(zb => {
+             zb.classList.remove('active', 'bg-[#262380]', 'text-white'); 
+             zb.classList.add('bg-white/5', 'text-gray-500');
+             if(zb.id.replace('zoom-tool-', '') === btn.id.replace('tool-', '')) {
+                  zb.classList.add('active', 'bg-[#262380]', 'text-white');
+                  zb.classList.remove('bg-white/5', 'text-gray-500');
+             }
+        });
+    });
+});
+
+// Zoom Tool Buttons Wiring
+const zoomToolBtns = document.querySelectorAll('#zoom-brush-panel .tool-btn');
+zoomToolBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+         // Map click back to main toolbar to keep logic centralized
+         const mainId = btn.id.replace('zoom-tool-', 'tool-');
+         document.getElementById(mainId)?.click();
+    });
+});
+if(zoomClearMaskBtn) zoomClearMaskBtn.addEventListener('click', () => clearMaskBtn.click());
+
+if (brushSlider) {
+    brushSlider.addEventListener('input', () => {
+        currentBrushSize = parseInt(brushSlider.value);
+        if (brushSizeVal) brushSizeVal.innerText = `${currentBrushSize}px`;
+        if (ctx) ctx.lineWidth = currentBrushSize;
+        if (zoomBrushSizeSlider) zoomBrushSizeSlider.value = brushSlider.value;
+        if (zoomBrushSizeVal) zoomBrushSizeVal.innerText = brushSizeVal.innerText;
+    });
+}
+if (zoomBrushSizeSlider) {
+    zoomBrushSizeSlider.addEventListener('input', () => {
+        brushSlider.value = zoomBrushSizeSlider.value;
+        brushSlider.dispatchEvent(new Event('input'));
+    });
 }
