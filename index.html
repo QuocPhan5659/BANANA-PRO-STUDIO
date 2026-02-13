@@ -49,6 +49,27 @@
         </div>
     </div>
 
+    <!-- API Key Modal -->
+    <div id="api-key-modal" class="fixed inset-0 z-[500] bg-black/80 backdrop-blur-sm hidden flex items-center justify-center animate-in fade-in duration-200">
+        <div class="bg-[#121214] border border-white/10 p-6 rounded-2xl max-w-md w-full shadow-2xl relative">
+            <button id="close-api-key-btn" class="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            <h2 class="text-xl font-bold text-white mb-2 tracking-tight uppercase italic border-b border-white/10 pb-2">Enter API Key</h2>
+            <p class="text-xs text-gray-400 mb-4">
+                To unlock Pro/Ultra models (2K/4K), please enter a valid Google Gemini API Key.<br>
+                <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-[#818cf8] hover:underline font-bold flex items-center gap-1 mt-1">
+                    <span>Get API Key Here</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                </a>
+            </p>
+            <div class="space-y-3">
+                <input type="password" id="manual-api-key-input" class="w-full bg-[#09090A] border border-[#27272a] rounded-xl p-3 text-sm text-white placeholder-gray-600 focus:border-[#262380] focus:ring-1 focus:ring-[#262380] transition-all outline-none" placeholder="Paste your API Key..." />
+                <button id="save-api-key-btn" class="w-full bg-[#262380] hover:bg-[#1e1b66] text-white font-bold py-2.5 rounded-xl transition-all shadow-lg uppercase tracking-wider text-xs">Save Key</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Help Modal -->
     <div id="help-modal" class="fixed inset-0 z-[400] bg-black/80 backdrop-blur-sm hidden flex items-center justify-center animate-in fade-in duration-200">
         <div class="bg-[#121214] border border-white/10 p-6 rounded-2xl max-w-md w-full shadow-2xl relative">
@@ -143,7 +164,7 @@
         </div>
         
         <div class="flex items-center gap-2">
-            <button id="api-key-btn" class="px-3 py-1.5 bg-[#262380]/10 hover:bg-[#262380]/30 border border-[#262380]/40 rounded-lg text-[9px] font-black text-[#a5b4fc] hover:text-white transition-all uppercase tracking-widest">API KEY</button>
+            <button id="api-key-btn" class="px-3 py-1.5 bg-[#262380]/10 hover:bg-[#262380]/30 border border-[#262380]/40 rounded-lg text-[9px] font-black text-[#a5b4fc] hover:text-white transition-all uppercase tracking-widest" style="display: none;">API KEY</button>
             <div class="h-4 w-px bg-white/10 mx-1"></div>
             <a href="https://ai.studio/apps/drive/1C_ZeX0mrFDyh9oR1j4qvyvOGDtXMRrYe?fullscreenApplet=true" target="_blank" class="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-lg text-[9px] font-black text-amber-500 hover:text-amber-400 transition-all uppercase tracking-widest no-underline shadow-[0_0_10px_rgba(245,158,11,0.1)]">IMAGEN</a>
             <a href="https://ai.studio/apps/drive/1R4EVzF7IQaZj5EyFSMru8TlqQk4a1kiv?fullscreenApplet=true" target="_blank" class="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-lg text-[9px] font-black text-amber-500 hover:text-amber-400 transition-all uppercase tracking-widest no-underline shadow-[0_0_10px_rgba(245,158,11,0.1)]">VIEW</a>
@@ -541,7 +562,6 @@
         </div>
       </div>
     </div>
-    <script type="module" src="index.tsx"></script>
     <div id="banner-root"></div>
 <script type="module" src="/index.tsx"></script>
 </body>
