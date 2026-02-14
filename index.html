@@ -30,15 +30,11 @@
       ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
       ::-webkit-scrollbar-thumb:hover { background: #555; }
     </style>
-  <link rel="stylesheet" href="/index.css">
 </head>
   <body class="bg-[#0D0D0E] font-['Plus_Jakarta_Sans'] text-gray-200 antialiased h-screen overflow-hidden flex flex-col">
     <!-- Brush Circle Cursor Overlay with Pencil Icon -->
     <div id="brush-cursor" class="fixed pointer-events-none z-[300] border border-white/50 bg-[#262380]/20 rounded-full hidden flex items-center justify-center backdrop-blur-[1px]">
-        <!-- Pencil Icon -->
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-2/3 w-2/3 text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M14.083 2.506a2.898 2.898 0 014.09 4.089l-9.605 9.603-4.326.865.867-4.326 9.605-9.604-.63-.627zM16.902 8.01l-1.258-1.259 1.258 1.259zm-10.74 8.35l.432 2.155 2.154-.431-2.586-1.724z" />
-        </svg>
+        <!-- Pencil Icon (injected via JS for specific tools) -->
     </div>
 
     <!-- Screenshot Cropper Overlay -->
@@ -72,14 +68,15 @@
 
     <!-- Help Modal -->
     <div id="help-modal" class="fixed inset-0 z-[400] bg-black/80 backdrop-blur-sm hidden flex items-center justify-center animate-in fade-in duration-200">
-        <div class="bg-[#121214] border border-white/10 p-6 rounded-2xl max-w-md w-full shadow-2xl relative">
-            <button id="close-help-btn" class="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors">
+        <div class="bg-[#121214] border border-white/10 p-6 rounded-2xl max-w-md w-full shadow-2xl relative pointer-events-auto">
+            <button id="close-help-btn" class="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors z-50">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
             <h2 class="text-xl font-bold text-white mb-6 tracking-tight uppercase italic border-b border-white/10 pb-2">Keyboard Shortcuts</h2>
             <ul class="space-y-3 text-xs font-medium text-gray-400">
                  <li class="flex justify-between items-center"><span class="text-gray-200">Generate / Run</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">Ctrl + Enter</span></li>
                  <li class="flex justify-between items-center"><span class="text-gray-200">Paste Image</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">U</span></li>
+                 <li class="flex justify-between items-center"><span class="text-gray-200">Paste PNG Info</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">V</span></li>
                  <li class="flex justify-between items-center"><span class="text-gray-200">Snip Screen</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">S</span></li>
                  <li class="flex justify-between items-center"><span class="text-gray-200">Reset Mask</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">X</span></li>
                  <li class="flex justify-between items-center"><span class="text-gray-200">Clear Arrows</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">Alt + A</span></li>
@@ -327,7 +324,7 @@
                           </div>
                       </div>
                       
-                      <div id="reference-drop-zone" class="relative w-full h-20 border border-dashed border-gray-800 rounded-xl bg-[#121214] flex flex-wrap gap-2 p-2 items-center justify-center group cursor-pointer hover:border-[#262380]/40 transition-all overflow-hidden">
+                      <div id="reference-drop-zone" class="relative w-full h-16 border border-dashed border-gray-800 rounded-xl bg-[#121214] flex flex-wrap gap-2 p-1 items-center justify-center group cursor-pointer hover:border-[#262380]/40 transition-all overflow-hidden">
                           <input type="file" id="reference-image-input" class="hidden" accept="image/*" multiple />
                           <div id="reference-placeholder" class="flex flex-col items-center pointer-events-none text-center">
                               <!-- Up Arrow Icon -->
@@ -342,24 +339,38 @@
 
                   <!-- Right Column: PNG Info -->
                   <div class="w-20 flex flex-col gap-1">
-                      <div class="flex justify-end px-1">
-                          <button id="paste-png-info-btn" class="text-amber-500 hover:text-amber-400 transition-colors" title="Paste Data PNG Info (Text/JSON)">
+                      <div class="w-full">
+                          <button id="paste-png-info-btn" class="w-full flex items-center justify-center py-2 bg-[#121214] border border-dashed border-gray-700/50 hover:border-amber-500 rounded-lg text-amber-500 hover:text-amber-400 transition-all shadow-sm group" title="Paste Data PNG Info (Text/JSON)">
                               <!-- Triangle Up Icon -->
-                              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transform group-hover:-translate-y-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 5l7 14H5L12 5z" />
                               </svg>
                           </button>
                       </div>
 
-                      <div id="png-info-drop-zone" class="w-full h-20 border border-dashed border-gray-700 bg-[#121214] rounded-xl flex items-center justify-center cursor-pointer hover:border-[#262380] hover:bg-[#262380]/10 transition-all group/png" title="Upload PNG to read info">
+                      <div id="png-info-drop-zone" class="w-full h-10 border border-dashed border-gray-700 bg-[#121214] rounded-xl flex items-center justify-center cursor-pointer hover:border-[#262380] hover:bg-[#262380]/10 transition-all group/png" title="Upload PNG to read info">
                           <input type="file" id="png-info-input" class="hidden" accept="image/png" />
                           <div class="flex flex-col items-center pointer-events-none">
-                              <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-red-600 group-hover/png:text-red-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4" /></svg>
+                              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-red-600 group-hover/png:text-red-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4" /></svg>
                               <span class="text-[6px] font-bold text-gray-500 mt-1 uppercase">PNG Info</span>
                           </div>
                       </div>
                   </div>
               </div>
+          </div>
+
+          <!-- Inpainting Custom Prompt (Moved Up) -->
+          <div class="space-y-2 pt-2 border-t border-white/5 flex-none z-10 relative">
+              <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                      <input type="checkbox" id="inpainting-prompt-toggle" class="w-3.5 h-3.5 rounded border-gray-600 bg-[#121214] text-[#262380] focus:ring-[#262380]/50 cursor-pointer accent-[#262380]">
+                      <label for="inpainting-prompt-toggle" class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-300 cursor-pointer select-none" data-i18n="inpaintInstruct">Inpainting Instructions</label>
+                  </div>
+                  <div class="flex gap-1.5">
+                    <button class="paste-text-btn p-1 text-orange-600" data-target="inpainting-prompt-text"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg></button>
+                  </div>
+              </div>
+              <textarea id="inpainting-prompt-text" rows="2" class="hidden prompt-textarea w-full rounded-xl p-3 text-sm font-medium placeholder-gray-600 transition-all resize-none border border-[#27272a] bg-[#09090A]" placeholder="Nhập hướng dẫn tô vẽ..."></textarea>
           </div>
           
           <!-- SETTINGS SECTION: Ratio & Resolution -->
@@ -393,20 +404,6 @@
                   </div>
               </div>
           </div>
-          
-          <!-- Inpainting Custom Prompt -->
-          <div class="space-y-2 pt-2 border-t border-white/5 flex-none z-10 relative">
-              <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2">
-                      <input type="checkbox" id="inpainting-prompt-toggle" class="w-3.5 h-3.5 rounded border-gray-600 bg-[#121214] text-[#262380] focus:ring-[#262380]/50 cursor-pointer accent-[#262380]">
-                      <label for="inpainting-prompt-toggle" class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-300 cursor-pointer select-none" data-i18n="inpaintInstruct">Inpainting Instructions</label>
-                  </div>
-                  <div class="flex gap-1.5">
-                    <button class="paste-text-btn p-1 text-orange-600" data-target="inpainting-prompt-text"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg></button>
-                  </div>
-              </div>
-              <textarea id="inpainting-prompt-text" rows="2" class="hidden prompt-textarea w-full rounded-xl p-3 text-sm font-medium placeholder-gray-600 transition-all resize-none border border-[#27272a] bg-[#09090A]" placeholder="Nhập hướng dẫn tô vẽ..."></textarea>
-          </div>
 
           <!-- Actions -->
           <div class="flex flex-col gap-2 mt-auto pb-4 flex-none z-10 relative">
@@ -429,26 +426,30 @@
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
         </button>
 
+        <!-- Top Left Toolbar (Paste & Screenshot) -->
+        <div class="absolute top-4 left-6 z-50 flex items-center gap-2">
+            <!-- Paste Image Button -->
+            <button id="paste-image-btn" class="p-2.5 bg-[#262380]/20 hover:bg-[#262380] text-[#a5b4fc] hover:text-white rounded-xl border border-[#262380]/30 transition-all backdrop-blur-md shadow-lg group/paste" title="Paste Image from Clipboard (U)">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+            </button>
+
+            <!-- Screenshot Button -->
+            <button id="screenshot-btn" class="p-2.5 bg-[#262380]/20 hover:bg-[#262380] text-[#a5b4fc] hover:text-white rounded-xl border border-[#262380]/30 transition-all backdrop-blur-md shadow-lg group/screenshot" title="Snip Screen (S)">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
+        </div>
+
         <!-- TOP SECTION: MASTER VIEW -->
-        <div class="flex-1 relative w-full p-4 overflow-hidden">
+        <!-- Added pt-16 to push content down below toolbar -->
+        <div class="flex-1 relative w-full pt-16 px-4 pb-4 overflow-hidden">
             <div id="drop-zone" class="relative w-full h-full border-2 border-dashed border-gray-800 rounded-3xl bg-[#0D0D0E] transition-all hover:border-[#262380]/60 hover:bg-[#262380]/10 overflow-hidden shadow-2xl group cursor-pointer flex flex-col z-10">
                 <input type="file" id="image-input" class="hidden" accept="image/*" />
                 
-                <!-- Paste Image Button -->
-                <button id="paste-image-btn" class="absolute top-4 left-4 z-50 p-2.5 bg-[#262380]/20 hover:bg-[#262380] text-[#a5b4fc] hover:text-white rounded-xl border border-[#262380]/30 transition-all backdrop-blur-md shadow-lg group/paste" title="Paste Image from Clipboard (U)">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                </button>
-
-                <!-- Screenshot Button -->
-                <button id="screenshot-btn" class="absolute top-4 left-16 z-50 p-2.5 bg-[#262380]/20 hover:bg-[#262380] text-[#a5b4fc] hover:text-white rounded-xl border border-[#262380]/30 transition-all backdrop-blur-md shadow-lg group/screenshot" title="Snip Screen (S)">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                </button>
-
                 <div id="upload-placeholder" class="flex-1 flex flex-col items-center justify-center space-y-4 transition-transform group-hover:scale-105 pointer-events-none">
                     <div class="w-20 h-20 bg-[#262380]/10 rounded-3xl flex items-center justify-center mb-2 shadow-lg shadow-[#262380]/10">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-[#262380]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>

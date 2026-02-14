@@ -49,6 +49,11 @@ let isGenerating = false;
 let abortController: AbortController | null = null;
 let currentProgressInterval: any = null;
 
+// --- Undo/Redo State ---
+let maskHistory: ImageData[] = [];
+let maskHistoryStep = -1;
+const MAX_HISTORY = 30;
+
 // --- Canvas Contexts ---
 let ctx: CanvasRenderingContext2D | null = null;
 let previewCtx: CanvasRenderingContext2D | null = null;
@@ -61,7 +66,7 @@ let zoomGuideCtx: CanvasRenderingContext2D | null = null;
 let isDrawing = false;
 let startX = 0;
 let startY = 0;
-let currentBrushSize = 50;
+let currentBrushSize = 30; // Reduced default size to 30
 let activeTool = 'brush';
 let lassoPoints: Array<{ x: number; y: number }> = [];
 
@@ -78,6 +83,14 @@ let panY = 0;
 let isPanning = false;
 let panStartX = 0;
 let panStartY = 0;
+
+// --- Mouse Tracking for Shortcuts ---
+let globalMouseX = 0;
+let globalMouseY = 0;
+window.addEventListener('mousemove', (e) => {
+    globalMouseX = e.clientX;
+    globalMouseY = e.clientY;
+});
 
 // --- Initialization Logic ---
 // API Key handled via process.env.API_KEY OR Manual Input
@@ -322,6 +335,21 @@ const helpBtn = document.querySelector('#help-btn') as HTMLButtonElement;
 const helpModal = document.querySelector('#help-modal') as HTMLDivElement;
 const closeHelpBtn = document.querySelector('#close-help-btn') as HTMLButtonElement;
 
+// Add Listeners
+if (helpBtn && helpModal && closeHelpBtn) {
+    helpBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); 
+        helpModal.classList.remove('hidden');
+    });
+    closeHelpBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        helpModal.classList.add('hidden');
+    });
+    helpModal.addEventListener('click', (e) => {
+        if (e.target === helpModal) helpModal.classList.add('hidden');
+    });
+}
+
 // Translation Buttons
 const langBtnVn = document.querySelector('#lang-btn-vn') as HTMLButtonElement;
 const langBtnEn = document.querySelector('#lang-btn-en') as HTMLButtonElement;
@@ -504,6 +532,23 @@ async function translatePrompt(targetLang: 'VN' | 'EN') {
             if(lightEl && result.lighting) { lightEl.value = result.lighting; autoResize(lightEl); }
             if(sceneEl && result.scene) { sceneEl.value = result.scene; autoResize(sceneEl); }
             if(viewEl && result.view) { viewEl.value = result.view; autoResize(viewEl); }
+
+            // AUTO COPY TO CLIPBOARD
+            const combined = [
+                result.mega || '', 
+                result.lighting ? `Lighting: ${result.lighting}` : '', 
+                result.scene ? `Scene: ${result.scene}` : '', 
+                result.view ? `View: ${result.view}` : ''
+            ].filter(Boolean).join('\n');
+            
+            try {
+                await navigator.clipboard.writeText(combined);
+                if(statusEl) statusEl.innerText = "Translated & Copied to Clipboard!";
+            } catch (err) {
+                console.error("Auto copy failed", err);
+                if(statusEl) statusEl.innerText = "Translation Complete (Copy Failed)";
+            }
+
         }
     } catch (e: any) {
         console.error("Translation failed", e);
@@ -513,7 +558,6 @@ async function translatePrompt(targetLang: 'VN' | 'EN') {
         if(lightEl) lightEl.disabled = false;
         if(sceneEl) sceneEl.disabled = false;
         if(viewEl) viewEl.disabled = false;
-        if(statusEl) statusEl.innerText = "System Standby";
     }
 }
 
@@ -742,6 +786,47 @@ if (inpaintingPromptToggle && inpaintingPromptText) {
 
 // --- Main Image Handling ---
 
+// Undo/Redo Functions
+function saveMaskHistory() {
+    if (!ctx || !maskCanvas) return;
+    maskHistoryStep++;
+    // If we're not at the end of the array, discard the future states
+    if (maskHistoryStep < maskHistory.length) {
+         maskHistory.length = maskHistoryStep; 
+    }
+    maskHistory.push(ctx.getImageData(0, 0, maskCanvas.width, maskCanvas.height));
+    if (maskHistory.length > MAX_HISTORY) {
+        maskHistory.shift();
+        maskHistoryStep--;
+    }
+}
+
+function performUndo() {
+    if (maskHistoryStep > 0) {
+        maskHistoryStep--;
+        const imgData = maskHistory[maskHistoryStep];
+        ctx?.putImageData(imgData, 0, 0);
+        // Sync Zoom
+         if(zoomCtx && maskCanvas) {
+             zoomCtx.clearRect(0,0, zoomMaskCanvas.width, zoomMaskCanvas.height);
+             zoomCtx.drawImage(maskCanvas, 0, 0);
+        }
+    }
+}
+
+function performRedo() {
+    if (maskHistoryStep < maskHistory.length - 1) {
+        maskHistoryStep++;
+        const imgData = maskHistory[maskHistoryStep];
+        ctx?.putImageData(imgData, 0, 0);
+        // Sync Zoom
+         if(zoomCtx && maskCanvas) {
+             zoomCtx.clearRect(0,0, zoomMaskCanvas.width, zoomMaskCanvas.height);
+             zoomCtx.drawImage(maskCanvas, 0, 0);
+        }
+    }
+}
+
 function setupCanvas() {
     if (!maskCanvas || !guideCanvas || !uploadPreview) return;
     maskCanvas.width = uploadPreview.naturalWidth;
@@ -766,7 +851,16 @@ function setupCanvas() {
     zoomPreviewCtx = zoomPreviewCanvas?.getContext('2d') || null;
     zoomGuideCtx = zoomGuideCanvas?.getContext('2d') || null;
 
-    if(ctx) { ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = currentBrushSize; }
+    if(ctx) { 
+        ctx.lineCap = 'round'; 
+        ctx.lineJoin = 'round'; 
+        ctx.lineWidth = currentBrushSize; 
+        
+        // Reset History
+        maskHistory = [];
+        maskHistoryStep = -1;
+        saveMaskHistory(); // Save initial blank state
+    }
     
     // Sync Zoom Mask with Main Mask (Initial)
     if(zoomCtx) zoomCtx.drawImage(maskCanvas, 0, 0);
@@ -877,6 +971,10 @@ function resetImage() {
     guideCanvas?.getContext('2d')?.clearRect(0,0,guideCanvas.width,guideCanvas.height);
     zoomMaskCanvas?.getContext('2d')?.clearRect(0,0,zoomMaskCanvas.width,zoomMaskCanvas.height);
     imageInput.value = '';
+    
+    // Reset History
+    maskHistory = [];
+    maskHistoryStep = -1;
 }
 removeImageBtn?.addEventListener('click', (e) => { e.stopPropagation(); resetImage(); });
 removeImageOverlayBtn?.addEventListener('click', (e) => { e.stopPropagation(); resetImage(); });
@@ -1201,10 +1299,22 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
 
 // --- Keyboard Shortcuts ---
 document.addEventListener('keydown', (e) => {
+    // Undo/Redo Shortcuts
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        performUndo();
+        return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        performRedo();
+        return;
+    }
+
     // Priority check for Generate shortcut (Ctrl+Enter)
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
-        runGeneration();
+        document.getElementById('generate-button')?.click();
         return;
     }
 
@@ -1219,6 +1329,29 @@ document.addEventListener('keydown', (e) => {
         return;
     }
 
+    // Brush Size Shortcuts [ and ]
+    if (e.key === '[' || e.key === ']') {
+        const step = 5;
+        if (e.key === '[') currentBrushSize = Math.max(5, currentBrushSize - step);
+        else currentBrushSize = Math.min(150, currentBrushSize + step);
+
+        if (brushSlider) brushSlider.value = currentBrushSize.toString();
+        if (brushSizeVal) brushSizeVal.innerText = `${currentBrushSize}px`;
+        if (zoomBrushSizeSlider) zoomBrushSizeSlider.value = currentBrushSize.toString();
+        if (zoomBrushSizeVal) zoomBrushSizeVal.innerText = `${currentBrushSize}px`;
+        if (ctx) ctx.lineWidth = currentBrushSize;
+        
+        // Auto-center visual cursor
+        const brushCursor = document.getElementById('brush-cursor');
+        if(brushCursor) {
+            brushCursor.style.width = `${currentBrushSize}px`;
+            brushCursor.style.height = `${currentBrushSize}px`;
+            brushCursor.style.left = `${globalMouseX - (currentBrushSize / 2)}px`;
+            brushCursor.style.top = `${globalMouseY - (currentBrushSize / 2)}px`;
+        }
+        return;
+    }
+
     switch(e.key.toLowerCase()) {
         case 'b': document.getElementById('tool-brush')?.click(); break;
         case 'e': document.getElementById('tool-eraser')?.click(); break;
@@ -1228,6 +1361,7 @@ document.addEventListener('keydown', (e) => {
         case 'o': document.getElementById('tool-ellipse')?.click(); break; // O for Ellipse/Oval
         case 'x': document.getElementById('clear-mask')?.click(); break; // Reset
         case 'u': document.getElementById('paste-image-btn')?.click(); break; // Paste Image Shortcut
+        case 'v': document.getElementById('paste-png-info-btn')?.click(); break; // Paste PNG Info Shortcut
         case 's': document.getElementById('screenshot-btn')?.click(); break; // Screenshot Shortcut
     }
 });
@@ -1249,7 +1383,7 @@ function renderRefs() {
 
     referenceImages.forEach((img, index) => {
         const div = document.createElement('div');
-        div.className = 'relative w-16 h-16 group shrink-0';
+        div.className = 'relative w-12 h-12 group shrink-0';
         const imageEl = document.createElement('img');
         imageEl.src = `data:${img.mimeType};base64,${img.data}`;
         imageEl.className = 'w-full h-full object-cover rounded border border-gray-600';
@@ -1277,6 +1411,23 @@ if (referenceDropZone) {
     referenceDropZone.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); referenceDropZone.classList.remove('border-[#262380]'); });
     referenceDropZone.addEventListener('drop', (e) => { e.preventDefault(); e.stopPropagation(); referenceDropZone.classList.remove('border-[#262380]'); if (e.dataTransfer?.files) handleRefFiles(e.dataTransfer.files); });
     referenceDropZone.addEventListener('click', (e) => { if(!(e.target as HTMLElement).closest('button')) referenceInput?.click(); });
+    
+    // Allow Paste directly into this zone by focusing it
+    referenceDropZone.setAttribute('tabindex', '0');
+    referenceDropZone.addEventListener('paste', async (e) => {
+         e.preventDefault();
+         const items = e.clipboardData?.items;
+         if (items) {
+             const dt = new DataTransfer();
+             for (let i = 0; i < items.length; i++) {
+                 if (items[i].type.startsWith('image/')) {
+                     const file = items[i].getAsFile();
+                     if (file) dt.items.add(file);
+                 }
+             }
+             if (dt.files.length > 0) handleRefFiles(dt.files);
+         }
+    });
 }
 referenceInput?.addEventListener('change', () => { if(referenceInput.files) { handleRefFiles(referenceInput.files); referenceInput.value = ''; } });
 clearAllRefsBtn?.addEventListener('click', (e) => { e.stopPropagation(); referenceImages = []; renderRefs(); });
@@ -1417,8 +1568,8 @@ manualCtxEntries.forEach((el) => {
 
 // --- Canvas Drawing & Cursor ---
 
-const pencilIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-2/3 w-2/3 text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24"><path d="M14.083 2.506a2.898 2.898 0 014.09 4.089l-9.605 9.603-4.326.865.867-4.326 9.605-9.604-.63-.627zM16.902 8.01l-1.258-1.259 1.258 1.259zm-10.74 8.35l.432 2.155 2.154-.431-2.586-1.724z" /></svg>`;
-const dotIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-2/3 w-2/3 text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>`;
+const pencilIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-[10%] w-[10%] text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24"><path d="M14.083 2.506a2.898 2.898 0 014.09 4.089l-9.605 9.603-4.326.865.867-4.326 9.605-9.604-.63-.627zM16.902 8.01l-1.258-1.259 1.258 1.259zm-10.74 8.35l.432 2.155 2.154-.431-2.586-1.724z" /></svg>`;
+const dotIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-[10%] w-[10%] text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>`;
 const circleIcon = `<div class="w-full h-full rounded-full border-2 border-white/80"></div>`; // Simplified for default
 
 function updateBrushCursor(e: MouseEvent) {
@@ -1624,6 +1775,9 @@ function stopDrawing(e: MouseEvent, targetCanvas: HTMLCanvasElement) {
              zoomCtx.drawImage(maskCanvas, 0, 0);
         }
     }
+    
+    // Save history after any drawing operation
+    saveMaskHistory();
 }
 
 // Attach listeners
@@ -1948,6 +2102,9 @@ globalResetBtn?.addEventListener('click', () => {
 if (clearMaskBtn) clearMaskBtn.addEventListener('click', () => { 
     ctx?.clearRect(0, 0, maskCanvas.width, maskCanvas.height); 
     zoomCtx?.clearRect(0, 0, zoomMaskCanvas.width, zoomMaskCanvas.height); 
+    
+    // Save history after clear
+    saveMaskHistory();
 });
 if (toolbarClearBtn) toolbarClearBtn.addEventListener('click', () => clearMaskBtn.click());
 document.getElementById('clear-arrows-btn')?.addEventListener('click', () => {
