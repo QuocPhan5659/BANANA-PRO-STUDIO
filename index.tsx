@@ -2563,17 +2563,37 @@ async function runGeneration() {
             } catch (e: any) {
                 const errStr = e.message || JSON.stringify(e);
                 
-                // FALLBACK LOGIC for Pro Model 403/404
-                if ((errStr.includes("403") || errStr.includes("404") || errStr.includes("PERMISSION_DENIED")) && modelId === 'gemini-3-pro-image-preview') {
+                // Handle "Requested entity was not found" by prompting for key selection
+                if (errStr.includes("Requested entity was not found") && typeof window.aistudio !== 'undefined' && window.aistudio.openSelectKey) {
+                    console.warn("Requested entity not found. Prompting for key selection.");
+                    if(statusEl) statusEl.innerText = "Lỗi API: Không tìm thấy thực thể. Vui lòng chọn lại Key...";
+                    await window.aistudio.openSelectKey();
+                    // After opening key selection, we can't easily resume this specific generation, 
+                    // but we've fulfilled the requirement to prompt the user.
+                    throw e; 
+                }
+
+                // FALLBACK LOGIC for Paid Models (Pro and Banana Pro v1.3) 403/404
+                const isPaidModel = modelId === 'gemini-3-pro-image-preview' || modelId === 'gemini-3.1-flash-image-preview';
+                if ((errStr.includes("403") || errStr.includes("404") || errStr.includes("PERMISSION_DENIED")) && isPaidModel) {
                      
                      // If manually selected, we still fallback but notify user
-                     if (selectedModel === 'gemini-3-pro-image-preview') {
-                         console.warn("Manual Pro selection failed (403). Falling back to Flash.");
+                     if (selectedModel === modelId) {
+                         console.warn(`Manual ${modelId} selection failed (403). Falling back to Flash.`);
                          // Non-blocking notification via status text instead of Alert
-                         if(statusEl) statusEl.innerText = "Lỗi quyền Pro (403). Đang chuyển sang Flash (1K)...";
+                         if(statusEl) statusEl.innerText = "Lỗi quyền API (403). Đang chuyển sang Flash (1K)...";
                      } else {
-                         console.warn("Auto Pro selection failed (403). Falling back to Flash.");
-                         if(statusEl) statusEl.innerText = "Pro Model failed. Falling back to Flash (1K)...";
+                         console.warn(`Auto ${modelId} selection failed (403). Falling back to Flash.`);
+                         if(statusEl) statusEl.innerText = "Paid Model failed. Falling back to Flash (1K)...";
+                     }
+                     
+                     // If in AI Studio and it's a 403, it might be a key issue
+                     if ((errStr.includes("403") || errStr.includes("PERMISSION_DENIED")) && typeof window.aistudio !== 'undefined' && window.aistudio.openSelectKey) {
+                         console.warn("Permission denied. Offering to open key selection.");
+                         if (confirm("Lỗi 403: Bạn không có quyền sử dụng Model này. Có thể do API Key chưa được kích hoạt thanh toán hoặc không đúng. Bạn có muốn chọn lại API Key không?")) {
+                             await window.aistudio.openSelectKey();
+                             throw e; // Stop here and let user retry after selecting key
+                         }
                      }
                      
                      try {
@@ -2604,7 +2624,7 @@ async function runGeneration() {
                          
                          await processResults(fallbackResults);
                          
-                         alert("Lưu ý: API Key của bạn không hỗ trợ Model Pro (2K/4K) hoặc Model chưa được kích hoạt. Hệ thống đã tự động chuyển về Model Flash (1K).");
+                         alert("Lưu ý: API Key của bạn không hỗ trợ Model Pro/High Quality (2K/4K) hoặc Model chưa được kích hoạt. Hệ thống đã tự động chuyển về Model Flash (1K).");
                          return; // Success after fallback
 
                      } catch (fallbackErr: any) {
