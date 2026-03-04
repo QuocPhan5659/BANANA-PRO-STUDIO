@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Banana Pro Studio - Professional AI Suite</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -30,6 +32,7 @@
       ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
       ::-webkit-scrollbar-thumb:hover { background: #555; }
     </style>
+<link rel="stylesheet" href="/index.css">
 </head>
   <body class="bg-[#0D0D0E] font-['Plus_Jakarta_Sans'] text-gray-200 antialiased h-screen overflow-hidden flex flex-col">
     <!-- Brush Circle Cursor Overlay with Pencil Icon -->
@@ -87,7 +90,32 @@
                  <li class="flex justify-between items-center"><span class="text-gray-200">Zoom Canvas</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">Mouse Wheel</span></li>
                  <li class="flex justify-between items-center"><span class="text-gray-200">Pan Canvas (Zoomed)</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">Middle Click</span></li>
             </ul>
-            <p class="mt-6 text-[10px] text-gray-600 uppercase font-bold tracking-widest text-center">Banana Pro Studio v1.0</p>
+            <p class="mt-6 text-[10px] text-gray-600 uppercase font-bold tracking-widest text-center">Banana Pro Studio v1.3</p>
+        </div>
+    </div>
+
+    <!-- Gallery Modal -->
+    <div id="gallery-modal" class="fixed inset-0 z-[400] bg-black/80 backdrop-blur-sm hidden flex items-center justify-center animate-in fade-in duration-200">
+        <div class="bg-[#121214] border border-white/10 w-full max-w-6xl h-[95vh] rounded-3xl overflow-hidden shadow-2xl relative flex flex-col">
+            <button id="close-gallery-modal-btn" class="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors z-50">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            
+            <div class="p-6 flex flex-col h-full overflow-hidden">
+                <div class="flex items-center justify-between mb-4 shrink-0">
+                    <div>
+                        <h2 class="text-lg font-black uppercase tracking-tighter text-[#818cf8]">Image Gallery</h2>
+                        <p class="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Images expire after 24 hours</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="gallery-clear-all-btn" class="px-4 py-2 bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-600/30 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">Clear All</button>
+                    </div>
+                </div>
+
+                <div id="gallery-modal-list" class="flex-1 overflow-y-auto custom-scrollbar grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3 p-1">
+                    <!-- Images injected here -->
+                </div>
+            </div>
         </div>
     </div>
 
@@ -107,6 +135,14 @@
           <canvas id="zoom-preview-canvas" class="absolute top-0 left-0 z-[215] pointer-events-none hidden"></canvas>
           <img id="zoomed-image" src="" class="max-w-none max-h-none pointer-events-none select-none rounded-xl shadow-2xl" alt="Zoomed view" />
         </div>
+
+        <!-- Zoom Navigation Buttons -->
+        <button id="prev-zoom-btn" class="absolute left-8 top-1/2 -translate-y-1/2 z-[250] p-4 bg-black/40 hover:bg-[#262380] text-white rounded-2xl border border-white/10 backdrop-blur-md transition-all hidden group/nav">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" /></svg>
+        </button>
+        <button id="next-zoom-btn" class="absolute right-8 top-1/2 -translate-y-1/2 z-[250] p-4 bg-black/40 hover:bg-[#262380] text-white rounded-2xl border border-white/10 backdrop-blur-md transition-all hidden group/nav">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>
+        </button>
       </div>
       
       <!-- Floating Toolbar in Zoom -->
@@ -155,7 +191,7 @@
       <div class="flex items-center gap-6">
         <div>
           <h1 class="text-lg md:text-xl font-extrabold text-white tracking-tight uppercase italic">
-            Banana <span class="text-[#262380]">Pro</span> Studio
+            Banana <span class="text-[#262380]">Pro</span> Studio <span class="text-[10px] text-gray-600 not-italic ml-1">v1.3</span>
           </h1>
           <p class="text-gray-500 text-[9px] font-bold tracking-[0.2em] hidden md:block mt-0.5">ADVANCED INPAINTING • MULTIMODAL SCENE CONTEXT</p>
         </div>
@@ -165,12 +201,7 @@
             <div id="account-tier-badge" class="hidden cursor-pointer group/tier" title="Click to manage API Key">
                 <!-- Content injected via JS -->
             </div>
-
-            <div class="h-4 w-px bg-white/10 mx-1"></div>
-
-            <button id="api-key-btn" class="px-3 py-1.5 bg-[#262380]/10 hover:bg-[#262380]/30 border border-[#262380]/40 rounded-lg text-[9px] font-black text-[#a5b4fc] hover:text-white transition-all uppercase tracking-widest" style="display: none;">API KEY</button>
             
-            <a href="https://ai.studio/apps/drive/1C_ZeX0mrFDyh9oR1j4qvyvOGDtXMRrYe?fullscreenApplet=true" target="_blank" class="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-lg text-[9px] font-black text-amber-500 hover:text-amber-400 transition-all uppercase tracking-widest no-underline shadow-[0_0_10px_rgba(245,158,11,0.1)]">IMAGEN</a>
             <a href="https://ai.studio/apps/drive/1R4EVzF7IQaZj5EyFSMru8TlqQk4a1kiv?fullscreenApplet=true" target="_blank" class="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-lg text-[9px] font-black text-amber-500 hover:text-amber-400 transition-all uppercase tracking-widest no-underline shadow-[0_0_10px_rgba(245,158,11,0.1)]">VIEW</a>
             <a href="https://www.facebook.com/phanphan.quocvi/" target="_blank" class="w-6 h-6 flex items-center justify-center bg-blue-600/20 hover:bg-blue-600 border border-blue-600/40 rounded-full text-blue-500 hover:text-white transition-all" title="Facebook">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
@@ -179,7 +210,13 @@
             </a>
         </div>
       </div>
-      <div id="status" class="text-[9px] font-black uppercase tracking-widest text-amber-500 bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.1)] transition-all duration-300">System Standby</div>
+      <div class="flex items-center gap-3">
+          <div id="cost-display" class="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-[#121214] border border-white/5 rounded-lg">
+              <span class="text-[9px] font-black uppercase tracking-widest text-gray-500">Total Cost:</span>
+              <span id="total-cost-val" class="text-[9px] font-black text-emerald-400">$0.000</span>
+          </div>
+          <div id="status" class="text-[9px] font-black uppercase tracking-widest text-amber-500 bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.1)] transition-all duration-300">System Standby</div>
+      </div>
     </header>
 
     <!-- MAIN GRID LAYOUT -->
@@ -217,12 +254,12 @@
             </div>
             
             <div class="file-display-slot border border-dashed border-gray-800 rounded-xl p-1 bg-[#121214] flex flex-col items-center justify-center gap-1 group cursor-pointer hover:border-[#262380]/40 transition-all flex-none min-h-[36px]" data-target="prompt-file">
-                <span class="file-status text-[8px] font-bold text-gray-400 group-hover:text-gray-200 uppercase" data-i18n="dragMega">Drag .txt for Mega Prompt</span>
+                <span class="file-status text-[8px] font-bold text-gray-400 group-hover:text-gray-200 uppercase" data-i18n="dragMega">Drag .txt/.png for Mega Prompt</span>
                 <div class="loaded-file-info hidden flex items-center gap-1">
                     <span class="file-name text-[9px] font-bold text-[#818cf8] truncate max-w-[150px]">file</span>
                     <button class="delete-file-btn text-orange-500 hover:text-orange-400 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                 </div>
-                <input type="file" class="hidden txt-file-input" data-target="prompt-manual" accept=".txt" />
+                <input type="file" class="hidden txt-file-input" data-target="prompt-manual" accept=".txt,.png" />
             </div>
             <!-- Changed text-xs to text-sm for better readability -->
             <textarea id="prompt-manual" rows="4" class="manual-ctx-entry prompt-textarea w-full rounded-2xl p-3 placeholder-gray-600 focus:ring-1 focus:ring-[#262380] focus:border-[#262380] transition-all resize-none text-sm font-medium leading-relaxed border border-[#27272a] bg-[#09090A]" placeholder="Nhập yêu cầu sáng tạo (hoặc kéo thả file .txt)..."></textarea>
@@ -246,12 +283,12 @@
                             </div>
                         </div>
                         <div class="file-display-slot border border-dashed border-gray-800 rounded-lg p-1 bg-black/20 flex flex-col items-center justify-center gap-1 group cursor-pointer hover:border-[#262380]/40 transition-all flex-none min-h-[30px]" data-target="lighting-file">
-                            <span class="file-status text-[7px] font-bold text-gray-500 group-hover:text-gray-300 uppercase">Drag .txt</span>
+                            <span class="file-status text-[7px] font-bold text-gray-500 group-hover:text-gray-300 uppercase">Drag .txt/.png</span>
                             <div class="loaded-file-info hidden flex items-center gap-1">
                                  <span class="file-name text-[8px] font-bold text-[#818cf8] truncate max-w-[50px]">file</span>
                                  <button class="delete-file-btn text-orange-500 hover:text-orange-400 transition-colors"><svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                             </div>
-                            <input type="file" class="hidden txt-file-input" data-target="lighting-manual" accept=".txt" />
+                            <input type="file" class="hidden txt-file-input" data-target="lighting-manual" accept=".txt,.png" />
                         </div>
                         <!-- Removed h-full, added min-h, changed text size -->
                         <textarea id="lighting-manual" class="manual-ctx-entry prompt-textarea w-full min-h-[60px] rounded-lg p-2 text-sm font-medium placeholder-gray-600 resize-none border border-[#27272a] bg-black/40" placeholder="Manual entry..."></textarea>
@@ -267,12 +304,12 @@
                             </div>
                         </div>
                         <div class="file-display-slot border border-dashed border-gray-800 rounded-lg p-1 bg-black/20 flex flex-col items-center justify-center gap-1 group cursor-pointer hover:border-[#262380]/40 transition-all flex-none min-h-[30px]" data-target="scene-file">
-                            <span class="file-status text-[7px] font-bold text-gray-500 group-hover:text-gray-300 uppercase">Drag .txt</span>
+                            <span class="file-status text-[7px] font-bold text-gray-500 group-hover:text-gray-300 uppercase">Drag .txt/.png</span>
                             <div class="loaded-file-info hidden flex items-center gap-1">
                                  <span class="file-name text-[8px] font-bold text-[#818cf8] truncate max-w-[50px]">file</span>
                                  <button class="delete-file-btn text-orange-500 hover:text-orange-400 transition-colors"><svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                             </div>
-                            <input type="file" class="hidden txt-file-input" data-target="scene-manual" accept=".txt" />
+                            <input type="file" class="hidden txt-file-input" data-target="scene-manual" accept=".txt,.png" />
                         </div>
                         <!-- Removed h-full, added min-h, changed text size -->
                         <textarea id="scene-manual" class="manual-ctx-entry prompt-textarea w-full min-h-[60px] rounded-lg p-2 text-sm font-medium placeholder-gray-600 resize-none border border-[#27272a] bg-black/40" placeholder="Manual entry..."></textarea>
@@ -295,12 +332,12 @@
                             </div>
                         </div>
                         <div class="file-display-slot border border-dashed border-gray-800 rounded-lg p-2 bg-black/20 flex flex-col items-center justify-center gap-1 group cursor-pointer hover:border-[#262380]/40 transition-all flex-none min-h-[40px]" data-target="view-file">
-                            <span class="file-status text-[8px] font-bold text-gray-500 group-hover:text-gray-300 uppercase">Drag .txt</span>
+                            <span class="file-status text-[8px] font-bold text-gray-500 group-hover:text-gray-300 uppercase">Drag .txt/.png</span>
                             <div class="loaded-file-info hidden flex items-center gap-1">
                                  <span class="file-name text-[9px] font-bold text-[#818cf8] truncate max-w-[60px]">file</span>
                                  <button class="delete-file-btn text-orange-500 hover:text-orange-400 transition-colors"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                             </div>
-                            <input type="file" class="hidden txt-file-input" data-target="view-manual" accept=".txt" />
+                            <input type="file" class="hidden txt-file-input" data-target="view-manual" accept=".txt,.png" />
                         </div>
                         <!-- Removed h-full, added min-h, changed text size -->
                         <textarea id="view-manual" class="manual-ctx-entry prompt-textarea w-full h-full min-h-[140px] rounded-lg p-2 text-sm font-medium placeholder-gray-600 resize-none border border-[#27272a] bg-black/40 mt-1" placeholder="Manual entry..."></textarea>
@@ -375,6 +412,31 @@
           
           <!-- SETTINGS SECTION: Ratio & Resolution -->
           <div class="space-y-4 pt-4 border-t border-white/5 flex-none z-10 relative">
+              <!-- Image Count -->
+              <div class="space-y-2">
+                  <label class="text-[10px] font-black uppercase tracking-[0.3em] text-gray-300 px-1">Image Count</label>
+                  <div class="grid grid-cols-2 gap-2">
+                      <button class="count-btn active border border-[#262380] bg-[#262380]/20 text-white font-black py-2.5 rounded-xl text-[10px] tracking-wider transition-all hover:bg-[#262380]/40" data-value="1">1 Image</button>
+                      <button class="count-btn border border-[#27272a] bg-[#121214] text-gray-500 font-black py-2.5 rounded-xl text-[10px] tracking-wider transition-all hover:text-gray-300 hover:border-gray-600" data-value="2">2 Images</button>
+                  </div>
+              </div>
+
+              <!-- Model Selection -->
+              <div class="space-y-2">
+                  <label class="text-[10px] font-black uppercase tracking-[0.3em] text-gray-300 px-1">Model</label>
+                  <div class="relative">
+                      <select id="model-select" class="w-full bg-[#121214] border border-[#27272a] text-gray-300 text-[10px] font-bold uppercase tracking-wider rounded-xl p-2.5 focus:border-[#262380] appearance-none outline-none transition-all cursor-pointer hover:border-gray-700">
+                          <option value="auto">Auto (Smart Select)</option>
+                          <option value="gemini-3-pro-image-preview">Gemini 3.2 Pro (Best Quality)</option>
+                          <option value="gemini-3.1-flash-image-preview">Banana Pro v1.3 (High Quality)</option>
+                          <option value="gemini-2.5-flash-image">Gemini 2.5 Flash (Fastest)</option>
+                      </select>
+                      <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                      </div>
+                  </div>
+              </div>
+
               <!-- Master Ratio -->
               <div class="space-y-2">
                    <label class="text-[10px] font-black uppercase tracking-[0.3em] text-gray-300 px-1" data-i18n="masterRatio">Master Ratio</label>
@@ -414,7 +476,7 @@
               <div class="grid grid-cols-2 gap-2">
                  <button id="global-reset-btn" class="w-full bg-white/5 border border-[#27272a] hover:bg-white/10 text-orange-500 hover:text-orange-400 font-black py-2.5 rounded-2xl transition-all duration-300 text-[9px] tracking-[0.2em] uppercase">RESET ALL</button>
                  <div class="w-full bg-transparent border border-white/5 rounded-2xl flex items-center justify-center">
-                    <span class="text-[8px] font-black uppercase tracking-widest text-gray-600">Banana Pro v1.0</span>
+                    <span class="text-[8px] font-black uppercase tracking-widest text-gray-600">Banana Pro v1.3</span>
                  </div>
               </div>
           </div>
@@ -532,10 +594,27 @@
             <div id="output-container" class="hidden absolute inset-0 z-50 p-4 flex flex-col bg-[#0D0D0E] animate-in fade-in zoom-in-95 duration-300">
                 <div class="relative flex-1 bg-black rounded-2xl overflow-hidden group/output flex items-center justify-center border border-white/5 min-h-0">
                     <img id="output-image" class="max-h-full max-w-full object-contain cursor-zoom-in" alt="Output" />
+                    
+                    <!-- Image Counter Badge -->
+                    <div id="image-counter-badge" class="absolute top-4 right-4 px-3 py-1 bg-black/60 backdrop-blur-md rounded-full border border-white/10 text-[10px] font-black text-white hidden z-40">
+                        1 / 2
+                    </div>
+
                     <button id="zoom-output-btn" class="absolute bottom-4 left-4 z-30 p-3 bg-black/60 hover:bg-[#262380] text-white rounded-xl opacity-0 group-hover/output:opacity-100 transition-all backdrop-blur-md border border-white/10 shadow-lg transform translate-y-2 group-hover/output:translate-y-0 duration-300">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
                     </button>
                 </div>
+
+                <!-- Navigation Buttons (Moved Below Image) -->
+                <div class="flex justify-center items-center gap-4 mt-2">
+                    <button id="prev-image-btn" class="p-3 bg-[#121214] hover:bg-[#262380] text-white rounded-xl border border-white/10 shadow-lg transition-all hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+                    <button id="next-image-btn" class="p-3 bg-[#121214] hover:bg-[#262380] text-white rounded-xl border border-white/10 shadow-lg transition-all hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                </div>
+
                 <button id="close-output-btn" class="w-full flex justify-between items-center mt-2 flex-none p-3 bg-[#121214] hover:bg-[#262380] border border-white/5 rounded-xl transition-all cursor-pointer group text-left">
                     <span class="text-[10px] font-black uppercase tracking-[0.3em] text-[#818cf8] group-hover:text-white transition-colors">Generation Result &mdash; Click to Close</span>
                     <div class="text-gray-400 group-hover:text-white transition-colors">
@@ -560,8 +639,16 @@
                  </div>
             </div>
             <div class="flex-1 overflow-x-auto p-2 flex gap-3 items-center min-w-0" id="history-container">
-                <div class="h-full flex flex-col justify-center px-4 border-r border-white/5 shrink-0 cursor-pointer group" id="history-label-container" title="Click to Clear All History">
-                    <span id="history-header" class="text-[9px] font-black uppercase tracking-widest text-[#818cf8] group-hover:text-red-500 transition-colors">History</span>
+                <div class="h-full flex flex-col justify-center px-4 border-r border-white/5 shrink-0 min-w-[100px]">
+                    <div class="flex flex-col gap-1">
+                        <div id="history-label-container" class="cursor-pointer group" title="Click to Clear All History">
+                            <span id="history-header" class="text-[9px] font-black uppercase tracking-widest text-[#818cf8] group-hover:text-red-500 transition-colors">History</span>
+                        </div>
+                        <button id="open-gallery-btn" class="text-[8px] font-black uppercase tracking-tighter text-gray-500 hover:text-[#818cf8] transition-colors flex items-center gap-1" title="Open image gallery">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z M9 11l3 3L22 4" /></svg>
+                            <span id="gallery-btn-label">Gallery</span>
+                        </button>
+                    </div>
                 </div>
                 <div id="history-list" class="flex gap-2 h-full items-center">
                     <div class="text-[9px] text-gray-700 font-bold uppercase tracking-widest px-4">No history yet</div>

@@ -12,6 +12,7 @@ declare global {
     saveApiKey?: () => void;
     sketchup?: {
         dialog_ready: () => void;
+        save_image?: (data: string, filename: string) => void;
     };
   }
 }
@@ -44,6 +45,9 @@ let uploadedImageData: { data: string; mimeType: string } | null = null;
 let referenceImages: ReferenceImage[] = [];
 let loadedFilesContent: Record<string, string> = {};
 let selectedResolution = '1K';
+let imageCount = 1;
+let generatedImages: string[] = [];
+let currentImageIndex = 0;
 let cameraProjectionEnabled = false;
 let isGenerating = false;
 let abortController: AbortController | null = null;
@@ -97,8 +101,9 @@ window.addEventListener('mousemove', (e) => {
 let manualApiKey = localStorage.getItem('manualApiKey') || '';
 
 const getGenAI = () => {
-    // Priority: Manual Key -> Environment Key
-    return new GoogleGenAI({ apiKey: manualApiKey || process.env.API_KEY });
+    // Priority: Manual Key -> Selected Key (API_KEY) -> Default Key (GEMINI_API_KEY)
+    const keyToUse = manualApiKey || process.env.API_KEY || process.env.GEMINI_API_KEY;
+    return new GoogleGenAI({ apiKey: keyToUse });
 };
 
 // --- DOM Elements ---
@@ -117,6 +122,39 @@ const globalResetBtn = document.querySelector('#global-reset-btn') as HTMLButton
 const historyList = document.querySelector('#history-list') as HTMLDivElement;
 const miniGenerateBtn = document.querySelector('#mini-generate-btn') as HTMLButtonElement;
 
+// Image Count & Navigation
+const countBtns = document.querySelectorAll('.count-btn') as NodeListOf<HTMLButtonElement>;
+const prevImageBtn = document.querySelector('#prev-image-btn') as HTMLButtonElement;
+const nextImageBtn = document.querySelector('#next-image-btn') as HTMLButtonElement;
+const prevZoomBtn = document.querySelector('#prev-zoom-btn') as HTMLButtonElement;
+const nextZoomBtn = document.querySelector('#next-zoom-btn') as HTMLButtonElement;
+const imageCounterBadge = document.querySelector('#image-counter-badge') as HTMLDivElement;
+
+// Cost Tracking
+const costDisplayEl = document.querySelector('#cost-display') as HTMLDivElement;
+const totalCostValEl = document.querySelector('#total-cost-val') as HTMLSpanElement;
+let totalUsageCost = parseFloat(localStorage.getItem('banana_usage_cost') || '0');
+
+const updateCostDisplay = (addedCost: number = 0) => {
+    totalUsageCost += addedCost;
+    localStorage.setItem('banana_usage_cost', totalUsageCost.toFixed(5));
+    if (totalCostValEl) {
+        totalCostValEl.innerText = `$${totalUsageCost.toFixed(4)}`;
+    }
+    if (costDisplayEl) {
+        costDisplayEl.classList.remove('hidden');
+        costDisplayEl.classList.add('flex');
+    }
+};
+
+const resetCost = () => {
+    totalUsageCost = 0;
+    updateCostDisplay(0);
+};
+
+// Initialize Cost Display
+updateCostDisplay(0);
+
 // API Key UI Elements
 const apiKeyBtn = document.querySelector('#api-key-btn') as HTMLButtonElement;
 const apiKeyModal = document.querySelector('#api-key-modal') as HTMLDivElement;
@@ -128,15 +166,19 @@ const accountTierBadge = document.querySelector('#account-tier-badge') as HTMLDi
 // --- Helper Functions ---
 
 // Tier UI Update Function
-function updateAccountStatusUI() {
+async function updateAccountStatusUI() {
     if (!accountTierBadge) return;
     
     // Refresh from storage
     manualApiKey = localStorage.getItem('manualApiKey') || '';
     
     // Strict Check: Only show PRO/ULTRA if user has manually entered a key.
-    // We ignore process.env.API_KEY for the visual badge to allow "Free" state visibility.
-    const isPro = manualApiKey && manualApiKey.length > 10;
+    // We ignore process.env.API_KEY and platform selection for the visual badge 
+    // to ensure it shows "FREE" by default until the user explicitly adds their own key.
+    let isPro = !!(manualApiKey && manualApiKey.length > 10);
+    
+    // We do NOT check window.aistudio.hasSelectedApiKey here anymore for the UI badge.
+    // This ensures the user sees "FREE" until they manually add a key in the app.
 
     // Clear previous styles
     accountTierBadge.className = '';
@@ -170,8 +212,8 @@ function updateAccountStatusUI() {
         
         // Ensure click opens modal to allow switching/updating key
         accountTierBadge.onclick = () => {
-             // Directly open our custom modal, ignoring AI Studio default
              if (apiKeyModal) {
+                // Fallback to custom modal if not in AI Studio
                 manualApiKeyInput.value = manualApiKey; 
                 // Show Remove Key Button if Key exists
                 const removeBtn = document.getElementById('remove-key-btn');
@@ -193,7 +235,6 @@ function updateAccountStatusUI() {
         `;
         // Add click handler to open key modal for upgrade
         accountTierBadge.onclick = () => {
-             // Directly open our custom modal, ignoring AI Studio default
              if (apiKeyModal) {
                 manualApiKeyInput.value = manualApiKey; 
                 // Hide Remove Key Button if No Key
@@ -226,7 +267,11 @@ if (apiKeyModal && closeApiKeyBtn) {
                 manualApiKeyInput.value = '';
                 updateAccountStatusUI();
                 apiKeyModal.classList.add('hidden');
-                if(statusEl) statusEl.innerText = "Key Removed. Switched to Free.";
+                if(statusEl) {
+                    statusEl.innerText = "API Key Removed. Switched to Free Mode.";
+                    setTimeout(() => statusEl.innerText = "System Standby", 3000);
+                }
+                alert("API Key has been removed. You are now in FREE mode.");
             };
             btnContainer.appendChild(removeBtn);
         }
@@ -267,15 +312,23 @@ if (saveApiKeyBtn && manualApiKeyInput) {
                 manualApiKey = key;
                 localStorage.setItem('manualApiKey', key);
                 
+                // Reset Cost on Key Change
+                resetCost();
+                
                 // Immediately update Badge UI
                 updateAccountStatusUI();
                 
                 // Visual Feedback on Button (Non-blocking)
-                saveApiKeyBtn.innerText = "SAVED!";
+                saveApiKeyBtn.innerText = "VERIFIED & SAVED!";
                 saveApiKeyBtn.classList.remove('opacity-50', 'cursor-wait');
                 saveApiKeyBtn.classList.add('bg-green-600', 'hover:bg-green-700', 'border-green-500');
                 
-                if(statusEl) statusEl.innerText = "API Key Verified. PRO features unlocked.";
+                if(statusEl) {
+                    statusEl.innerText = "API Key Verified. PRO features unlocked.";
+                    setTimeout(() => statusEl.innerText = "System Standby", 3000);
+                }
+                
+                alert("API Key added successfully! PRO features are now unlocked.");
                 
                 // Close modal automatically after short delay
                 setTimeout(() => {
@@ -307,28 +360,7 @@ if (saveApiKeyBtn && manualApiKeyInput) {
     });
 }
 
-// --- API Key Button Logic ---
-if (apiKeyBtn) {
-    // Always show button now
-    apiKeyBtn.style.display = 'block';
-    
-    // FORCE OPEN CUSTOM MODAL - Bypassing default AI Studio Dialog
-    apiKeyBtn.addEventListener('click', () => {
-        if (apiKeyModal) {
-            manualApiKeyInput.value = manualApiKey; 
-            
-            // Check visibility of Remove button
-            const removeBtn = document.getElementById('remove-key-btn');
-            if(removeBtn) {
-                if(manualApiKey && manualApiKey.length > 10) removeBtn.classList.remove('hidden');
-                else removeBtn.classList.add('hidden');
-            }
-
-            apiKeyModal.classList.remove('hidden');
-            manualApiKeyInput.focus();
-        }
-    });
-}
+// --- API Key Button Logic Removed ---
 
 // Help Elements
 const helpBtn = document.querySelector('#help-btn') as HTMLButtonElement;
@@ -615,6 +647,23 @@ exportBtns.forEach(btn => {
             a.click();
             URL.revokeObjectURL(url);
         }
+    });
+});
+
+// --- Image Count Logic ---
+countBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        const val = parseInt(btn.getAttribute('data-value') || '1');
+        imageCount = val;
+        
+        countBtns.forEach(b => {
+             b.classList.remove('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
+             b.classList.add('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
+        });
+        btn.classList.add('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
+        btn.classList.remove('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
+        
+        if (statusEl) statusEl.innerText = `Image Count: ${imageCount}`;
     });
 });
 
@@ -938,12 +987,12 @@ if (pasteImageBtn) {
         e.stopPropagation();
         e.preventDefault();
         try {
+            // Try standard API first
             const clipboardItems = await navigator.clipboard.read();
             let foundImage = false;
             for (const item of clipboardItems) {
                 const imageTypes = item.types.filter(type => type.startsWith('image/'));
                 if (imageTypes.length > 0) {
-                    // Get the first image type available
                     const blob = await item.getType(imageTypes[0]);
                     const file = new File([blob], "pasted_image.png", { type: imageTypes[0] });
                     handleMainImage(file);
@@ -952,14 +1001,45 @@ if (pasteImageBtn) {
                 }
             }
             if (!foundImage) {
+                // If no image found via API, try text fallback or warn
                 alert("Không tìm thấy hình ảnh trong bộ nhớ đệm (Clipboard)!");
             }
         } catch (err) {
-            console.error('Paste failed:', err);
-            alert("Lỗi: Không thể truy cập bộ nhớ đệm. Hãy đảm bảo bạn đã cấp quyền hoặc đang sử dụng trình duyệt hỗ trợ.");
+            console.error('Paste API failed:', err);
+            // Fallback: Prompt user to use Ctrl+V
+            alert("Trình duyệt chặn truy cập Clipboard trực tiếp. Vui lòng nhấn phím tắt Ctrl+V (hoặc Cmd+V) để dán ảnh.");
         }
     });
 }
+
+// Global Paste Handler (Best for Plugins/Restricted Envs)
+document.addEventListener('paste', (e) => {
+    // If user is pasting into a specific input, let it handle it (unless it's an image)
+    const target = e.target as HTMLElement;
+    const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+    
+    if (e.clipboardData && e.clipboardData.items) {
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                // It's an image! Handle it regardless of focus
+                const blob = items[i].getAsFile();
+                if (blob) {
+                    e.preventDefault(); // Stop it from pasting into text inputs if it's an image
+                    handleMainImage(blob);
+                    if(statusEl) {
+                        statusEl.innerText = "Image Pasted from Clipboard";
+                        setTimeout(() => statusEl.innerText = "System Standby", 2000);
+                    }
+                }
+                return;
+            }
+        }
+    }
+    
+    // If not image, and not in input, maybe handle text paste for specific logic?
+    // For now, let default text paste happen if in input.
+});
 
 function resetImage() {
     uploadedImageData = null;
@@ -982,6 +1062,12 @@ removeImageOverlayBtn?.addEventListener('click', (e) => { e.stopPropagation(); r
 // --- Screenshot Logic ---
 
 async function captureScreen() {
+    // Check if API is supported
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        alert("Chức năng chụp màn hình không được hỗ trợ trong môi trường này (Plugin/Webview). Vui lòng sử dụng công cụ chụp màn hình của hệ điều hành (Snipping Tool) và dán ảnh vào đây (Ctrl+V).");
+        return;
+    }
+
     try {
         // Fix: Cast video constraints to 'any' to allow 'cursor' property which is not in standard MediaTrackConstraints definition yet
         const stream = await navigator.mediaDevices.getDisplayMedia({ 
@@ -1196,6 +1282,15 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
         setTimeout(() => { zoomOverlay.classList.add('hidden'); }, 300);
     });
     
+    const updateZoomNavigation = () => {
+        if (!prevZoomBtn || !nextZoomBtn) return;
+        if (currentImageIndex > 0) prevZoomBtn.classList.remove('hidden');
+        else prevZoomBtn.classList.add('hidden');
+        
+        if (currentImageIndex < generatedImages.length - 1) nextZoomBtn.classList.remove('hidden');
+        else nextZoomBtn.classList.add('hidden');
+    };
+
     // Zoom Output Button Logic
     const openOutputZoom = () => {
         if (outputImage.src) {
@@ -1209,6 +1304,14 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
             zoomMaskCanvas?.classList.add('hidden');
             zoomGuideCanvas?.classList.add('hidden');
             zoomPreviewCanvas?.classList.add('hidden');
+
+            // Show/Hide Zoom Navigation
+            if (generatedImages.length > 1) {
+                updateZoomNavigation();
+            } else {
+                prevZoomBtn?.classList.add('hidden');
+                nextZoomBtn?.classList.add('hidden');
+            }
 
             // Calculate Fit Scale
             const vw = zoomViewport.clientWidth;
@@ -1224,6 +1327,26 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
             };
         }
     };
+
+    if (prevZoomBtn) prevZoomBtn.addEventListener('click', (e) => { e.stopPropagation(); showImage(currentImageIndex - 1); });
+    if (nextZoomBtn) nextZoomBtn.addEventListener('click', (e) => { e.stopPropagation(); showImage(currentImageIndex + 1); });
+
+    // Keyboard Navigation
+    window.addEventListener('keydown', (e) => {
+        if (outputContainer.classList.contains('hidden')) return;
+        
+        if (e.key === 'ArrowLeft') {
+            showImage(currentImageIndex - 1);
+        } else if (e.key === 'ArrowRight') {
+            showImage(currentImageIndex + 1);
+        } else if (e.key === 'Escape') {
+            if (!zoomOverlay.classList.contains('hidden')) {
+                closeZoomBtn.click();
+            } else {
+                closeOutputBtn.click();
+            }
+        }
+    });
 
     if (zoomOutputBtn && outputImage) {
         zoomOutputBtn.addEventListener('click', (e) => {
@@ -1523,14 +1646,31 @@ fileDisplaySlots.forEach((slot) => {
     const targetKey = input?.getAttribute('data-target');
 
     const updateFile = async (file: File) => {
-        if (!file.name.endsWith('.txt')) return;
+        if (!file.name.endsWith('.txt') && !file.name.endsWith('.png')) return;
         try {
-            const text = await file.text();
-            if (targetKey) {
-                loadedFilesContent[targetKey] = text;
-                // REMOVED: Auto-population of textarea
-                // const textarea = document.getElementById(targetKey) as HTMLTextAreaElement;
-                // if (textarea) { textarea.value = text; autoResize(textarea); }
+            let text = '';
+            if (file.name.endsWith('.txt')) {
+                text = await file.text();
+            } else if (file.name.endsWith('.png')) {
+                const data = await extractMetadata(file);
+                if (data) {
+                    // Map targetKey to the correct property in PromptData
+                    // The targetKey for the input element is the ID of the textarea (e.g., 'prompt-manual')
+                    const textareaId = input?.getAttribute('data-target');
+                    if (textareaId === 'prompt-manual') text = data.mega || '';
+                    else if (textareaId === 'lighting-manual') text = data.lighting || '';
+                    else if (textareaId === 'scene-manual') text = data.scene || '';
+                    else if (textareaId === 'view-manual') text = data.view || '';
+                }
+            }
+
+            if (text && targetKey) {
+                // We only update the textarea to avoid doubling in getCombinedText
+                const textarea = document.getElementById(targetKey) as HTMLTextAreaElement;
+                if (textarea) { 
+                    textarea.value = text; 
+                    autoResize(textarea); 
+                }
             }
             if (nameSpan) nameSpan.innerText = file.name;
             infoDiv?.classList.remove('hidden'); statusSpan?.classList.add('hidden');
@@ -1560,8 +1700,19 @@ manualCtxEntries.forEach((el) => {
     el.addEventListener('dragleave', () => el.classList.remove('border-[#262380]'));
     el.addEventListener('drop', async (e) => {
         e.preventDefault(); el.classList.remove('border-[#262380]');
-        if (e.dataTransfer?.files?.[0] && e.dataTransfer.files[0].name.endsWith('.txt')) {
-             el.value = await e.dataTransfer.files[0].text(); autoResize(el);
+        const file = e.dataTransfer?.files?.[0];
+        if (!file) return;
+        if (file.name.endsWith('.txt')) {
+             el.value = await file.text(); autoResize(el);
+        } else if (file.name.endsWith('.png')) {
+             const data = await extractMetadata(file);
+             if (data) {
+                 if (el.id === 'prompt-manual') el.value = data.mega || '';
+                 else if (el.id === 'lighting-manual') el.value = data.lighting || '';
+                 else if (el.id === 'scene-manual') el.value = data.scene || '';
+                 else if (el.id === 'view-manual') el.value = data.view || '';
+                 autoResize(el);
+             }
         }
     });
 });
@@ -1807,11 +1958,129 @@ if (zoomMaskCanvas) {
     });
 }
 
+// --- Gallery Storage (IndexedDB) ---
+const DB_NAME = 'BananaGalleryDB';
+const STORE_NAME = 'images';
+const DB_VERSION = 1;
+
+async function getDB() {
+    return new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+async function saveToGallery(src: string, promptData: PromptData) {
+    try {
+        const db = await getDB();
+        const now = Date.now();
+        const id = now.toString() + Math.random().toString(36).substr(2, 5);
+        
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        
+        await new Promise((resolve, reject) => {
+            const request = store.add({ id, src, timestamp: now, metadata: promptData });
+            request.onsuccess = resolve;
+            request.onerror = reject;
+        });
+        
+        // Cleanup old images (older than 24h)
+        cleanupGallery();
+    } catch (e) {
+        console.error("Failed to save to gallery", e);
+        if (statusEl) statusEl.innerText = "Gallery storage error.";
+    }
+}
+
+async function getGalleryImages() {
+    try {
+        const db = await getDB();
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        return new Promise<any[]>((resolve, reject) => {
+            const request = store.getAll();
+            request.onsuccess = () => {
+                const now = Date.now();
+                // Filter 24h on retrieval too
+                resolve(request.result.filter(item => now - item.timestamp < 24 * 60 * 60 * 1000));
+            };
+            request.onerror = reject;
+        });
+    } catch (e) {
+        console.error("Failed to get gallery", e);
+        return [];
+    }
+}
+
+async function deleteFromGallery(id: string) {
+    const db = await getDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    return new Promise((resolve, reject) => {
+        const request = store.delete(id);
+        request.onsuccess = resolve;
+        request.onerror = reject;
+    });
+}
+
+async function clearGallery() {
+    const db = await getDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    return new Promise((resolve, reject) => {
+        const request = store.clear();
+        request.onsuccess = resolve;
+        request.onerror = reject;
+    });
+}
+
+let isCleaningUp = false;
+async function cleanupGallery() {
+    if (isCleaningUp) return;
+    isCleaningUp = true;
+    try {
+        const db = await getDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const now = Date.now();
+        
+        const request = store.openCursor();
+        request.onsuccess = (event: any) => {
+            const cursor = event.target.result;
+            if (cursor) {
+                if (now - cursor.value.timestamp > 24 * 60 * 60 * 1000) {
+                    cursor.delete();
+                }
+                cursor.continue();
+            } else {
+                isCleaningUp = false;
+            }
+        };
+        request.onerror = () => {
+            isCleaningUp = false;
+        };
+    } catch (e) {
+        console.error("Cleanup failed", e);
+        isCleaningUp = false;
+    }
+}
+
 // --- History Logic ---
 function addToHistory(imgSrc: string, promptData: PromptData) {
     if (!historyList) return;
     if (historyList.children.length === 1 && historyList.children[0].textContent === 'No history yet') { historyList.innerHTML = ''; }
     
+    // Save to Gallery Storage
+    saveToGallery(imgSrc, promptData);
+
     // Changed: Add click listener to item wrapper instead of img, and ensure item has cursor-pointer
     const item = document.createElement('div');
     item.className = 'relative w-16 h-16 shrink-0 group border border-white/10 rounded-lg overflow-hidden hover:border-[#262380] transition-colors cursor-pointer';
@@ -1852,6 +2121,155 @@ function addToHistory(imgSrc: string, promptData: PromptData) {
     historyList.insertBefore(item, historyList.firstChild);
 }
 
+const openGalleryBtn = document.getElementById('open-gallery-btn');
+const galleryModal = document.getElementById('gallery-modal');
+const closeGalleryModalBtn = document.getElementById('close-gallery-modal-btn');
+const galleryModalList = document.getElementById('gallery-modal-list');
+const gallerySaveAllBtn = document.getElementById('gallery-save-all-btn');
+const galleryClearAllBtn = document.getElementById('gallery-clear-all-btn');
+
+async function renderGalleryModal() {
+    if (!galleryModalList) return;
+    const gallery = await getGalleryImages();
+    
+    // Sort by timestamp descending
+    gallery.sort((a, b) => b.timestamp - a.timestamp);
+
+    // Limit to 100 most recent images to prevent memory crashes in embedded browsers
+    const displayGallery = gallery.slice(0, 100);
+
+    if (displayGallery.length === 0) {
+        galleryModalList.innerHTML = '<div class="col-span-full text-center py-20 text-gray-600 font-black uppercase tracking-widest">No images in gallery</div>';
+        return;
+    }
+
+    galleryModalList.innerHTML = '';
+    displayGallery.forEach((item: any) => {
+        const card = document.createElement('div');
+        card.className = 'relative group rounded-lg overflow-hidden border border-white/10 hover:border-[#262380] transition-all bg-black/20 aspect-square cursor-pointer';
+        card.innerHTML = `
+            <img src="${item.src}" class="w-full h-full object-cover" alt="Generated Image" loading="lazy">
+            <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity">
+                <button class="p-1 bg-[#262380] rounded-full hover:scale-110 transition-transform gallery-download-item" data-src="${item.src}" data-id="${item.id}" title="Download">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                </button>
+                <button class="p-1 bg-emerald-600 rounded-full hover:scale-110 transition-transform gallery-paste-item" data-id="${item.id}" title="Upload to PNG Info">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" /></svg>
+                </button>
+                <button class="p-1 bg-red-600 rounded-full hover:scale-110 transition-transform gallery-delete-item" data-id="${item.id}" title="Delete">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+        `;
+
+        card.addEventListener('click', (e) => {
+            if ((e.target as HTMLElement).closest('button')) return;
+            // Clicking the image now opens the Zoom Overlay instead of loading into main preview
+            const zoomedImage = document.querySelector('#zoomed-image') as HTMLImageElement;
+            const zoomOverlay = document.querySelector('#zoom-overlay') as HTMLElement;
+            if (zoomedImage && zoomOverlay) {
+                zoomedImage.src = item.src;
+                zoomOverlay.classList.remove('hidden');
+                setTimeout(() => zoomOverlay.classList.add('opacity-100'), 10);
+            }
+        });
+
+        galleryModalList.appendChild(card);
+    });
+
+    // Attach listeners to new buttons
+    galleryModalList.querySelectorAll('.gallery-download-item').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const target = e.currentTarget as HTMLElement;
+            const src = target.getAttribute('data-src');
+            const id = target.getAttribute('data-id');
+            if (src && id) triggerDownload(src, `banana-gallery-${id}.png`);
+        });
+    });
+
+    galleryModalList.querySelectorAll('.gallery-paste-item').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const target = e.currentTarget as HTMLElement;
+            const id = target.getAttribute('data-id');
+            if (id) {
+                const item = displayGallery.find(i => i.id === id);
+                if (item && item.metadata) {
+                    // Instead of just populating metadata, we simulate the PNG Info flow
+                    // by setting the JSON text to clipboard and triggering the paste logic
+                    const jsonStr = JSON.stringify(item.metadata);
+                    navigator.clipboard.writeText(jsonStr).then(() => {
+                        document.getElementById('paste-png-info-btn')?.click();
+                        galleryModal?.classList.add('hidden');
+                    }).catch(err => {
+                        console.error("Failed to copy metadata to clipboard for PNG Info", err);
+                        if (statusEl) statusEl.innerText = "Failed to load PNG Info.";
+                    });
+                } else {
+                    if (statusEl) statusEl.innerText = "No metadata found for this image.";
+                }
+            }
+        });
+    });
+
+    galleryModalList.querySelectorAll('.gallery-delete-item').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const target = e.currentTarget as HTMLElement;
+            const id = target.getAttribute('data-id');
+            if (id) {
+                await deleteFromGallery(id);
+                renderGalleryModal();
+            }
+        });
+    });
+}
+
+function triggerDownload(src: string, filename: string) {
+    // --- SketchUp Native Save Support ---
+    if (window.sketchup && typeof window.sketchup.save_image === 'function') {
+        window.sketchup.save_image(src, filename);
+        console.log(`Sent to SketchUp for saving: ${filename}`);
+        if (statusEl) statusEl.innerText = "Saved to SketchUp folder.";
+        return;
+    }
+
+    const a = document.createElement('a');
+    a.href = src;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+if (galleryClearAllBtn) {
+    galleryClearAllBtn.addEventListener('click', async () => {
+        if (confirm("Are you sure you want to clear all images from the gallery?")) {
+            await clearGallery();
+            renderGalleryModal();
+        }
+    });
+}
+
+if (openGalleryBtn) {
+    openGalleryBtn.addEventListener('click', () => {
+        renderGalleryModal();
+        galleryModal?.classList.remove('hidden');
+    });
+}
+
+if (closeGalleryModalBtn) {
+    closeGalleryModalBtn.addEventListener('click', () => {
+        galleryModal?.classList.add('hidden');
+    });
+}
+
+// Close modal on outside click
+galleryModal?.addEventListener('click', (e) => {
+    if (e.target === galleryModal) closeGalleryModalBtn?.click();
+});
+
+// Startup Cleanup
+cleanupGallery();
+
 // --- Use As Master Logic ---
 if (useAsMasterBtn) {
     useAsMasterBtn.addEventListener('click', async () => {
@@ -1867,197 +2285,412 @@ if (useAsMasterBtn) {
 // --- Generate Logic ---
 
 async function runGeneration() {
-    if (isGenerating) {
-        if (abortController) { abortController.abort(); abortController = null; }
-        isGenerating = false; 
-        clearInterval(currentProgressInterval);
-        
-        generateProgress.style.width = '0%';
-        generateButton.classList.remove('bg-red-600'); generateButton.classList.add('bg-[#262380]');
-        generateLabel.innerText = "GENERATE (PROCESS)";
-        if (miniGenerateBtn) {
-             miniGenerateBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 group-hover:animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>`;
-             miniGenerateBtn.classList.remove('bg-red-600'); miniGenerateBtn.classList.add('bg-[#262380]');
-        }
-        if(statusEl) statusEl.innerText = "Generation Stopped"; 
-        return;
-    }
-
-    if (!uploadedImageData) { alert("Please upload a main image first."); return; }
-    
-    // 1. Check for API Key FIRST to avoid exception
-    // We assume process.env.API_KEY is available (injected by environment or browser context)
-    // If empty, the SDK call will fail naturally or be caught.
-
-    // --- AUTOMATIC MODEL SELECTION & TIER CHECK ---
-    let isPro = false;
-    
-    // Check AI Studio environment for Key Selection (Login status)
-    if (typeof window.aistudio !== 'undefined' && window.aistudio.hasSelectedApiKey) {
-        // In AI Studio, check if user selected a key
-        isPro = await window.aistudio.hasSelectedApiKey();
-    } else {
-        // Local Dev / Outside AI Studio: 
-        // If Manual API Key is present, assume Pro (User-provided key)
-        if (manualApiKey && manualApiKey.length > 10) {
-            isPro = true;
-        } else {
-            isPro = false; 
-        }
-    }
-    
-    // Update Badge UI just in case it wasn't refreshed
-    updateAccountStatusUI();
-
-    let modelId = '';
-    // Config for image generation
-    let imageConfig: any = { 
-        aspectRatio: sizeSelect.value || '1:1' 
-    };
-
-    if (isPro) {
-        // --- PRO / ULTRA TIER ---
-        // Unlocks Gemini 3.0 Pro Image Model
-        // Supports 1K, 2K, 4K
-        modelId = 'gemini-3-pro-image-preview';
-        
-        // Pass resolution to imageConfig
-        imageConfig.imageSize = selectedResolution; 
-        
-        if(statusEl) statusEl.innerText = `Generating with Gemini 3.0 Pro (${selectedResolution})...`;
-    } else {
-        // --- FREE TIER ---
-        // Restricted to Gemini 1.5 (2.5 Flash Image)
-        // Restricted to 1K resolution
-        modelId = 'gemini-2.5-flash-image';
-        
-        // Enforce 1K limit
-        if (selectedResolution !== '1K') {
-            selectedResolution = '1K';
-            
-            // Visual Update for Resolution Buttons
-            resBtns.forEach(b => {
-                if(b.getAttribute('data-value') === '1K') {
-                    b.classList.add('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
-                    b.classList.remove('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
-                } else {
-                    b.classList.remove('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
-                    b.classList.add('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
-                }
-            });
-            // Alert user about downgrade
-            alert("Tài khoản Free chỉ hỗ trợ độ phân giải 1K. Đã tự động chuyển về Model 1.5 Free (Flash Image). Đăng nhập API Key Pro để mở khóa 2K/4K.");
-        }
-        
-        // Flash Image model does not support imageSize param
-        delete imageConfig.imageSize;
-        
-        if(statusEl) statusEl.innerText = "Generating with Model 1.5 Free (1K)...";
-    }
-
-    isGenerating = true; abortController = new AbortController(); 
-    generateButton.classList.remove('bg-[#262380]'); generateButton.classList.add('bg-red-600');
-    generateLabel.innerText = "STOP GENERATING (0%)";
-    if (miniGenerateBtn) {
-        miniGenerateBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" /></svg>`;
-        miniGenerateBtn.classList.remove('bg-[#262380]'); miniGenerateBtn.classList.add('bg-red-600');
-    }
-    generateProgress.style.width = '0%'; let progressVal = 0;
-    
-    // Start Progress Interval
-    currentProgressInterval = setInterval(() => {
-        progressVal += 1; 
-        if(progressVal > 95) progressVal = 95;
-        generateProgress.style.width = `${progressVal}%`; 
-        generateLabel.innerText = `STOP GENERATING (${progressVal}%)`;
-    }, 100);
-
     try {
-        // Updated Logic: Combine text box value with loaded file content (if any)
-        const getCombinedText = (elId: string, fileKey: string) => {
-            const elVal = (document.getElementById(elId) as HTMLTextAreaElement)?.value || '';
-            const fileVal = loadedFilesContent[fileKey] || '';
-            // If both exist, join them. If one exists, use it.
-            return [elVal, fileVal].filter(Boolean).join('\n').trim();
+        if (isGenerating) {
+            if (abortController) { abortController.abort(); abortController = null; }
+            isGenerating = false; 
+            clearInterval(currentProgressInterval);
+            
+            generateProgress.style.width = '0%';
+            generateButton.classList.remove('bg-red-600'); generateButton.classList.add('bg-[#262380]');
+            generateLabel.innerText = "GENERATE (PROCESS)";
+            if (miniGenerateBtn) {
+                 miniGenerateBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 group-hover:animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>`;
+                 miniGenerateBtn.classList.remove('bg-red-600'); miniGenerateBtn.classList.add('bg-[#262380]');
+            }
+            if(statusEl) statusEl.innerText = "Generation Stopped"; 
+            return;
+        }
+
+        if (!uploadedImageData) { alert("Please upload a main image first."); return; }
+        
+        // 1. Check for API Key FIRST to avoid exception
+        // We assume process.env.API_KEY is available (injected by environment or browser context)
+        // If empty, the SDK call will fail naturally or be caught.
+
+        // --- AUTOMATIC MODEL SELECTION & TIER CHECK ---
+        // Strict Check: Only treat as PRO if user has manually entered a key.
+        // This ensures the "FREE" vs "PRO" behavior is consistent with the UI badge.
+        let isPro = !!(manualApiKey && manualApiKey.length > 10);
+        
+        // Update Badge UI just in case it wasn't refreshed
+        updateAccountStatusUI();
+
+        let modelId = '';
+        // Config for image generation
+        let imageConfig: any = { 
+            aspectRatio: sizeSelect.value || '1:1' 
         };
 
-        const p = getCombinedText('prompt-manual', 'prompt-manual');
-        const l = getCombinedText('lighting-manual', 'lighting-manual');
-        const s = getCombinedText('scene-manual', 'scene-manual');
-        const v = getCombinedText('view-manual', 'view-manual');
-        const i = inpaintingPromptToggle.checked ? inpaintingPromptText.value : '';
-        const fullPrompt = `${p}\nLighting: ${l}\nScene: ${s}\nView: ${v}\n${i ? 'Inpainting Instructions: ' + i : ''}\n${cameraProjectionEnabled ? 'Apply Camera Projection correction.' : ''}`.trim();
-        const parts: any[] = [];
-        referenceImages.forEach(ref => { parts.push({ inlineData: { mimeType: ref.mimeType, data: ref.data } }); });
-        parts.push({ inlineData: { mimeType: uploadedImageData.mimeType, data: uploadedImageData.data } });
-        parts.push({ text: fullPrompt });
+        // --- MANUAL MODEL SELECTION ---
+        const modelSelect = document.querySelector('#model-select') as HTMLSelectElement;
+        const selectedModel = modelSelect?.value || 'auto';
 
-        // Use local Helper (SDK Client)
-        const ai = getGenAI();
-
-        const result = await ai.models.generateContent({ model: modelId, contents: { parts: parts }, config: { imageConfig: imageConfig } });
-        
-        if (abortController.signal.aborted) return;
-        
-        // Success - Set 100% immediately
-        clearInterval(currentProgressInterval); 
-        generateProgress.style.width = '100%'; 
-        generateLabel.innerText = "STOP GENERATING (100%)";
-
-        const cand = result.candidates?.[0];
-        if (cand) {
-            for (const part of cand.content.parts) {
-                if (part.inlineData) {
-                    const promptData: PromptData = { mega: p, lighting: l, scene: s, view: v, inpaint: i, inpaintEnabled: inpaintingPromptToggle.checked, cameraProjection: cameraProjectionEnabled };
-                    try {
-                        const pngBase64 = await convertToPngBase64(part.inlineData.data, part.inlineData.mimeType);
-                        const finalBase64 = await embedMetadata(pngBase64, promptData);
-                        const src = `data:image/png;base64,${finalBase64}`;
-                        outputImage.src = src; outputContainer.classList.remove('hidden'); addToHistory(src, promptData);
-                    } catch (err) {
-                        console.error("Image processing error", err);
-                        outputImage.src = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-                        outputContainer.classList.remove('hidden');
-                    }
+        if (selectedModel !== 'auto') {
+            // User manually selected a model
+            modelId = selectedModel;
+            
+            // If Pro model selected, enforce Pro checks
+            if (modelId === 'gemini-3-pro-image-preview') {
+                 if (!isPro) {
+                     console.warn("User selected Pro model but no valid Pro key detected. Attempting anyway (will fallback if fails).");
+                 }
+                 imageConfig.imageSize = selectedResolution;
+                 if(statusEl) statusEl.innerText = `Generating with Gemini 3.2 Pro (${selectedResolution})...`;
+            } else if (modelId === 'gemini-3.1-flash-image-preview') {
+                 // Banana Pro v1.3
+                 imageConfig.imageSize = selectedResolution;
+                 if(statusEl) statusEl.innerText = `Generating with Banana Pro v1.3 (${selectedResolution})...`;
+            } else {
+                 // Flash
+                 delete imageConfig.imageSize;
+                 if(statusEl) statusEl.innerText = "Generating with Gemini 2.5 Flash...";
+            }
+        } else {
+            // --- AUTO MODE (Original Logic) ---
+            if (isPro) {
+                // --- PRO / ULTRA TIER ---
+                // Unlocks Gemini 3.0 Pro Image Model
+                // Supports 1K, 2K, 4K
+                modelId = 'gemini-3-pro-image-preview';
+                
+                // Pass resolution to imageConfig
+                imageConfig.imageSize = selectedResolution; 
+                
+                if(statusEl) statusEl.innerText = `Generating with Gemini 3.2 Pro (Auto) (${selectedResolution})...`;
+            } else {
+                // --- FREE TIER ---
+                // Restricted to Gemini 1.5 (2.5 Flash Image)
+                // Restricted to 1K resolution
+                modelId = 'gemini-2.5-flash-image';
+                
+                // Enforce 1K limit
+                if (selectedResolution !== '1K') {
+                    selectedResolution = '1K';
+                    
+                    // Visual Update for Resolution Buttons
+                    resBtns.forEach(b => {
+                        if(b.getAttribute('data-value') === '1K') {
+                            b.classList.add('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
+                            b.classList.remove('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
+                        } else {
+                            b.classList.remove('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
+                            b.classList.add('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
+                        }
+                    });
                 }
+                
+                // Flash Image model does not support imageSize param
+                delete imageConfig.imageSize;
+                
+                if(statusEl) statusEl.innerText = "Generating with Model 1.5 Free (1K)...";
             }
         }
-    } catch (e: any) { 
-        if (!abortController?.signal.aborted) { 
-            console.error(e); 
-            if(statusEl) statusEl.innerText = "Error encountered"; 
-            if (e.message.includes("429")) {
-                alert("API Quota exceeded. Please try again later.");
-            } else if (e.message.includes("401") || e.message.includes("403")) {
-                // Permission error
-                alert(`API Error: ${e.message}. Check your API Key and billing.`);
-            } else {
-                alert(`Generation failed: ${e.message}`);
+
+        isGenerating = true; abortController = new AbortController(); 
+        generateButton.classList.remove('bg-[#262380]'); generateButton.classList.add('bg-red-600');
+        generateLabel.innerText = "STOP GENERATING (0%)";
+        if (miniGenerateBtn) {
+            miniGenerateBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" /></svg>`;
+            miniGenerateBtn.classList.remove('bg-[#262380]'); miniGenerateBtn.classList.add('bg-red-600');
+        }
+        generateProgress.style.width = '0%'; let progressVal = 0;
+        
+        // Start Progress Interval
+        currentProgressInterval = setInterval(() => {
+            progressVal += 1; 
+            if(progressVal > 95) progressVal = 95;
+            generateProgress.style.width = `${progressVal}%`; 
+            generateLabel.innerText = `STOP GENERATING (${progressVal}%)`;
+            if (statusEl) statusEl.innerText = `Generating... ${progressVal}%`;
+        }, 100);
+
+        try {
+            // Updated Logic: Combine text box value with loaded file content (if any)
+            const getCombinedText = (elId: string, fileKey: string) => {
+                const elVal = (document.getElementById(elId) as HTMLTextAreaElement)?.value || '';
+                const fileVal = loadedFilesContent[fileKey] || '';
+                // If both exist, join them. If one exists, use it.
+                return [elVal, fileVal].filter(Boolean).join('\n').trim();
+            };
+
+            const p = getCombinedText('prompt-manual', 'prompt-manual');
+            const l = getCombinedText('lighting-manual', 'lighting-manual');
+            const s = getCombinedText('scene-manual', 'scene-manual');
+            const v = getCombinedText('view-manual', 'view-manual');
+            const i = inpaintingPromptToggle.checked ? inpaintingPromptText.value : '';
+            const fullPrompt = `${p}\nLighting: ${l}\nScene: ${s}\nView: ${v}\n${i ? 'Inpainting Instructions: ' + i : ''}\n${cameraProjectionEnabled ? 'Apply Camera Projection correction.' : ''}`.trim();
+            const parts: any[] = [];
+            referenceImages.forEach(ref => { parts.push({ inlineData: { mimeType: ref.mimeType, data: ref.data } }); });
+            parts.push({ inlineData: { mimeType: uploadedImageData.mimeType, data: uploadedImageData.data } });
+            parts.push({ text: fullPrompt });
+
+            // Use local Helper (SDK Client)
+            // FIX: Prioritize AI Studio Selected Key over Manual Key if it exists
+            let finalApiKey = manualApiKey || process.env.API_KEY || process.env.GEMINI_API_KEY;
+            
+            if (typeof window.aistudio !== 'undefined' && window.aistudio.hasSelectedApiKey) {
+                const hasSelected = await window.aistudio.hasSelectedApiKey();
+                if (hasSelected && process.env.API_KEY) {
+                    console.log("Using AI Studio Selected Key");
+                    finalApiKey = process.env.API_KEY;
+                }
+            }
+            
+            const ai = new GoogleGenAI({ apiKey: finalApiKey });
+
+            const processResults = async (results: any[]) => {
+                 generatedImages = []; // Clear previous
+                 for (const result of results) {
+                    const cand = result.candidates?.[0];
+                    if (cand) {
+                        for (const part of cand.content.parts) {
+                            if (part.inlineData) {
+                                const promptData: PromptData = { mega: p, lighting: l, scene: s, view: v, inpaint: i, inpaintEnabled: inpaintingPromptToggle.checked, cameraProjection: cameraProjectionEnabled };
+                                try {
+                                    const pngBase64 = await convertToPngBase64(part.inlineData.data, part.inlineData.mimeType);
+                                    const finalBase64 = await embedMetadata(pngBase64, promptData);
+                                    const src = `data:image/png;base64,${finalBase64}`;
+                                    generatedImages.push(src);
+                                    addToHistory(src, promptData);
+                                } catch (err) {
+                                    console.error("Image processing error", err);
+                                    const src = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+                                    generatedImages.push(src);
+                                }
+                            }
+                        }
+                    }
+                }
+                if (generatedImages.length > 0) {
+                    outputContainer.classList.remove('hidden');
+                    showImage(0);
+                }
+            };
+
+            try {
+                // 1. Hàm tạo thời gian nghỉ (Sleep) để chống lỗi 429
+                const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+                // 2. Chạy vòng lặp tuần tự thay vì song song
+                const results = [];
+                for (let k = 0; k < imageCount; k++) {
+                    if (!abortController || abortController.signal.aborted) break;
+
+                    if(statusEl) statusEl.innerText = `Đang tạo ảnh ${k + 1} / ${imageCount}...`;
+
+                    try {
+                        // Gọi API tạo từng ảnh một với cơ chế Retry cho lỗi 500 (Internal Server Error)
+                        let result = null;
+                        let retries = 0;
+                        const maxRetries = 2;
+                        
+                        while (retries <= maxRetries) {
+                            try {
+                                result = await ai.models.generateContent({ 
+                                    model: modelId, 
+                                    contents: { parts: parts }, 
+                                    config: { imageConfig: imageConfig } 
+                                });
+                                break; // Thành công thì thoát vòng lặp retry
+                            } catch (retryErr: any) {
+                                const errStr = retryErr.message || JSON.stringify(retryErr);
+                                const is500 = errStr.includes("500") || errStr.includes("Internal Server Error");
+                                
+                                if (is500 && retries < maxRetries) {
+                                    retries++;
+                                    if(statusEl) statusEl.innerText = `Lỗi Server (500). Đang thử lại ${retries}/${maxRetries} (chờ 5s)...`;
+                                    await sleep(5000);
+                                    continue;
+                                }
+                                throw retryErr; // Nếu không phải lỗi 500 hoặc hết lượt retry thì quăng lỗi ra ngoài
+                            }
+                        }
+
+                        if (result) results.push(result);
+
+                        // Update Cost
+                        // Estimate: Pro = $0.04, Banana Pro v1.3 = $0.01, Flash = $0.004
+                        let costPerImg = 0.004;
+                        if (modelId.includes('pro')) costPerImg = 0.04;
+                        else if (modelId.includes('3.1-flash')) costPerImg = 0.01;
+                        
+                        updateCostDisplay(costPerImg);
+
+                        // Nếu tạo thành công 1 ảnh, cập nhật thanh tiến trình thật
+                        const realProgress = Math.floor(((k + 1) / imageCount) * 95);
+                        generateProgress.style.width = `${realProgress}%`;
+                        generateLabel.innerText = `STOP GENERATING (${realProgress}%)`;
+
+                        // NGHỈ 4 GIÂY GIỮA CÁC LẦN GỌI ĐỂ BẢO VỆ API KEY (Trừ ảnh cuối cùng)
+                        if (k < imageCount - 1) {
+                            if(statusEl) statusEl.innerText = `Đang làm mát API (chờ 4 giây)...`;
+                            await sleep(4000); 
+                        }
+
+                    } catch (imgErr: any) {
+                        const errMsg = imgErr.message || JSON.stringify(imgErr);
+
+                        // Rethrow 403/404 to trigger outer fallback logic
+                        if (errMsg.includes("403") || errMsg.includes("404") || errMsg.includes("PERMISSION_DENIED")) {
+                            // Suppress console error for expected 403s that we handle
+                            // console.warn("Permission denied (403), triggering fallback...");
+                            throw new Error("403 PERMISSION_DENIED");
+                        }
+                        
+                        console.error(`Lỗi ở ảnh thứ ${k + 1}:`, imgErr);
+
+                        // Nếu bị lỗi ở 1 ảnh, báo lỗi nhưng KHÔNG làm sập toàn bộ app
+                        if (errMsg.includes("429")) {
+                            alert(`Đã chạm trần giới hạn API ở ảnh thứ ${k + 1}. Đang dừng lại để bảo vệ tài khoản.`);
+                            break; // Dừng vòng lặp ngay lập tức
+                        }
+                        
+                        // Throw other errors to outer catch
+                        throw imgErr;
+                    }
+                }
+                
+                if (!abortController || abortController.signal.aborted) return;
+                
+                // Stop fake progress and set to 100%
+                clearInterval(currentProgressInterval);
+                generateProgress.style.width = '100%'; 
+                generateLabel.innerText = "STOP GENERATING (100%)";
+
+                await processResults(results);
+
+            } catch (e: any) {
+                const errStr = e.message || JSON.stringify(e);
+                
+                // FALLBACK LOGIC for Pro Model 403/404
+                if ((errStr.includes("403") || errStr.includes("404") || errStr.includes("PERMISSION_DENIED")) && modelId === 'gemini-3-pro-image-preview') {
+                     
+                     // If manually selected, we still fallback but notify user
+                     if (selectedModel === 'gemini-3-pro-image-preview') {
+                         console.warn("Manual Pro selection failed (403). Falling back to Flash.");
+                         // Non-blocking notification via status text instead of Alert
+                         if(statusEl) statusEl.innerText = "Lỗi quyền Pro (403). Đang chuyển sang Flash (1K)...";
+                     } else {
+                         console.warn("Auto Pro selection failed (403). Falling back to Flash.");
+                         if(statusEl) statusEl.innerText = "Pro Model failed. Falling back to Flash (1K)...";
+                     }
+                     
+                     try {
+                         const fallbackModelId = 'gemini-2.5-flash-image';
+                         const fallbackConfig = { ...imageConfig };
+                         delete fallbackConfig.imageSize; // Flash doesn't support imageSize
+                         
+                         // Use sequential loop for fallback too
+                         const fallbackResults = [];
+                         for (let k = 0; k < imageCount; k++) {
+                            if (!abortController || abortController.signal.aborted) break;
+                            
+                            fallbackResults.push(await ai.models.generateContent({ 
+                                model: fallbackModelId, 
+                                contents: { parts: parts }, 
+                                config: { imageConfig: fallbackConfig } 
+                            }));
+                            
+                            // Update Cost for Fallback (Flash)
+                            updateCostDisplay(0.004);
+                         }
+                         
+                         if (!abortController || abortController.signal.aborted) return;
+
+                         clearInterval(currentProgressInterval); 
+                         generateProgress.style.width = '100%'; 
+                         generateLabel.innerText = "STOP GENERATING (100%)";
+                         
+                         await processResults(fallbackResults);
+                         
+                         alert("Lưu ý: API Key của bạn không hỗ trợ Model Pro (2K/4K) hoặc Model chưa được kích hoạt. Hệ thống đã tự động chuyển về Model Flash (1K).");
+                         return; // Success after fallback
+
+                     } catch (fallbackErr: any) {
+                         console.error("Fallback failed", fallbackErr);
+                         throw fallbackErr; // Throw to outer catch to handle generic error
+                     }
+                }
+                throw e; // Re-throw if not handled by fallback
+            }
+        } catch (e: any) { 
+            if (!abortController?.signal.aborted) { 
+                console.error(e); 
+                if(statusEl) statusEl.innerText = "Error encountered"; 
+                if (e.message.includes("429")) {
+                    alert("API Quota exceeded. Please try again later.");
+                } else if (e.message.includes("401") || e.message.includes("403")) {
+                    alert(`API Error: ${e.message}. Check your API Key and billing.`);
+                } else {
+                    alert(`Generation failed: ${e.message}`);
+                }
             }
         }
     } finally {
         // CRITICAL FIX: Ensure cleanup runs regardless of success or error
         clearInterval(currentProgressInterval);
         
-        if (isGenerating && !abortController?.signal.aborted) {
-            setTimeout(() => {
-                isGenerating = false; 
-                generateProgress.style.width = '0%';
-                generateButton.classList.remove('bg-red-600'); generateButton.classList.add('bg-[#262380]');
-                generateLabel.innerText = "GENERATE (PROCESS)";
-                if (miniGenerateBtn) {
-                     miniGenerateBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 group-hover:animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>`;
-                     miniGenerateBtn.classList.remove('bg-red-600'); miniGenerateBtn.classList.add('bg-[#262380]');
-                }
-                if(statusEl) statusEl.innerText = "System Standby"; 
-                abortController = null;
-            }, 500); // Reduced timeout for snappier UI
-        }
+        // Always reset UI state to be safe
+        setTimeout(() => {
+            isGenerating = false; 
+            generateProgress.style.width = '0%';
+            generateButton.classList.remove('bg-red-600'); 
+            generateButton.classList.add('bg-[#262380]');
+            generateLabel.innerText = "GENERATE (PROCESS)";
+            
+            if (miniGenerateBtn) {
+                 miniGenerateBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 group-hover:animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>`;
+                 miniGenerateBtn.classList.remove('bg-red-600'); 
+                 miniGenerateBtn.classList.add('bg-[#262380]');
+            }
+            
+            if(statusEl && !abortController?.signal.aborted) {
+                statusEl.innerText = "System Standby"; 
+            } else if (statusEl && abortController?.signal.aborted) {
+                statusEl.innerText = "Generation Stopped";
+            }
+            
+            abortController = null;
+        }, 300); 
     }
 }
 
 generateButton?.addEventListener('click', runGeneration);
 miniGenerateBtn?.addEventListener('click', runGeneration);
+
+function showImage(index: number) {
+    if (index < 0 || index >= generatedImages.length) return;
+    currentImageIndex = index;
+    outputImage.src = generatedImages[index];
+    
+    // If zoom is open, update zoomed image too
+    if (!zoomOverlay.classList.contains('hidden')) {
+        zoomedImage.src = generatedImages[index];
+        // @ts-ignore
+        if (typeof updateZoomNavigation === 'function') updateZoomNavigation();
+    }
+
+    // Update Badge
+    if (imageCounterBadge) {
+        imageCounterBadge.innerText = `${currentImageIndex + 1} / ${generatedImages.length}`;
+        if (generatedImages.length > 1) imageCounterBadge.classList.remove('hidden');
+        else imageCounterBadge.classList.add('hidden');
+    }
+
+    // Update Buttons
+    if (prevImageBtn) {
+        if (currentImageIndex > 0) prevImageBtn.classList.remove('hidden');
+        else prevImageBtn.classList.add('hidden');
+    }
+    if (nextImageBtn) {
+        if (currentImageIndex < generatedImages.length - 1) nextImageBtn.classList.remove('hidden');
+        else nextImageBtn.classList.add('hidden');
+    }
+}
+
+if (prevImageBtn) prevImageBtn.addEventListener('click', () => showImage(currentImageIndex - 1));
+if (nextImageBtn) nextImageBtn.addEventListener('click', () => showImage(currentImageIndex + 1));
 
 closeOutputBtn?.addEventListener('click', () => { outputContainer.classList.add('hidden'); });
 downloadButtonMain?.addEventListener('click', () => { if (outputImage.src) { const a = document.createElement('a'); a.href = outputImage.src; a.download = `banana-pro-${Date.now()}.png`; a.click(); } });
