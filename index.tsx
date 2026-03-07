@@ -278,14 +278,8 @@ async function updateAccountStatusUI() {
     // Refresh from storage
     manualApiKey = localStorage.getItem('manualApiKey') || '';
     
-    // Check AI Studio status
-    let hasSelected = false;
-    if (typeof window.aistudio !== 'undefined' && window.aistudio.hasSelectedApiKey) {
-        hasSelected = await window.aistudio.hasSelectedApiKey();
-    }
-
-    // Pro status if manual key OR AI Studio key
-    let isPro = !!(manualApiKey && manualApiKey.length > 10) || hasSelected;
+    // Pro status if manual key
+    let isPro = !!(manualApiKey && manualApiKey.length > 10);
     
     // Update Cost Display Visibility - Only show if using a paid tier (Pro/Ultra)
     if (costDisplayEl) {
@@ -333,15 +327,10 @@ async function updateAccountStatusUI() {
                 
                 // Update Modal Buttons
                 const removeBtn = document.getElementById('remove-api-key-btn');
-                const selectBtn = document.getElementById('select-aistudio-key-btn');
                 
                 if(removeBtn) {
                     if (manualApiKey) removeBtn.classList.remove('hidden');
                     else removeBtn.classList.add('hidden');
-                }
-                
-                if(selectBtn && typeof window.aistudio !== 'undefined') {
-                    selectBtn.classList.remove('hidden');
                 }
 
                 apiKeyModal.classList.remove('hidden');
@@ -363,12 +352,8 @@ async function updateAccountStatusUI() {
                 manualApiKeyInput.value = manualApiKey; 
                 
                 const removeBtn = document.getElementById('remove-api-key-btn');
-                const selectBtn = document.getElementById('select-aistudio-key-btn');
                 
                 if(removeBtn) removeBtn.classList.add('hidden');
-                if(selectBtn && typeof window.aistudio !== 'undefined') {
-                    selectBtn.classList.remove('hidden');
-                }
 
                 apiKeyModal.classList.remove('hidden');
                 manualApiKeyInput.focus();
@@ -381,19 +366,7 @@ async function updateAccountStatusUI() {
 updateAccountStatusUI();
 
 // --- API Key Modal Logic ---
-const selectAIStudioKeyBtn = document.querySelector('#select-aistudio-key-btn') as HTMLButtonElement;
 const removeApiKeyBtn = document.querySelector('#remove-api-key-btn') as HTMLButtonElement;
-
-if (selectAIStudioKeyBtn) {
-    selectAIStudioKeyBtn.onclick = async () => {
-        if (typeof window.aistudio !== 'undefined' && window.aistudio.openSelectKey) {
-            await window.aistudio.openSelectKey();
-            // After selection, update UI
-            updateAccountStatusUI();
-            apiKeyModal.classList.add('hidden');
-        }
-    };
-}
 
 if (removeApiKeyBtn) {
     removeApiKeyBtn.onclick = async () => {
@@ -1460,18 +1433,21 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
         }
     });
 
-    // Zoom Wheel
+    // Zoom Pan & Wheel
     zoomOverlay.addEventListener('wheel', (e) => {
+        if (zoomOverlay.classList.contains('hidden')) return;
         e.preventDefault();
-        const delta = e.deltaY * -0.001; // Sensitivity
-        const newScale = Math.min(Math.max(0.1, zoomScale + delta), 5);
-        zoomScale = newScale;
-        updateZoomTransform();
-    });
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        const newScale = zoomScale * delta;
+        if (newScale > 0.1 && newScale < 20) {
+            zoomScale = newScale;
+            updateZoomTransform();
+        }
+    }, { passive: false });
 
-    // Zoom Pan (Middle Mouse)
-    zoomViewport?.addEventListener('mousedown', (e) => {
-        if (e.button === 1) { // Middle click
+    zoomViewport.addEventListener('mousedown', (e) => {
+        if (zoomOverlay.classList.contains('hidden')) return;
+        if (e.button === 1) { // Middle button
             e.preventDefault();
             isPanning = true;
             panStartX = e.clientX - panX;
@@ -1482,14 +1458,13 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
 
     window.addEventListener('mousemove', (e) => {
         if (isPanning) {
-            e.preventDefault();
             panX = e.clientX - panStartX;
             panY = e.clientY - panStartY;
             updateZoomTransform();
         }
     });
 
-    window.addEventListener('mouseup', (e) => {
+    window.addEventListener('mouseup', () => {
         if (isPanning) {
             isPanning = false;
             zoomViewport.style.cursor = 'grab';
@@ -2030,26 +2005,31 @@ function stopDrawing(e: MouseEvent, targetCanvas: HTMLCanvasElement) {
 
 // Attach listeners
 function attachCanvasListeners(canvas: HTMLCanvasElement) {
-    canvas.addEventListener('mousedown', (e) => startDrawing(e, canvas));
+    canvas.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return; // Only left click for inpainting
+        startDrawing(e, canvas);
+    });
     canvas.addEventListener('mousemove', (e) => draw(e, canvas));
     canvas.addEventListener('mouseup', (e) => stopDrawing(e, canvas));
     canvas.addEventListener('mouseout', (e) => stopDrawing(e, canvas));
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault()); // Disable right-click menu
 }
 
 if (maskCanvas) attachCanvasListeners(maskCanvas);
 if (zoomMaskCanvas) {
     zoomMaskCanvas.addEventListener('mousedown', (e) => {
-        if(activeTool !== 'brush' && activeTool !== 'eraser' && e.button !== 0) return; 
+        if (e.button !== 0) return; // Only left click for inpainting
         startDrawing(e, zoomMaskCanvas);
     });
+    zoomMaskCanvas.addEventListener('contextmenu', (e) => e.preventDefault()); // Disable right-click menu
     // Global handlers for drag out
     window.addEventListener('mousemove', (e) => {
-        if(isDrawing && !isPanning && !zoomOverlay.classList.contains('hidden')) {
+        if(isDrawing && !zoomOverlay.classList.contains('hidden')) {
              draw(e, zoomMaskCanvas);
         }
     });
     window.addEventListener('mouseup', (e) => {
-        if(isDrawing && !isPanning && !zoomOverlay.classList.contains('hidden')) {
+        if(isDrawing && !zoomOverlay.classList.contains('hidden')) {
              stopDrawing(e, zoomMaskCanvas);
         }
     });

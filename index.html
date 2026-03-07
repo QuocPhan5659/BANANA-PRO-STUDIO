@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script type="text/javascript" nonce="76a625aa026c4f12878bbd1f4d9" src="//local.adguard.org?ts=1772866566819&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2Fbe8575d6be17e7acb564d18f768604971697d6cf4183dbc54a980a0a0a84013a&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="76a625aa026c4f12878bbd1f4d9" src="//local.adguard.org?ts=1772866566819&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script>
+    <script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1772874704008&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2F3936252e898162e5207623600dff9efae81b2d70a509b98e2536fe46a573459b&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1772874704008&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script>
 /* ================================
    SketchUp Web Compatibility Fix
    Prevent blocked browser APIs
@@ -163,7 +163,6 @@ window.IS_SKETCHUP = true;
                 <input type="password" id="manual-api-key-input" class="w-full bg-[#09090A] border border-[#27272a] rounded-xl p-3 text-sm text-white placeholder-gray-600 focus:border-[#262380] focus:ring-1 focus:ring-[#262380] transition-all outline-none" placeholder="Paste your API Key..." />
                 <div class="flex flex-col gap-2">
                     <button id="save-api-key-btn" class="w-full bg-[#262380] hover:bg-[#1e1b66] text-white font-bold py-2.5 rounded-xl transition-all shadow-lg uppercase tracking-wider text-xs">Save Key</button>
-                    <button id="select-aistudio-key-btn" class="hidden w-full bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 font-bold py-2.5 rounded-xl transition-all border border-emerald-500/30 uppercase tracking-wider text-[10px]">Select from AI Studio</button>
                     <button id="remove-api-key-btn" class="hidden w-full bg-red-900/20 hover:bg-red-900/40 text-red-400 font-bold py-2.5 rounded-xl transition-all border border-red-500/30 uppercase tracking-wider text-[10px]">Remove Key</button>
                 </div>
             </div>
@@ -220,70 +219,73 @@ window.IS_SKETCHUP = true;
     </div>
 
     <!-- Zoom Overlay -->
-    <div id="zoom-overlay" class="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center hidden opacity-0 transition-opacity duration-300 backdrop-blur-xl overflow-hidden">
-      <button id="close-zoom" class="absolute top-8 right-8 text-white hover:text-[#262380] transition-colors z-[250]">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-      </button>
+    <div id="zoom-overlay" class="fixed inset-0 z-[200] bg-black/95 flex hidden opacity-0 transition-opacity duration-300 backdrop-blur-xl overflow-hidden">
       
-      <div id="zoom-viewport" class="relative w-full h-full flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing">
-        <div id="zoom-content-wrapper" class="relative origin-center transition-transform duration-75 ease-out">
-          <!-- Guide Canvas (Arrows) - Z Index lower than Mask -->
-          <canvas id="zoom-guide-canvas" class="absolute top-0 left-0 z-[205] pointer-events-none hidden"></canvas>
-          <!-- Mask Canvas -->
-          <canvas id="zoom-mask-canvas" class="absolute top-0 left-0 z-[210] opacity-90 mix-blend-screen hidden cursor-none pointer-events-auto"></canvas>
-          <!-- Preview Canvas -->
-          <canvas id="zoom-preview-canvas" class="absolute top-0 left-0 z-[215] pointer-events-none hidden"></canvas>
-          <img id="zoomed-image" src="" class="max-w-none max-h-none pointer-events-none select-none rounded-xl shadow-2xl" alt="Zoomed view" />
-        </div>
-
-        <!-- Zoom Navigation Buttons -->
-        <button id="prev-zoom-btn" class="absolute left-8 top-1/2 -translate-y-1/2 z-[250] p-4 bg-black/40 hover:bg-[#262380] text-white rounded-2xl border border-white/10 backdrop-blur-md transition-all hidden group/nav">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" /></svg>
-        </button>
-        <button id="next-zoom-btn" class="absolute right-8 top-1/2 -translate-y-1/2 z-[250] p-4 bg-black/40 hover:bg-[#262380] text-white rounded-2xl border border-white/10 backdrop-blur-md transition-all hidden group/nav">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>
-        </button>
-      </div>
-      
-      <!-- Floating Toolbar in Zoom -->
-      <div id="zoom-brush-panel" class="absolute bottom-12 left-1/2 -translate-x-1/2 z-[240] bg-black/80 backdrop-blur-2xl border border-white/10 p-5 rounded-[2.5rem] hidden flex-col items-center gap-4 min-w-[280px] shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div class="flex items-center gap-1.5 w-full">
-           <button id="zoom-tool-brush" class="tool-btn active p-2.5 bg-[#262380] text-white rounded-xl flex items-center justify-center transition-all" title="Brush">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+      <!-- Zoom Sidebar (Vertical Toolbar) -->
+      <div id="zoom-brush-panel" class="w-20 h-full flex-none bg-black/60 backdrop-blur-2xl border-r border-white/10 flex flex-col items-center py-8 gap-8 z-[240] hidden animate-in slide-in-from-left-4 duration-500">
+        <div class="flex flex-col items-center gap-3 w-full">
+           <button id="zoom-tool-brush" class="tool-btn active p-3 bg-[#262380] text-white rounded-2xl flex items-center justify-center transition-all shadow-lg" title="Brush">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
            </button>
-           <button id="zoom-tool-rect" class="tool-btn p-2.5 bg-white/5 text-gray-500 rounded-xl flex items-center justify-center transition-all hover:text-white" title="Rectangular Marquee">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-dasharray="2 2"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" /></svg>
+           <button id="zoom-tool-rect" class="tool-btn p-3 bg-white/5 text-gray-500 rounded-2xl flex items-center justify-center transition-all hover:text-white hover:bg-white/10" title="Rectangular Marquee">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-dasharray="2 2"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" /></svg>
            </button>
-           <button id="zoom-tool-ellipse" class="tool-btn p-2.5 bg-white/5 text-gray-500 rounded-xl flex items-center justify-center transition-all hover:text-white" title="Elliptical Marquee">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-dasharray="2 2"><circle cx="12" cy="12" r="9" stroke-width="2"/></svg>
+           <button id="zoom-tool-ellipse" class="tool-btn p-3 bg-white/5 text-gray-500 rounded-2xl flex items-center justify-center transition-all hover:text-white hover:bg-white/10" title="Elliptical Marquee">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-dasharray="2 2"><circle cx="12" cy="12" r="9" stroke-width="2"/></svg>
            </button>
-           <button id="zoom-tool-lasso" class="tool-btn p-2.5 bg-white/5 text-gray-500 rounded-xl flex items-center justify-center transition-all hover:text-white" title="Freehand Lasso">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+           <button id="zoom-tool-lasso" class="tool-btn p-3 bg-white/5 text-gray-500 rounded-2xl flex items-center justify-center transition-all hover:text-white hover:bg-white/10" title="Freehand Lasso">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
            </button>
-           <button id="zoom-tool-arrow" class="tool-btn p-2.5 bg-white/5 text-gray-500 rounded-xl flex items-center justify-center transition-all hover:text-white" title="Camera Direction Arrow">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+           <button id="zoom-tool-arrow" class="tool-btn p-3 bg-white/5 text-gray-500 rounded-2xl flex items-center justify-center transition-all hover:text-white hover:bg-white/10" title="Camera Direction Arrow">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
            </button>
            
-           <div class="w-px h-6 bg-white/10 mx-1"></div>
+           <div class="w-10 h-px bg-white/10 my-2"></div>
            
-           <button id="zoom-tool-eraser" class="tool-btn p-2.5 bg-white/5 text-gray-500 rounded-xl flex items-center justify-center transition-all hover:text-white" title="Eraser">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+           <button id="zoom-tool-eraser" class="tool-btn p-3 bg-white/5 text-gray-500 rounded-2xl flex items-center justify-center transition-all hover:text-white hover:bg-white/10" title="Eraser">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
            </button>
-           <button id="zoom-clear-mask" class="p-2.5 bg-white/5 hover:bg-[#262380]/40 text-gray-500 hover:text-[#a5b4fc] rounded-xl transition-all" title="Reset Mask">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+           <button id="zoom-clear-mask" class="p-3 bg-white/5 hover:bg-[#262380]/40 text-gray-500 hover:text-[#a5b4fc] rounded-2xl transition-all" title="Reset Mask">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
            </button>
         </div>
 
-        <div class="w-full space-y-2 px-1">
-          <div class="flex items-center justify-between">
-            <label class="text-[9px] font-black uppercase text-gray-500" data-i18n="pixelSetting">Pixel Setting</label>
-            <span id="zoom-brush-size-val" class="text-[10px] font-black text-[#818cf8]">30px</span>
+        <div class="w-full flex flex-col items-center gap-4 mt-auto mb-4">
+          <span id="zoom-brush-size-val" class="text-[11px] font-black text-[#818cf8] bg-[#262380]/20 px-2 py-1 rounded-lg border border-[#262380]/30">30px</span>
+          <div class="h-48 flex items-center justify-center">
+            <input type="range" id="zoom-brush-size-slider" min="5" max="150" value="30" class="h-40 w-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-[#262380]" style="-webkit-appearance: slider-vertical; writing-mode: bt-lr;" />
           </div>
-          <input type="range" id="zoom-brush-size-slider" min="5" max="150" value="30" class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-[#262380]" />
+          <label class="text-[9px] font-black uppercase text-gray-500 tracking-widest" style="writing-mode: vertical-rl; text-orientation: mixed;">Brush Size</label>
         </div>
       </div>
-      
-      <p id="zoom-hint" class="absolute bottom-4 left-4 text-gray-700 text-[8px] font-black uppercase tracking-widest pointer-events-none">Operator View • ESC to close</p>
+
+      <div class="flex-1 relative flex flex-col overflow-hidden">
+        <button id="close-zoom" class="absolute top-8 right-8 text-white hover:text-[#262380] transition-colors z-[250]">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+        
+        <div id="zoom-viewport" class="relative w-full h-full flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing">
+          <div id="zoom-content-wrapper" class="relative origin-center transition-transform duration-75 ease-out">
+            <!-- Guide Canvas (Arrows) - Z Index lower than Mask -->
+            <canvas id="zoom-guide-canvas" class="absolute top-0 left-0 z-[205] pointer-events-none hidden"></canvas>
+            <!-- Mask Canvas -->
+            <canvas id="zoom-mask-canvas" class="absolute top-0 left-0 z-[210] opacity-90 mix-blend-screen hidden cursor-none pointer-events-auto"></canvas>
+            <!-- Preview Canvas -->
+            <canvas id="zoom-preview-canvas" class="absolute top-0 left-0 z-[215] pointer-events-none hidden"></canvas>
+            <img id="zoomed-image" src="" class="max-w-none max-h-none pointer-events-none select-none rounded-xl shadow-2xl" alt="Zoomed view" />
+          </div>
+
+          <!-- Zoom Navigation Buttons -->
+          <button id="prev-zoom-btn" class="absolute left-8 top-1/2 -translate-y-1/2 z-[250] p-4 bg-black/40 hover:bg-[#262380] text-white rounded-2xl border border-white/10 backdrop-blur-md transition-all hidden group/nav">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" /></svg>
+          </button>
+          <button id="next-zoom-btn" class="absolute right-8 top-1/2 -translate-y-1/2 z-[250] p-4 bg-black/40 hover:bg-[#262380] text-white rounded-2xl border border-white/10 backdrop-blur-md transition-all hidden group/nav">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>
+          </button>
+        </div>
+        
+        <p id="zoom-hint" class="absolute bottom-4 left-4 text-gray-700 text-[8px] font-black uppercase tracking-widest pointer-events-none">Operator View • ESC to close</p>
+      </div>
     </div>
 
     <!-- HEADER -->
@@ -603,10 +605,10 @@ window.IS_SKETCHUP = true;
                     </div>
                 </div>
 
-                <div id="inpainting-container" class="hidden relative w-full h-full flex flex-col items-stretch justify-center p-4 gap-4 bg-[#0D0D0E]">
-                    <div class="flex-1 min-h-0 relative w-full flex justify-center items-center p-2 overflow-hidden" id="main-viewport">
-                        <div class="relative inline-flex justify-center items-center group/canvas-container" style="max-width: 100%; max-height: 100%; width: auto; height: auto;">
-                            <img id="upload-preview" class="block w-auto h-auto" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="Source" draggable="false" />
+                <div id="inpainting-container" class="hidden relative w-full h-full flex flex-col items-stretch justify-center bg-[#0D0D0E]">
+                    <div class="flex-1 min-h-0 relative w-full flex justify-center items-center overflow-hidden" id="main-viewport">
+                        <div class="relative inline-flex justify-center items-center group/canvas-container" style="max-width: 100%; height: 100%; width: auto;">
+                            <img id="upload-preview" class="block" style="height: 100%; width: auto; max-width: 100%; object-fit: contain;" alt="Source" draggable="false" />
                             <canvas id="guide-canvas" class="absolute inset-0 w-full h-full z-20 pointer-events-none"></canvas>
                             <canvas id="mask-canvas" class="absolute inset-0 w-full h-full z-30 opacity-90 mix-blend-screen cursor-none"></canvas>
                             <canvas id="mask-preview-canvas" class="absolute inset-0 w-full h-full z-40 pointer-events-none hidden"></canvas>
@@ -623,7 +625,7 @@ window.IS_SKETCHUP = true;
                         </div>
                     </div>
 
-                    <div class="flex-none flex items-center justify-between gap-4 bg-[#121214] p-2 rounded-2xl border border-white/5 shadow-2xl">
+                    <div class="flex-none flex items-center justify-between gap-4 bg-[#121214] p-2 mx-4 mb-4 rounded-2xl border border-white/5 shadow-2xl">
                         <div class="flex items-center gap-2">
                             <button id="mini-generate-btn" class="bg-[#262380] hover:bg-[#1e1b66] text-white w-10 h-10 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center border border-white/10 group mr-1" title="Quick Generate">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 group-hover:animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
