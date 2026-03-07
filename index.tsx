@@ -180,6 +180,7 @@ const customPasteModal = document.querySelector('#custom-paste-modal') as HTMLDi
 const customPasteTextarea = document.querySelector('#custom-paste-textarea') as HTMLTextAreaElement;
 const customPasteSubmit = document.querySelector('#custom-paste-submit') as HTMLButtonElement;
 const closePasteModal = document.querySelector('#close-paste-modal') as HTMLButtonElement;
+const modalPasteBtn = document.querySelector('#modal-paste-btn') as HTMLButtonElement;
 
 function showCustomAlert(message: string, title: string = "Notification") {
     if (!customAlertModal) return;
@@ -241,12 +242,23 @@ function showCustomPaste(): Promise<string | null> {
             cleanup();
             resolve(null);
         };
+        const handleModalPaste = async () => {
+            try {
+                window.focus();
+                const text = await navigator.clipboard.readText();
+                customPasteTextarea.value = text;
+            } catch (err) {
+                console.error('Modal clipboard read failed', err);
+            }
+        };
         const cleanup = () => {
             customPasteSubmit.removeEventListener('click', handleSubmit);
             closePasteModal.removeEventListener('click', handleClose);
+            if (modalPasteBtn) modalPasteBtn.removeEventListener('click', handleModalPaste);
         };
         customPasteSubmit.addEventListener('click', handleSubmit);
         closePasteModal.addEventListener('click', handleClose);
+        if (modalPasteBtn) modalPasteBtn.addEventListener('click', handleModalPaste);
     });
 }
 

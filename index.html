@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script type="text/javascript" nonce="76a625aa026c4f12878bbd1f4d9" src="//local.adguard.org?ts=1772859366249&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2F1058f070da686da3348cc6c2ae29654c547dab2a0f8d3c722e7ce3d8dda1f7a8&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="76a625aa026c4f12878bbd1f4d9" src="//local.adguard.org?ts=1772859366249&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script>
+    <script type="text/javascript" nonce="76a625aa026c4f12878bbd1f4d9" src="//local.adguard.org?ts=1772859366249&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2F0a5438d86ee210e179e5f4f766b247894c57b8712e4021bedd905835e1a18019&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="76a625aa026c4f12878bbd1f4d9" src="//local.adguard.org?ts=1772859366249&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script>
 /* ================================
    SketchUp Web Compatibility Fix
    Prevent blocked browser APIs
@@ -134,7 +134,12 @@ window.IS_SKETCHUP = true;
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
             </div>
-            <p class="text-[10px] text-gray-400 mb-3 uppercase font-bold tracking-widest">Paste JSON or Text below:</p>
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Paste JSON or Text below:</p>
+                <button id="modal-paste-btn" class="text-orange-600 hover:text-orange-500 transition-colors p-1" title="Paste from Clipboard">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                </button>
+            </div>
             <textarea id="custom-paste-textarea" rows="6" class="w-full bg-[#09090A] border border-[#27272a] rounded-xl p-4 text-sm text-white placeholder-gray-700 focus:border-[#262380] focus:ring-1 focus:ring-[#262380] transition-all outline-none resize-none mb-4" placeholder="Paste data here..."></textarea>
             <button id="custom-paste-submit" class="w-full bg-[#262380] hover:bg-[#1e1b66] text-white font-black py-3 rounded-xl transition-all uppercase tracking-widest text-xs">Process Data</button>
         </div>
