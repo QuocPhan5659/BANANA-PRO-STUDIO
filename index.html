@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script type="text/javascript" nonce="76a625aa026c4f12878bbd1f4d9" src="//local.adguard.org?ts=1772859366249&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2F0a5438d86ee210e179e5f4f766b247894c57b8712e4021bedd905835e1a18019&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="76a625aa026c4f12878bbd1f4d9" src="//local.adguard.org?ts=1772859366249&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script>
+    <script type="text/javascript" nonce="76a625aa026c4f12878bbd1f4d9" src="//local.adguard.org?ts=1772866566819&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2Fbe8575d6be17e7acb564d18f768604971697d6cf4183dbc54a980a0a0a84013a&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="76a625aa026c4f12878bbd1f4d9" src="//local.adguard.org?ts=1772866566819&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script>
 /* ================================
    SketchUp Web Compatibility Fix
    Prevent blocked browser APIs
@@ -161,7 +161,11 @@ window.IS_SKETCHUP = true;
             </p>
             <div class="space-y-3">
                 <input type="password" id="manual-api-key-input" class="w-full bg-[#09090A] border border-[#27272a] rounded-xl p-3 text-sm text-white placeholder-gray-600 focus:border-[#262380] focus:ring-1 focus:ring-[#262380] transition-all outline-none" placeholder="Paste your API Key..." />
-                <button id="save-api-key-btn" class="w-full bg-[#262380] hover:bg-[#1e1b66] text-white font-bold py-2.5 rounded-xl transition-all shadow-lg uppercase tracking-wider text-xs">Save Key</button>
+                <div class="flex flex-col gap-2">
+                    <button id="save-api-key-btn" class="w-full bg-[#262380] hover:bg-[#1e1b66] text-white font-bold py-2.5 rounded-xl transition-all shadow-lg uppercase tracking-wider text-xs">Save Key</button>
+                    <button id="select-aistudio-key-btn" class="hidden w-full bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 font-bold py-2.5 rounded-xl transition-all border border-emerald-500/30 uppercase tracking-wider text-[10px]">Select from AI Studio</button>
+                    <button id="remove-api-key-btn" class="hidden w-full bg-red-900/20 hover:bg-red-900/40 text-red-400 font-bold py-2.5 rounded-xl transition-all border border-red-500/30 uppercase tracking-wider text-[10px]">Remove Key</button>
+                </div>
             </div>
         </div>
     </div>
@@ -289,7 +293,7 @@ window.IS_SKETCHUP = true;
           <h1 class="text-lg md:text-xl font-extrabold text-white tracking-tight uppercase italic">
             Banana <span class="text-[#262380]">Pro</span> Studio <span class="text-[10px] text-gray-600 not-italic ml-1">v1.4</span>
           </h1>
-          <p class="text-gray-500 text-[9px] font-bold tracking-[0.2em] hidden md:block mt-0.5">ADVANCED INPAINTING • MULTIMODAL SCENE CONTEXT</p>
+          <p class="text-gray-500 text-[9px] font-bold tracking-[0.2em] hidden md:block mt-0.5">VERTEX AI TIER 1 • $300 FREE CREDIT</p>
         </div>
         
         <div class="flex items-center gap-2">
@@ -308,8 +312,8 @@ window.IS_SKETCHUP = true;
       </div>
       <div class="flex items-center gap-3">
           <div id="cost-display" class="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-[#121214] border border-white/5 rounded-lg">
-              <span class="text-[9px] font-black uppercase tracking-widest text-gray-500">Total Cost:</span>
-              <span id="total-cost-val" class="text-[9px] font-black text-emerald-400">$0.000</span>
+              <span class="text-[9px] font-black uppercase tracking-widest text-gray-500">Credit:</span>
+              <span id="total-cost-val" class="text-[9px] font-black text-emerald-400">$300.000 / $300</span>
           </div>
           <div id="status" class="text-[9px] font-black uppercase tracking-widest text-amber-500 bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.1)] transition-all duration-300">System Standby</div>
       </div>

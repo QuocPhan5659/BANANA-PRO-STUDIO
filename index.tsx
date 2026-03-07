@@ -134,17 +134,24 @@ const imageCounterBadge = document.querySelector('#image-counter-badge') as HTML
 // Cost Tracking
 const costDisplayEl = document.querySelector('#cost-display') as HTMLDivElement;
 const totalCostValEl = document.querySelector('#total-cost-val') as HTMLSpanElement;
+const INITIAL_CREDIT = 300.00;
 let totalUsageCost = parseFloat(localStorage.getItem('banana_usage_cost') || '0');
 
 const updateCostDisplay = (addedCost: number = 0) => {
     totalUsageCost += addedCost;
-    localStorage.setItem('banana_usage_cost', totalUsageCost.toFixed(5));
+    localStorage.setItem('banana_usage_cost', totalUsageCost.toFixed(6));
+    
     if (totalCostValEl) {
-        totalCostValEl.innerText = `$${totalUsageCost.toFixed(4)}`;
-    }
-    if (costDisplayEl) {
-        costDisplayEl.classList.remove('hidden');
-        costDisplayEl.classList.add('flex');
+        const remaining = Math.max(0, INITIAL_CREDIT - totalUsageCost);
+        totalCostValEl.innerText = `$${remaining.toFixed(3)} / $${INITIAL_CREDIT.toFixed(0)}`;
+        // Change color if running low
+        if (remaining < 10) {
+            totalCostValEl.classList.remove('text-emerald-400');
+            totalCostValEl.classList.add('text-red-400');
+        } else {
+            totalCostValEl.classList.remove('text-red-400');
+            totalCostValEl.classList.add('text-emerald-400');
+        }
     }
 };
 
@@ -271,13 +278,25 @@ async function updateAccountStatusUI() {
     // Refresh from storage
     manualApiKey = localStorage.getItem('manualApiKey') || '';
     
-    // Strict Check: Only show PRO/ULTRA if user has manually entered a key.
-    // We ignore process.env.API_KEY and platform selection for the visual badge 
-    // to ensure it shows "FREE" by default until the user explicitly adds their own key.
-    let isPro = !!(manualApiKey && manualApiKey.length > 10);
+    // Check AI Studio status
+    let hasSelected = false;
+    if (typeof window.aistudio !== 'undefined' && window.aistudio.hasSelectedApiKey) {
+        hasSelected = await window.aistudio.hasSelectedApiKey();
+    }
+
+    // Pro status if manual key OR AI Studio key
+    let isPro = !!(manualApiKey && manualApiKey.length > 10) || hasSelected;
     
-    // We do NOT check window.aistudio.hasSelectedApiKey here anymore for the UI badge.
-    // This ensures the user sees "FREE" until they manually add a key in the app.
+    // Update Cost Display Visibility - Only show if using a paid tier (Pro/Ultra)
+    if (costDisplayEl) {
+        if (isPro) {
+            costDisplayEl.classList.remove('hidden');
+            costDisplayEl.classList.add('flex');
+        } else {
+            costDisplayEl.classList.add('hidden');
+            costDisplayEl.classList.remove('flex');
+        }
+    }
 
     // Clear previous styles
     accountTierBadge.className = '';
@@ -286,7 +305,6 @@ async function updateAccountStatusUI() {
 
     if (isPro) {
         // Determine PRO vs ULTRA based on Resolution setting
-        // Logic: 4K generation requires "Ultra" capabilities (in this app's context)
         const isUltraMode = selectedResolution === '4K';
 
         if (isUltraMode) {
@@ -296,28 +314,36 @@ async function updateAccountStatusUI() {
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.8)]" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                 </svg>
-                <span class="text-[10px] font-black tracking-[0.2em] drop-shadow-md">ULTRA</span>
+                <span class="text-[10px] font-black tracking-[0.2em] drop-shadow-md">TIER 1 ULTRA</span>
             `;
         } else {
-            // PRO STATE - Blue/Purple Pill (Matches screenshot)
+            // PRO STATE - Blue/Purple Pill
             accountTierBadge.className = 'flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#4f46e5]/50 bg-[#1e1b4b]/60 text-white shadow-[0_0_15px_rgba(79,70,229,0.25)] cursor-pointer hover:bg-[#1e1b4b]/80 transition-all group';
             accountTierBadge.innerHTML = `
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-cyan-400 drop-shadow-[0_0_2px_rgba(34,211,238,0.8)]" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                 </svg>
-                <span class="text-[10px] font-black tracking-[0.2em] text-[#e0e7ff]">PRO</span>
+                <span class="text-[10px] font-black tracking-[0.2em] text-[#e0e7ff]">TIER 1 PRO</span>
             `;
         }
         
-        // Ensure click opens modal to allow switching/updating key
         accountTierBadge.onclick = () => {
              if (apiKeyModal) {
-                // Fallback to custom modal if not in AI Studio
                 manualApiKeyInput.value = manualApiKey; 
-                // Show Remove Key Button if Key exists
-                const removeBtn = document.getElementById('remove-key-btn');
-                if(removeBtn) removeBtn.classList.remove('hidden');
                 
+                // Update Modal Buttons
+                const removeBtn = document.getElementById('remove-api-key-btn');
+                const selectBtn = document.getElementById('select-aistudio-key-btn');
+                
+                if(removeBtn) {
+                    if (manualApiKey) removeBtn.classList.remove('hidden');
+                    else removeBtn.classList.add('hidden');
+                }
+                
+                if(selectBtn && typeof window.aistudio !== 'undefined') {
+                    selectBtn.classList.remove('hidden');
+                }
+
                 apiKeyModal.classList.remove('hidden');
                 manualApiKeyInput.focus();
             }
@@ -332,13 +358,17 @@ async function updateAccountStatusUI() {
             </svg>
             <span class="text-[10px] font-black tracking-[0.2em]">FREE</span>
         `;
-        // Add click handler to open key modal for upgrade
         accountTierBadge.onclick = () => {
              if (apiKeyModal) {
                 manualApiKeyInput.value = manualApiKey; 
-                // Hide Remove Key Button if No Key
-                const removeBtn = document.getElementById('remove-key-btn');
+                
+                const removeBtn = document.getElementById('remove-api-key-btn');
+                const selectBtn = document.getElementById('select-aistudio-key-btn');
+                
                 if(removeBtn) removeBtn.classList.add('hidden');
+                if(selectBtn && typeof window.aistudio !== 'undefined') {
+                    selectBtn.classList.remove('hidden');
+                }
 
                 apiKeyModal.classList.remove('hidden');
                 manualApiKeyInput.focus();
@@ -351,31 +381,35 @@ async function updateAccountStatusUI() {
 updateAccountStatusUI();
 
 // --- API Key Modal Logic ---
-if (apiKeyModal && closeApiKeyBtn) {
-    // Inject Remove Button if not exists
-    if (!document.getElementById('remove-key-btn')) {
-        const btnContainer = manualApiKeyInput?.parentElement;
-        if(btnContainer) {
-            const removeBtn = document.createElement('button');
-            removeBtn.id = 'remove-key-btn';
-            removeBtn.className = 'w-full text-red-500 hover:text-red-400 text-[10px] font-bold uppercase tracking-wider py-2 transition-colors hidden';
-            removeBtn.innerText = 'Remove Key (Switch to Free)';
-            removeBtn.onclick = async () => {
-                localStorage.removeItem('manualApiKey');
-                manualApiKey = '';
-                manualApiKeyInput.value = '';
-                updateAccountStatusUI();
-                apiKeyModal.classList.add('hidden');
-                if(statusEl) {
-                    statusEl.innerText = "API Key Removed. Switched to Free Mode.";
-                    setTimeout(() => statusEl.innerText = "System Standby", 3000);
-                }
-                await showCustomAlert("API Key has been removed. You are now in FREE mode.");
-            };
-            btnContainer.appendChild(removeBtn);
-        }
-    }
+const selectAIStudioKeyBtn = document.querySelector('#select-aistudio-key-btn') as HTMLButtonElement;
+const removeApiKeyBtn = document.querySelector('#remove-api-key-btn') as HTMLButtonElement;
 
+if (selectAIStudioKeyBtn) {
+    selectAIStudioKeyBtn.onclick = async () => {
+        if (typeof window.aistudio !== 'undefined' && window.aistudio.openSelectKey) {
+            await window.aistudio.openSelectKey();
+            // After selection, update UI
+            updateAccountStatusUI();
+            apiKeyModal.classList.add('hidden');
+        }
+    };
+}
+
+if (removeApiKeyBtn) {
+    removeApiKeyBtn.onclick = async () => {
+        const confirmed = await showCustomConfirm("Are you sure you want to remove your API key and switch back to Free mode?");
+        if (confirmed) {
+            localStorage.removeItem('manualApiKey');
+            manualApiKey = '';
+            manualApiKeyInput.value = '';
+            updateAccountStatusUI();
+            apiKeyModal.classList.add('hidden');
+            await showCustomAlert("API Key removed. Switched to FREE mode.");
+        }
+    };
+}
+
+if (apiKeyModal && closeApiKeyBtn) {
     closeApiKeyBtn.addEventListener('click', () => {
         apiKeyModal.classList.add('hidden');
     });
@@ -2469,9 +2503,17 @@ async function runGeneration() {
         // If empty, the SDK call will fail naturally or be caught.
 
         // --- AUTOMATIC MODEL SELECTION & TIER CHECK ---
-        // Strict Check: Only treat as PRO if user has manually entered a key.
-        // This ensures the "FREE" vs "PRO" behavior is consistent with the UI badge.
-        let isPro = !!(manualApiKey && manualApiKey.length > 10);
+        // Refresh from storage
+        manualApiKey = localStorage.getItem('manualApiKey') || '';
+        
+        // Check AI Studio status
+        let hasSelected = false;
+        if (typeof window.aistudio !== 'undefined' && window.aistudio.hasSelectedApiKey) {
+            hasSelected = await window.aistudio.hasSelectedApiKey();
+        }
+
+        // Pro status if manual key OR AI Studio key
+        let isPro = !!(manualApiKey && manualApiKey.length > 10) || hasSelected;
         
         // Update Badge UI just in case it wasn't refreshed
         updateAccountStatusUI();
@@ -2696,13 +2738,14 @@ async function runGeneration() {
 
                         if (result) results.push(result);
 
-                        // Update Cost
-                        // Estimate: Pro = $0.04, Banana Pro v1.4 = $0.01, Banana Free = $0.004
-                        let costPerImg = 0.004;
-                        if (modelId.includes('pro')) costPerImg = 0.04;
-                        else if (modelId.includes('3.1-flash')) costPerImg = 0.01;
+                        // Update Cost (Vertex AI / Tier 1 Pricing)
+                        // Estimate: Pro (Ultra) = $0.012, Banana Pro v1.4 (Pro) = $0.003, Banana Free (Flash) = $0.0007
+                        let costPerImg = 0.0007;
+                        if (modelId.includes('pro')) costPerImg = 0.012;
+                        else if (modelId.includes('3.1-flash')) costPerImg = 0.003;
                         
-                        updateCostDisplay(costPerImg);
+                        // Only track cost if using a Pro/Ultra tier (Tier 1 Billing)
+                        if (isPro) updateCostDisplay(costPerImg);
 
                         // Nếu tạo thành công 1 ảnh, cập nhật thanh tiến trình thật
                         const realProgress = Math.floor(((k + 1) / imageCount) * 95);
@@ -2800,7 +2843,7 @@ async function runGeneration() {
                             }));
                             
                             // Update Cost for Fallback (Flash)
-                            updateCostDisplay(0.004);
+                            updateCostDisplay(0.0007);
                          }
                          
                          if (!abortController || abortController.signal.aborted) return;
