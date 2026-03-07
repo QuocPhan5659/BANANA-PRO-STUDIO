@@ -164,6 +164,92 @@ const saveApiKeyBtn = document.querySelector('#save-api-key-btn') as HTMLButtonE
 const manualApiKeyInput = document.querySelector('#manual-api-key-input') as HTMLInputElement;
 const accountTierBadge = document.querySelector('#account-tier-badge') as HTMLDivElement;
 
+// --- Custom Modal Logic ---
+const customAlertModal = document.querySelector('#custom-alert-modal') as HTMLDivElement;
+const customAlertTitle = document.querySelector('#custom-alert-title') as HTMLHeadingElement;
+const customAlertMessage = document.querySelector('#custom-alert-message') as HTMLParagraphElement;
+const customAlertOk = document.querySelector('#custom-alert-ok') as HTMLButtonElement;
+
+const customConfirmModal = document.querySelector('#custom-confirm-modal') as HTMLDivElement;
+const customConfirmTitle = document.querySelector('#custom-confirm-title') as HTMLHeadingElement;
+const customConfirmMessage = document.querySelector('#custom-confirm-message') as HTMLParagraphElement;
+const customConfirmOk = document.querySelector('#custom-confirm-ok') as HTMLButtonElement;
+const customConfirmCancel = document.querySelector('#custom-confirm-cancel') as HTMLButtonElement;
+
+const customPasteModal = document.querySelector('#custom-paste-modal') as HTMLDivElement;
+const customPasteTextarea = document.querySelector('#custom-paste-textarea') as HTMLTextAreaElement;
+const customPasteSubmit = document.querySelector('#custom-paste-submit') as HTMLButtonElement;
+const closePasteModal = document.querySelector('#close-paste-modal') as HTMLButtonElement;
+
+function showCustomAlert(message: string, title: string = "Notification") {
+    if (!customAlertModal) return;
+    customAlertTitle.innerText = title;
+    customAlertMessage.innerText = message;
+    customAlertModal.classList.remove('hidden');
+    
+    return new Promise<void>((resolve) => {
+        const handleOk = () => {
+            customAlertModal.classList.add('hidden');
+            customAlertOk.removeEventListener('click', handleOk);
+            resolve();
+        };
+        customAlertOk.addEventListener('click', handleOk);
+    });
+}
+
+function showCustomConfirm(message: string, title: string = "Confirmation"): Promise<boolean> {
+    if (!customConfirmModal) return Promise.resolve(false);
+    customConfirmTitle.innerText = title;
+    customConfirmMessage.innerText = message;
+    customConfirmModal.classList.remove('hidden');
+    
+    return new Promise<boolean>((resolve) => {
+        const handleOk = () => {
+            customConfirmModal.classList.add('hidden');
+            cleanup();
+            resolve(true);
+        };
+        const handleCancel = () => {
+            customConfirmModal.classList.add('hidden');
+            cleanup();
+            resolve(false);
+        };
+        const cleanup = () => {
+            customConfirmOk.removeEventListener('click', handleOk);
+            customConfirmCancel.removeEventListener('click', handleCancel);
+        };
+        customConfirmOk.addEventListener('click', handleOk);
+        customConfirmCancel.addEventListener('click', handleCancel);
+    });
+}
+
+function showCustomPaste(): Promise<string | null> {
+    if (!customPasteModal) return Promise.resolve(null);
+    customPasteTextarea.value = '';
+    customPasteModal.classList.remove('hidden');
+    customPasteTextarea.focus();
+    
+    return new Promise<string | null>((resolve) => {
+        const handleSubmit = () => {
+            const val = customPasteTextarea.value;
+            customPasteModal.classList.add('hidden');
+            cleanup();
+            resolve(val);
+        };
+        const handleClose = () => {
+            customPasteModal.classList.add('hidden');
+            cleanup();
+            resolve(null);
+        };
+        const cleanup = () => {
+            customPasteSubmit.removeEventListener('click', handleSubmit);
+            closePasteModal.removeEventListener('click', handleClose);
+        };
+        customPasteSubmit.addEventListener('click', handleSubmit);
+        closePasteModal.addEventListener('click', handleClose);
+    });
+}
+
 // --- Helper Functions ---
 
 // Tier UI Update Function
@@ -262,7 +348,7 @@ if (apiKeyModal && closeApiKeyBtn) {
             removeBtn.id = 'remove-key-btn';
             removeBtn.className = 'w-full text-red-500 hover:text-red-400 text-[10px] font-bold uppercase tracking-wider py-2 transition-colors hidden';
             removeBtn.innerText = 'Remove Key (Switch to Free)';
-            removeBtn.onclick = () => {
+            removeBtn.onclick = async () => {
                 localStorage.removeItem('manualApiKey');
                 manualApiKey = '';
                 manualApiKeyInput.value = '';
@@ -272,7 +358,7 @@ if (apiKeyModal && closeApiKeyBtn) {
                     statusEl.innerText = "API Key Removed. Switched to Free Mode.";
                     setTimeout(() => statusEl.innerText = "System Standby", 3000);
                 }
-                alert("API Key has been removed. You are now in FREE mode.");
+                await showCustomAlert("API Key has been removed. You are now in FREE mode.");
             };
             btnContainer.appendChild(removeBtn);
         }
@@ -329,7 +415,7 @@ if (saveApiKeyBtn && manualApiKeyInput) {
                     setTimeout(() => statusEl.innerText = "System Standby", 3000);
                 }
                 
-                alert("API Key added successfully! PRO features are now unlocked.");
+                await showCustomAlert("API Key added successfully! PRO features are now unlocked.");
                 
                 // Close modal automatically after short delay
                 setTimeout(() => {
@@ -356,7 +442,7 @@ if (saveApiKeyBtn && manualApiKeyInput) {
                 }, 2000);
             }
         } else {
-            alert("Please enter a valid API Key.");
+            showCustomAlert("Please enter a valid API Key.");
         }
     });
 }
@@ -1033,7 +1119,7 @@ removeImageOverlayBtn?.addEventListener('click', (e) => { e.stopPropagation(); r
 async function captureScreen() {
     // Check if API is supported
     if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-        alert("Chức năng chụp màn hình không được hỗ trợ trong môi trường này (Plugin/Webview). Vui lòng sử dụng công cụ chụp màn hình của hệ điều hành (Snipping Tool) và dán ảnh vào đây (Ctrl+V).");
+        showCustomAlert("Chức năng chụp màn hình không được hỗ trợ trong môi trường này (Plugin/Webview). Vui lòng sử dụng công cụ chụp màn hình của hệ điều hành (Snipping Tool) và dán ảnh vào đây (Ctrl+V).", "Not Supported");
         return;
     }
 
@@ -1069,11 +1155,11 @@ async function captureScreen() {
     } catch (err: any) {
         console.error("Screenshot error:", err);
         if (err.name === 'NotAllowedError' && err.message.includes('permissions policy')) {
-             alert("Screen capture is disabled by the browser or embedding environment permission policy. Please check if 'display-capture' is allowed.");
+             showCustomAlert("Screen capture is disabled by the browser or embedding environment permission policy. Please check if 'display-capture' is allowed.", "Permission Denied");
         } else if (err.name === 'NotAllowedError') {
-             alert("Screen capture cancelled by user.");
+             showCustomAlert("Screen capture cancelled by user.", "Cancelled");
         } else {
-             alert("Screen capture failed: " + err.message);
+             showCustomAlert("Screen capture failed: " + err.message, "Error");
         }
     }
 }
@@ -1532,7 +1618,7 @@ if (pngInfoDropZone) {
         e.preventDefault(); e.stopPropagation(); pngInfoDropZone.classList.remove('border-[#262380]', 'bg-[#262380]/10');
         if (e.dataTransfer?.files?.[0]) {
             const data = await extractMetadata(e.dataTransfer.files[0]);
-            if (data) populateMetadata(data); else alert("No BananaProData metadata found.");
+            if (data) populateMetadata(data); else showCustomAlert("No BananaProData metadata found.", "Metadata Error");
         }
     });
 }
@@ -1540,7 +1626,7 @@ if (pngInfoInput) {
     pngInfoInput.addEventListener('change', async () => {
         if (pngInfoInput.files?.[0]) {
             const data = await extractMetadata(pngInfoInput.files[0]);
-            if (data) populateMetadata(data); else alert("No BananaProData metadata found.");
+            if (data) populateMetadata(data); else showCustomAlert("No BananaProData metadata found.", "Metadata Error");
             pngInfoInput.value = '';
         }
     });
@@ -1557,9 +1643,9 @@ if (pastePngInfoBtn) {
             try {
                 text = await navigator.clipboard.readText();
             } catch (clipErr) {
-                console.warn("Clipboard API failed, falling back to prompt", clipErr);
-                // Only use prompt if Clipboard API fails
-                text = prompt("Vui lòng dán dữ liệu JSON (PNG Info) vào đây:") || "";
+                console.warn("Clipboard API failed, falling back to custom paste modal", clipErr);
+                // Only use custom modal if Clipboard API fails
+                text = await showCustomPaste() || "";
             }
 
             if (!text || !text.trim()) {
@@ -1572,14 +1658,12 @@ if (pastePngInfoBtn) {
                 const data = JSON.parse(text);
                 
                 // Basic validation to check if it looks like our metadata structure
-                // PromptData interface: { mega, lighting, scene, view, inpaint, inpaintEnabled, cameraProjection }
-                // We check for at least one known key to confirm it's likely the correct data
                 const isPromptData = data && (
                     'mega' in data || 
                     'lighting' in data || 
                     'scene' in data || 
                     'view' in data ||
-                    'BananaProData' in data // Just in case it's wrapped
+                    'BananaProData' in data
                 );
 
                 if (isPromptData) {
@@ -1589,17 +1673,16 @@ if (pastePngInfoBtn) {
                         setTimeout(() => statusEl.innerText = "System Standby", 2000);
                     }
                 } else {
-                    // Fallback: If it's JSON but not our structure, warn user
                     console.warn("Clipboard JSON does not match PromptData structure:", data);
-                    alert("Clipboard JSON does not match the expected Data PNG Info format.");
+                    showCustomAlert("Clipboard JSON does not match the expected Data PNG Info format.", "Format Error");
                 }
             } catch (jsonErr) {
                 console.error("JSON Parse Error", jsonErr);
-                alert("Clipboard text is not valid JSON Data.");
+                showCustomAlert("Clipboard text is not valid JSON Data.", "Parse Error");
             }
         } catch (err) {
             console.error("Failed to read clipboard", err);
-            alert("Unable to read from clipboard. Please allow clipboard access.");
+            showCustomAlert("Unable to read from clipboard. Please allow clipboard access.", "Access Error");
         }
     });
 }
@@ -2307,7 +2390,7 @@ function triggerDownload(src: string, filename: string) {
 
 if (galleryClearAllBtn) {
     galleryClearAllBtn.addEventListener('click', async () => {
-        if (confirm("Are you sure you want to clear all images from the gallery?")) {
+        if (await showCustomConfirm("Are you sure you want to clear all images from the gallery?")) {
             await clearGallery();
             renderGalleryModal();
         }
@@ -2367,7 +2450,7 @@ async function runGeneration() {
             return;
         }
 
-        if (!uploadedImageData) { alert("Please upload a main image first."); return; }
+        if (!uploadedImageData) { showCustomAlert("Please upload a main image first.", "Input Required"); return; }
         
         // 1. Check for API Key FIRST to avoid exception
         // We assume process.env.API_KEY is available (injected by environment or browser context)
@@ -2515,7 +2598,7 @@ async function runGeneration() {
             }
 
             if (!finalApiKey) {
-                alert("Không tìm thấy API Key. Vui lòng nhập API Key trong phần Account (Badge FREE/PRO) hoặc đăng nhập vào AI Studio.");
+                showCustomAlert("Không tìm thấy API Key. Vui lòng nhập API Key trong phần Account (Badge FREE/PRO) hoặc đăng nhập vào AI Studio.", "API Key Missing");
                 throw new Error("No API Key found");
             }
             
@@ -2634,7 +2717,7 @@ async function runGeneration() {
 
                         // Nếu bị lỗi ở 1 ảnh, báo lỗi nhưng KHÔNG làm sập toàn bộ app
                         if (errMsg.includes("429")) {
-                            alert(`Đã chạm trần giới hạn API ở ảnh thứ ${k + 1}. Đang dừng lại để bảo vệ tài khoản.`);
+                            showCustomAlert(`Đã chạm trần giới hạn API ở ảnh thứ ${k + 1}. Đang dừng lại để bảo vệ tài khoản.`, "API Limit Reached");
                             break; // Dừng vòng lặp ngay lập tức
                         }
                         
@@ -2682,7 +2765,7 @@ async function runGeneration() {
                      // If in AI Studio and it's a 403, it might be a key issue
                      if ((errStr.includes("403") || errStr.includes("PERMISSION_DENIED")) && typeof window.aistudio !== 'undefined' && window.aistudio.openSelectKey) {
                          console.warn("Permission denied. Offering to open key selection.");
-                         if (confirm("Lỗi 403: Bạn không có quyền sử dụng Model này. Có thể do API Key chưa được kích hoạt thanh toán hoặc không đúng. Bạn có muốn chọn lại API Key không?")) {
+                         if (await showCustomConfirm("Lỗi 403: Bạn không có quyền sử dụng Model này. Có thể do API Key chưa được kích hoạt thanh toán hoặc không đúng. Bạn có muốn chọn lại API Key không?", "Permission Error")) {
                              await window.aistudio.openSelectKey();
                              throw e; // Stop here and let user retry after selecting key
                          }
@@ -2716,7 +2799,7 @@ async function runGeneration() {
                          
                          await processResults(fallbackResults);
                          
-                         alert("Lưu ý: API Key của bạn không hỗ trợ Model Pro/High Quality (2K/4K) hoặc Model chưa được kích hoạt. Hệ thống đã tự động chuyển về Model Flash (1K).");
+                         showCustomAlert("Lưu ý: API Key của bạn không hỗ trợ Model Pro/High Quality (2K/4K) hoặc Model chưa được kích hoạt. Hệ thống đã tự động chuyển về Model Flash (1K).", "Model Downgrade");
                          return; // Success after fallback
 
                      } catch (fallbackErr: any) {
@@ -2731,11 +2814,11 @@ async function runGeneration() {
                 console.error(e); 
                 if(statusEl) statusEl.innerText = "Error encountered"; 
                 if (e.message.includes("429")) {
-                    alert("API Quota exceeded. Please try again later.");
+                    showCustomAlert("API Quota exceeded. Please try again later.", "Quota Exceeded");
                 } else if (e.message.includes("401") || e.message.includes("403")) {
-                    alert(`API Error: ${e.message}. Check your API Key and billing.`);
+                    showCustomAlert(`API Error: ${e.message}. Check your API Key and billing.`, "API Error");
                 } else {
-                    alert(`Generation failed: ${e.message}`);
+                    showCustomAlert(`Generation failed: ${e.message}`, "Generation Error");
                 }
             }
         }

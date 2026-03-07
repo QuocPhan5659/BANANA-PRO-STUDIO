@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script type="text/javascript" nonce="76a625aa026c4f12878bbd1f4d9" src="//local.adguard.org?ts=1772855764995&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2F623c76f2e1ea6d491ffd850466d9ccd751e924960eff8746804865d35dd415ee&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="76a625aa026c4f12878bbd1f4d9" src="//local.adguard.org?ts=1772855764995&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script>
+    <script type="text/javascript" nonce="76a625aa026c4f12878bbd1f4d9" src="//local.adguard.org?ts=1772859366249&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2F1058f070da686da3348cc6c2ae29654c547dab2a0f8d3c722e7ce3d8dda1f7a8&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="76a625aa026c4f12878bbd1f4d9" src="//local.adguard.org?ts=1772859366249&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script>
 /* ================================
    SketchUp Web Compatibility Fix
    Prevent blocked browser APIs
@@ -95,6 +95,48 @@ window.IS_SKETCHUP = true;
         <canvas id="screenshot-canvas" class="absolute top-0 left-0 w-full h-full"></canvas>
         <div class="absolute top-4 left-1/2 -translate-x-1/2 bg-black/80 text-white px-4 py-2 rounded-full text-xs font-bold border border-white/20 shadow-xl pointer-events-none">
             DRAG TO CROP • ESC TO CANCEL
+        </div>
+    </div>
+
+    <!-- Custom Alert Modal -->
+    <div id="custom-alert-modal" class="fixed inset-0 z-[1000] bg-black/80 backdrop-blur-sm hidden flex items-center justify-center animate-in fade-in duration-200">
+        <div class="bg-[#121214] border border-white/10 p-6 rounded-2xl max-w-sm w-full shadow-2xl text-center">
+            <div id="custom-alert-icon" class="mb-4 flex justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            </div>
+            <h3 id="custom-alert-title" class="text-lg font-bold text-white mb-2 uppercase italic tracking-tight">Notification</h3>
+            <p id="custom-alert-message" class="text-sm text-gray-400 mb-6 leading-relaxed"></p>
+            <button id="custom-alert-ok" class="w-full bg-[#262380] hover:bg-[#1e1b66] text-white font-black py-3 rounded-xl transition-all uppercase tracking-widest text-xs">OK</button>
+        </div>
+    </div>
+
+    <!-- Custom Confirm Modal -->
+    <div id="custom-confirm-modal" class="fixed inset-0 z-[1000] bg-black/80 backdrop-blur-sm hidden flex items-center justify-center animate-in fade-in duration-200">
+        <div class="bg-[#121214] border border-white/10 p-6 rounded-2xl max-w-sm w-full shadow-2xl text-center">
+            <div class="mb-4 flex justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <h3 id="custom-confirm-title" class="text-lg font-bold text-white mb-2 uppercase italic tracking-tight">Confirmation</h3>
+            <p id="custom-confirm-message" class="text-sm text-gray-400 mb-6 leading-relaxed"></p>
+            <div class="flex gap-3">
+                <button id="custom-confirm-cancel" class="flex-1 bg-white/5 hover:bg-white/10 text-gray-400 font-black py-3 rounded-xl transition-all uppercase tracking-widest text-xs">Cancel</button>
+                <button id="custom-confirm-ok" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-black py-3 rounded-xl transition-all uppercase tracking-widest text-xs">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Paste Modal -->
+    <div id="custom-paste-modal" class="fixed inset-0 z-[1000] bg-black/80 backdrop-blur-sm hidden flex items-center justify-center animate-in fade-in duration-200">
+        <div class="bg-[#121214] border border-white/10 p-6 rounded-2xl max-w-md w-full shadow-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-white uppercase italic tracking-tight">Paste Data PNG Info</h3>
+                <button id="close-paste-modal" class="text-gray-500 hover:text-white transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <p class="text-[10px] text-gray-400 mb-3 uppercase font-bold tracking-widest">Paste JSON or Text below:</p>
+            <textarea id="custom-paste-textarea" rows="6" class="w-full bg-[#09090A] border border-[#27272a] rounded-xl p-4 text-sm text-white placeholder-gray-700 focus:border-[#262380] focus:ring-1 focus:ring-[#262380] transition-all outline-none resize-none mb-4" placeholder="Paste data here..."></textarea>
+            <button id="custom-paste-submit" class="w-full bg-[#262380] hover:bg-[#1e1b66] text-white font-black py-3 rounded-xl transition-all uppercase tracking-widest text-xs">Process Data</button>
         </div>
     </div>
 
