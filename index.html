@@ -78,9 +78,8 @@
             <h2 class="text-xl font-bold text-white mb-6 tracking-tight uppercase italic border-b border-white/10 pb-2">Keyboard Shortcuts</h2>
             <ul class="space-y-3 text-xs font-medium text-gray-400">
                  <li class="flex justify-between items-center"><span class="text-gray-200">Generate / Run</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">Ctrl + Enter</span></li>
-                 <li class="flex justify-between items-center"><span class="text-gray-200">Paste Image</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">U</span></li>
+                 <li class="flex justify-between items-center"><span class="text-gray-200">Paste Image</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">Ctrl + V</span></li>
                  <li class="flex justify-between items-center"><span class="text-gray-200">Paste PNG Info</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">V</span></li>
-                 <li class="flex justify-between items-center"><span class="text-gray-200">Snip Screen</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">S</span></li>
                  <li class="flex justify-between items-center"><span class="text-gray-200">Reset Mask</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">X</span></li>
                  <li class="flex justify-between items-center"><span class="text-gray-200">Clear Arrows</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">Alt + A</span></li>
                  <li class="flex justify-between items-center"><span class="text-gray-200">Brush / Eraser</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">B / E</span></li>
@@ -488,27 +487,8 @@
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
         </button>
 
-        <!-- Top Left Toolbar (Paste & Screenshot) -->
-        <div class="absolute top-4 left-6 z-50 flex items-center gap-2">
-            <!-- Paste Image Button -->
-            <button id="paste-image-btn" class="p-2.5 bg-[#262380]/20 hover:bg-[#262380] text-[#a5b4fc] hover:text-white rounded-xl border border-[#262380]/30 transition-all backdrop-blur-md shadow-lg group/paste" title="Paste Image from Clipboard (U)">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-            </button>
-
-            <!-- Screenshot Button -->
-            <button id="screenshot-btn" class="p-2.5 bg-[#262380]/20 hover:bg-[#262380] text-[#a5b4fc] hover:text-white rounded-xl border border-[#262380]/30 transition-all backdrop-blur-md shadow-lg group/screenshot" title="Snip Screen (S)">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-            </button>
-        </div>
-
         <!-- TOP SECTION: MASTER VIEW -->
-        <!-- Added pt-16 to push content down below toolbar -->
-        <div class="flex-1 relative w-full pt-16 px-4 pb-4 overflow-hidden">
+        <div class="flex-1 relative w-full pt-4 px-4 pb-4 overflow-hidden">
             <div id="drop-zone" class="relative w-full h-full border-2 border-dashed border-gray-800 rounded-3xl bg-[#0D0D0E] transition-all hover:border-[#262380]/60 hover:bg-[#262380]/10 overflow-hidden shadow-2xl group cursor-pointer flex flex-col z-10">
                 <input type="file" id="image-input" class="hidden" accept="image/*" />
                 

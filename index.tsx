@@ -394,8 +394,6 @@ const imageInput = document.querySelector('#image-input') as HTMLInputElement;
 const uploadPlaceholder = document.querySelector('#upload-placeholder') as HTMLDivElement;
 const inpaintingContainer = document.querySelector('#inpainting-container') as HTMLDivElement;
 const uploadPreview = document.querySelector('#upload-preview') as HTMLImageElement;
-const pasteImageBtn = document.querySelector('#paste-image-btn') as HTMLButtonElement;
-const screenshotBtn = document.querySelector('#screenshot-btn') as HTMLButtonElement;
 
 // Screenshot Overlay
 const screenshotOverlay = document.querySelector('#screenshot-overlay') as HTMLDivElement;
@@ -982,36 +980,6 @@ if (dropZone) {
 imageInput?.addEventListener('change', () => { if (imageInput.files?.[0]) handleMainImage(imageInput.files[0]); });
 
 // Paste Image Button Handler
-if (pasteImageBtn) {
-    pasteImageBtn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        try {
-            // Try standard API first
-            const clipboardItems = await navigator.clipboard.read();
-            let foundImage = false;
-            for (const item of clipboardItems) {
-                const imageTypes = item.types.filter(type => type.startsWith('image/'));
-                if (imageTypes.length > 0) {
-                    const blob = await item.getType(imageTypes[0]);
-                    const file = new File([blob], "pasted_image.png", { type: imageTypes[0] });
-                    handleMainImage(file);
-                    foundImage = true;
-                    break;
-                }
-            }
-            if (!foundImage) {
-                // If no image found via API, try text fallback or warn
-                alert("Không tìm thấy hình ảnh trong bộ nhớ đệm (Clipboard)!");
-            }
-        } catch (err) {
-            console.error('Paste API failed:', err);
-            // Fallback: Prompt user to use Ctrl+V
-            alert("Trình duyệt chặn truy cập Clipboard trực tiếp. Vui lòng nhấn phím tắt Ctrl+V (hoặc Cmd+V) để dán ảnh.");
-        }
-    });
-}
-
 // Global Paste Handler (Best for Plugins/Restricted Envs)
 document.addEventListener('paste', (e) => {
     // If user is pasting into a specific input, let it handle it (unless it's an image)
@@ -1127,14 +1095,6 @@ function initCropMode(w: number, h: number) {
     
     screenshotOverlay.classList.remove('hidden');
     isSnipping = false;
-}
-
-if(screenshotBtn) {
-    screenshotBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        captureScreen();
-    });
 }
 
 // Screenshot Canvas Events
@@ -1483,9 +1443,7 @@ document.addEventListener('keydown', (e) => {
         case 'a': document.getElementById('tool-arrow')?.click(); break;
         case 'o': document.getElementById('tool-ellipse')?.click(); break; // O for Ellipse/Oval
         case 'x': document.getElementById('clear-mask')?.click(); break; // Reset
-        case 'u': document.getElementById('paste-image-btn')?.click(); break; // Paste Image Shortcut
         case 'v': document.getElementById('paste-png-info-btn')?.click(); break; // Paste PNG Info Shortcut
-        case 's': document.getElementById('screenshot-btn')?.click(); break; // Screenshot Shortcut
     }
 });
 
@@ -1977,6 +1935,103 @@ async function getDB() {
     });
 }
 
+function getMaskBase64(): string | null {
+    if (!maskCanvas) return null;
+    const context = maskCanvas.getContext('2d');
+    if (!context) return null;
+    
+    const w = maskCanvas.width;
+    const h = maskCanvas.height;
+    if (w === 0 || h === 0) return null;
+
+    const imageData = context.getImageData(0, 0, w, h);
+    const data = imageData.data;
+    let hasContent = false;
+    for (let i = 3; i < data.length; i += 4) {
+        if (data[i] > 0) {
+            hasContent = true;
+            break;
+        }
+    }
+    if (!hasContent) return null;
+
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = w;
+    tempCanvas.height = h;
+    const tempCtx = tempCanvas.getContext('2d');
+    if (!tempCtx) return null;
+
+    tempCtx.fillStyle = 'black';
+    tempCtx.fillRect(0, 0, w, h);
+
+    const tempImageData = tempCtx.getImageData(0, 0, w, h);
+    const tempData = tempImageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] > 0) {
+            tempData[i] = 255;
+            tempData[i + 1] = 255;
+            tempData[i + 2] = 255;
+            tempData[i + 3] = 255;
+        }
+    }
+    tempCtx.putImageData(tempImageData, 0, 0);
+    return tempCanvas.toDataURL('image/png').split(',')[1];
+}
+
+async function compositeInpaint(originalBase64: string, generatedBase64: string, maskBase64: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const originalImg = new Image();
+        const generatedImg = new Image();
+        const maskImg = new Image();
+        
+        let loadedCount = 0;
+        const onLoaded = () => {
+            loadedCount++;
+            if (loadedCount === 3) {
+                const canvas = document.createElement('canvas');
+                canvas.width = originalImg.width;
+                canvas.height = originalImg.height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) { reject('No ctx'); return; }
+                
+                // 1. Draw original image
+                ctx.drawImage(originalImg, 0, 0);
+                
+                // 2. Create a temporary canvas for the masked generated image
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = originalImg.width;
+                tempCanvas.height = originalImg.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                if (!tempCtx) { reject('No tempCtx'); return; }
+                
+                // 3. Draw mask on temp canvas
+                tempCtx.drawImage(maskImg, 0, 0, originalImg.width, originalImg.height);
+                
+                // 4. Use 'source-in' to only keep generated pixels where mask is white
+                tempCtx.globalCompositeOperation = 'source-in';
+                tempCtx.drawImage(generatedImg, 0, 0, originalImg.width, originalImg.height);
+                
+                // 5. Draw the temp canvas onto the main canvas
+                ctx.drawImage(tempCanvas, 0, 0);
+                
+                resolve(canvas.toDataURL('image/png').split(',')[1]);
+            }
+        };
+        
+        originalImg.onload = onLoaded;
+        generatedImg.onload = onLoaded;
+        maskImg.onload = onLoaded;
+        
+        originalImg.onerror = reject;
+        generatedImg.onerror = reject;
+        maskImg.onerror = reject;
+        
+        originalImg.src = `data:image/png;base64,${originalBase64}`;
+        generatedImg.src = `data:image/png;base64,${generatedBase64}`;
+        maskImg.src = `data:image/png;base64,${maskBase64}`;
+    });
+}
+
 async function saveToGallery(src: string, promptData: PromptData) {
     try {
         const db = await getDB();
@@ -2419,10 +2474,22 @@ async function runGeneration() {
             const s = getCombinedText('scene-manual', 'scene-manual');
             const v = getCombinedText('view-manual', 'view-manual');
             const i = inpaintingPromptToggle.checked ? inpaintingPromptText.value : '';
-            const fullPrompt = `${p}\nLighting: ${l}\nScene: ${s}\nView: ${v}\n${i ? 'Inpainting Instructions: ' + i : ''}\n${cameraProjectionEnabled ? 'Apply Camera Projection correction.' : ''}`.trim();
+            const maskBase64 = getMaskBase64();
+            
+            let fullPrompt = `${p}\nLighting: ${l}\nScene: ${s}\nView: ${v}\n${i ? 'Inpainting Instructions: ' + i : ''}\n${cameraProjectionEnabled ? 'Apply Camera Projection correction.' : ''}`.trim();
+            
+            if (maskBase64) {
+                fullPrompt += `\nINPAINTING MODE: The second image provided is a black and white mask for the first image. White pixels in the mask indicate the area to be modified. Black pixels indicate the area to be preserved exactly as it is. Do not change any details outside the white masked area.`;
+            }
+
             const parts: any[] = [];
             referenceImages.forEach(ref => { parts.push({ inlineData: { mimeType: ref.mimeType, data: ref.data } }); });
             parts.push({ inlineData: { mimeType: uploadedImageData.mimeType, data: uploadedImageData.data } });
+            
+            if (maskBase64) {
+                parts.push({ inlineData: { mimeType: 'image/png', data: maskBase64 } });
+            }
+            
             parts.push({ text: fullPrompt });
 
             // Use local Helper (SDK Client)
@@ -2448,7 +2515,17 @@ async function runGeneration() {
                             if (part.inlineData) {
                                 const promptData: PromptData = { mega: p, lighting: l, scene: s, view: v, inpaint: i, inpaintEnabled: inpaintingPromptToggle.checked, cameraProjection: cameraProjectionEnabled };
                                 try {
-                                    const pngBase64 = await convertToPngBase64(part.inlineData.data, part.inlineData.mimeType);
+                                    let pngBase64 = await convertToPngBase64(part.inlineData.data, part.inlineData.mimeType);
+                                    
+                                    // If inpainting with a mask, composite the result with the original image
+                                    if (maskBase64) {
+                                        try {
+                                            pngBase64 = await compositeInpaint(uploadedImageData.data, pngBase64, maskBase64);
+                                        } catch (compErr) {
+                                            console.error("Compositing error", compErr);
+                                        }
+                                    }
+
                                     const finalBase64 = await embedMetadata(pngBase64, promptData);
                                     const src = `data:image/png;base64,${finalBase64}`;
                                     generatedImages.push(src);
