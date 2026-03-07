@@ -1549,11 +1549,26 @@ if (pngInfoInput) {
 if (pastePngInfoBtn) {
     pastePngInfoBtn.addEventListener('click', async () => {
         try {
-            // Changed: Read text from clipboard instead of image
             window.focus();
-            const text = await navigator.clipboard.readText();
+            let text = '';
+            
+            // Check if we are in SketchUp or if clipboard API is likely to fail
+            const isSketchUp = (window as any).IS_SKETCHUP || typeof window.sketchup !== 'undefined';
+            
+            if (isSketchUp) {
+                // Fallback for SketchUp: Use prompt to get text
+                text = prompt("Vui lòng dán dữ liệu JSON (PNG Info) vào đây:") || "";
+            } else {
+                try {
+                    text = await navigator.clipboard.readText();
+                } catch (clipErr) {
+                    console.warn("Clipboard API failed, falling back to prompt", clipErr);
+                    text = prompt("Vui lòng dán dữ liệu JSON (PNG Info) vào đây:") || "";
+                }
+            }
+
             if (!text || !text.trim()) {
-                alert("Clipboard is empty or does not contain text.");
+                if(statusEl) statusEl.innerText = "Clipboard is empty";
                 return;
             }
 
@@ -2393,13 +2408,13 @@ async function runGeneration() {
                  imageConfig.imageSize = selectedResolution;
                  if(statusEl) statusEl.innerText = `Generating with Gemini 3.2 Pro (${selectedResolution})...`;
             } else if (modelId === 'gemini-3.1-flash-image-preview') {
-                 // Banana Pro v1.3
+                 // Banana Pro v1.4
                  imageConfig.imageSize = selectedResolution;
-                 if(statusEl) statusEl.innerText = `Generating with Banana Pro v1.3 (${selectedResolution})...`;
+                 if(statusEl) statusEl.innerText = `Generating with Banana Pro v1.4 (${selectedResolution})...`;
             } else {
-                 // Flash
+                 // Banana Free
                  delete imageConfig.imageSize;
-                 if(statusEl) statusEl.innerText = "Generating with Gemini 2.5 Flash...";
+                 if(statusEl) statusEl.innerText = "Generating with Banana Free...";
             }
         } else {
             // --- AUTO MODE (Original Logic) ---
@@ -2438,7 +2453,7 @@ async function runGeneration() {
                 // Flash Image model does not support imageSize param
                 delete imageConfig.imageSize;
                 
-                if(statusEl) statusEl.innerText = "Generating with Model 1.5 Free (1K)...";
+                if(statusEl) statusEl.innerText = "Generating with Banana Free (1K)...";
             }
         }
 
@@ -2502,6 +2517,11 @@ async function runGeneration() {
                     console.log("Using AI Studio Selected Key");
                     finalApiKey = process.env.API_KEY;
                 }
+            }
+
+            if (!finalApiKey) {
+                alert("Không tìm thấy API Key. Vui lòng nhập API Key trong phần Account (Badge FREE/PRO) hoặc đăng nhập vào AI Studio.");
+                throw new Error("No API Key found");
             }
             
             const ai = new GoogleGenAI({ apiKey: finalApiKey });
@@ -2587,7 +2607,7 @@ async function runGeneration() {
                         if (result) results.push(result);
 
                         // Update Cost
-                        // Estimate: Pro = $0.04, Banana Pro v1.3 = $0.01, Flash = $0.004
+                        // Estimate: Pro = $0.04, Banana Pro v1.4 = $0.01, Banana Free = $0.004
                         let costPerImg = 0.004;
                         if (modelId.includes('pro')) costPerImg = 0.04;
                         else if (modelId.includes('3.1-flash')) costPerImg = 0.01;
@@ -2650,7 +2670,7 @@ async function runGeneration() {
                     throw e; 
                 }
 
-                // FALLBACK LOGIC for Paid Models (Pro and Banana Pro v1.3) 403/404
+                // FALLBACK LOGIC for Paid Models (Pro and Banana Pro v1.4) 403/404
                 const isPaidModel = modelId === 'gemini-3-pro-image-preview' || modelId === 'gemini-3.1-flash-image-preview';
                 if ((errStr.includes("403") || errStr.includes("404") || errStr.includes("PERMISSION_DENIED")) && isPaidModel) {
                      

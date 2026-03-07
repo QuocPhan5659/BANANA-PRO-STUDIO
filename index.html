@@ -1,6 +1,63 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <script type="text/javascript" nonce="76a625aa026c4f12878bbd1f4d9" src="//local.adguard.org?ts=1772852166295&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2F56eb774b7b9c40602778c89a99c9b047185b93ef5816caa9d7f438b92501afad&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="76a625aa026c4f12878bbd1f4d9" src="//local.adguard.org?ts=1772852166295&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script>
+/* ================================
+   SketchUp Web Compatibility Fix
+   Prevent blocked browser APIs
+================================ */
+
+(function () {
+
+const IS_SKETCHUP = typeof window.sketchup !== "undefined";
+
+if (!IS_SKETCHUP) return;
+
+console.log("Running inside SketchUp");
+
+/* Fix clipboard errors */
+
+if (!navigator.clipboard) {
+  navigator.clipboard = {};
+}
+
+navigator.clipboard.readText = async function () {
+  console.warn("Clipboard read blocked in SketchUp");
+  return "";
+};
+
+navigator.clipboard.writeText = async function () {
+  console.warn("Clipboard write blocked in SketchUp");
+  return true;
+};
+
+/* Prevent permission errors */
+
+if (navigator.permissions) {
+
+  const originalQuery = navigator.permissions.query;
+
+  navigator.permissions.query = function (parameters) {
+
+    if (
+      parameters.name === "clipboard-read" ||
+      parameters.name === "clipboard-write"
+    ) {
+      return Promise.resolve({ state: "granted" });
+    }
+
+    return originalQuery(parameters);
+
+  };
+
+}
+
+/* Mark environment */
+
+window.IS_SKETCHUP = true;
+
+})();
+</script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Banana Pro Studio - Professional AI Suite</title>
@@ -89,7 +146,7 @@
                  <li class="flex justify-between items-center"><span class="text-gray-200">Zoom Canvas</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">Mouse Wheel</span></li>
                  <li class="flex justify-between items-center"><span class="text-gray-200">Pan Canvas (Zoomed)</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">Middle Click</span></li>
             </ul>
-            <p class="mt-6 text-[10px] text-gray-600 uppercase font-bold tracking-widest text-center">Banana Pro Studio v1.3</p>
+            <p class="mt-6 text-[10px] text-gray-600 uppercase font-bold tracking-widest text-center">Banana Pro Studio v1.4</p>
         </div>
     </div>
 
@@ -190,7 +247,7 @@
       <div class="flex items-center gap-6">
         <div>
           <h1 class="text-lg md:text-xl font-extrabold text-white tracking-tight uppercase italic">
-            Banana <span class="text-[#262380]">Pro</span> Studio <span class="text-[10px] text-gray-600 not-italic ml-1">v1.3</span>
+            Banana <span class="text-[#262380]">Pro</span> Studio <span class="text-[10px] text-gray-600 not-italic ml-1">v1.4</span>
           </h1>
           <p class="text-gray-500 text-[9px] font-bold tracking-[0.2em] hidden md:block mt-0.5">ADVANCED INPAINTING • MULTIMODAL SCENE CONTEXT</p>
         </div>
@@ -427,8 +484,8 @@
                       <select id="model-select" class="w-full bg-[#121214] border border-[#27272a] text-gray-300 text-[10px] font-bold uppercase tracking-wider rounded-xl p-2.5 focus:border-[#262380] appearance-none outline-none transition-all cursor-pointer hover:border-gray-700">
                           <option value="auto">Auto (Smart Select)</option>
                           <option value="gemini-3-pro-image-preview">Gemini 3.2 Pro (Best Quality)</option>
-                          <option value="gemini-3.1-flash-image-preview">Banana Pro v1.3 (High Quality)</option>
-                          <option value="gemini-2.5-flash-image">Gemini 2.5 Flash (Fastest)</option>
+                          <option value="gemini-3.1-flash-image-preview">Banana Pro v1.4 (High Quality)</option>
+                          <option value="gemini-2.5-flash-image">Banana Free (Standard)</option>
                       </select>
                       <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
                           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
@@ -475,7 +532,7 @@
               <div class="grid grid-cols-2 gap-2">
                  <button id="global-reset-btn" class="w-full bg-white/5 border border-[#27272a] hover:bg-white/10 text-orange-500 hover:text-orange-400 font-black py-2.5 rounded-2xl transition-all duration-300 text-[9px] tracking-[0.2em] uppercase">RESET ALL</button>
                  <div class="w-full bg-transparent border border-white/5 rounded-2xl flex items-center justify-center">
-                    <span class="text-[8px] font-black uppercase tracking-widest text-gray-600">Banana Pro v1.3</span>
+                    <span class="text-[8px] font-black uppercase tracking-widest text-gray-600">Banana Pro v1.4</span>
                  </div>
               </div>
           </div>
