@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script type="text/javascript" nonce="76a625aa026c4f12878bbd1f4d9" src="//local.adguard.org?ts=1772852166295&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2F56eb774b7b9c40602778c89a99c9b047185b93ef5816caa9d7f438b92501afad&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="76a625aa026c4f12878bbd1f4d9" src="//local.adguard.org?ts=1772852166295&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script>
+    <script type="text/javascript" nonce="76a625aa026c4f12878bbd1f4d9" src="//local.adguard.org?ts=1772855764995&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2F623c76f2e1ea6d491ffd850466d9ccd751e924960eff8746804865d35dd415ee&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="76a625aa026c4f12878bbd1f4d9" src="//local.adguard.org?ts=1772855764995&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script>
 /* ================================
    SketchUp Web Compatibility Fix
    Prevent blocked browser APIs
@@ -15,21 +15,14 @@ if (!IS_SKETCHUP) return;
 
 console.log("Running inside SketchUp");
 
-/* Fix clipboard errors */
+/* Fix clipboard errors - Only if missing */
 
 if (!navigator.clipboard) {
-  navigator.clipboard = {};
+  navigator.clipboard = {
+    readText: async () => "",
+    writeText: async () => true
+  };
 }
-
-navigator.clipboard.readText = async function () {
-  console.warn("Clipboard read blocked in SketchUp");
-  return "";
-};
-
-navigator.clipboard.writeText = async function () {
-  console.warn("Clipboard write blocked in SketchUp");
-  return true;
-};
 
 /* Prevent permission errors */
 
@@ -60,8 +53,8 @@ window.IS_SKETCHUP = true;
 </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Banana Pro Studio - Professional AI Suite</title>
-    <script type="text/javascript" nonce="76a625aa026c4f12878bbd1f4d9" src="//local.adguard.org?ts=1772841366345&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2F325d93db-f1f5-4cce-9e37-24943aac20f0%2Ffile%2Ff6311de978efaecaec166e0949b4002e951a7f76ad014501c526f719edf9b033&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="76a625aa026c4f12878bbd1f4d9" src="//local.adguard.org?ts=1772841366345&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script src="https://cdn.tailwindcss.com"></script>
+    <title>Banana Pro Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

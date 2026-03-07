@@ -97,6 +97,7 @@ window.addEventListener('mousemove', (e) => {
 });
 
 // --- Initialization Logic ---
+document.title = "Banana Pro Studio";
 // API Key handled via process.env.API_KEY OR Manual Input
 let manualApiKey = localStorage.getItem('manualApiKey') || '';
 
@@ -1552,19 +1553,13 @@ if (pastePngInfoBtn) {
             window.focus();
             let text = '';
             
-            // Check if we are in SketchUp or if clipboard API is likely to fail
-            const isSketchUp = (window as any).IS_SKETCHUP || typeof window.sketchup !== 'undefined';
-            
-            if (isSketchUp) {
-                // Fallback for SketchUp: Use prompt to get text
+            // Try Clipboard API first (Modern SketchUp 2025+ supports this)
+            try {
+                text = await navigator.clipboard.readText();
+            } catch (clipErr) {
+                console.warn("Clipboard API failed, falling back to prompt", clipErr);
+                // Only use prompt if Clipboard API fails
                 text = prompt("Vui lòng dán dữ liệu JSON (PNG Info) vào đây:") || "";
-            } else {
-                try {
-                    text = await navigator.clipboard.readText();
-                } catch (clipErr) {
-                    console.warn("Clipboard API failed, falling back to prompt", clipErr);
-                    text = prompt("Vui lòng dán dữ liệu JSON (PNG Info) vào đây:") || "";
-                }
             }
 
             if (!text || !text.trim()) {
