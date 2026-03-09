@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1772874704008&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2F3936252e898162e5207623600dff9efae81b2d70a509b98e2536fe46a573459b&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1772874704008&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script>
+    <script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773062016749&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2Fd89face35771016ae4d7e516eb5b771bef82a1d5f7d00915abf3c836261b6047&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773062016749&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script>
 /* ================================
    SketchUp Web Compatibility Fix
    Prevent blocked browser APIs
@@ -179,7 +179,7 @@ window.IS_SKETCHUP = true;
             <ul class="space-y-3 text-xs font-medium text-gray-400">
                  <li class="flex justify-between items-center"><span class="text-gray-200">Generate / Run</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">Ctrl + Enter</span></li>
                  <li class="flex justify-between items-center"><span class="text-gray-200">Paste Image</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">Ctrl + V</span></li>
-                 <li class="flex justify-between items-center"><span class="text-gray-200">Paste PNG Info</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">V</span></li>
+                 <li class="flex justify-between items-center"><span class="text-gray-200">Paste PNG Info</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">Alt + V</span></li>
                  <li class="flex justify-between items-center"><span class="text-gray-200">Reset Mask</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">X</span></li>
                  <li class="flex justify-between items-center"><span class="text-gray-200">Clear Arrows</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">Alt + A</span></li>
                  <li class="flex justify-between items-center"><span class="text-gray-200">Brush / Eraser</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">B / E</span></li>
@@ -528,10 +528,9 @@ window.IS_SKETCHUP = true;
                   <label class="text-[10px] font-black uppercase tracking-[0.3em] text-gray-300 px-1">Model</label>
                   <div class="relative">
                       <select id="model-select" class="w-full bg-[#121214] border border-[#27272a] text-gray-300 text-[10px] font-bold uppercase tracking-wider rounded-xl p-2.5 focus:border-[#262380] appearance-none outline-none transition-all cursor-pointer hover:border-gray-700">
-                          <option value="auto">Auto (Smart Select)</option>
-                          <option value="gemini-3-pro-image-preview">Gemini 3.2 Pro (Best Quality)</option>
+                          <option value="gemini-3-pro-image-preview" selected>Gemini 3.2 Pro (Best Quality)</option>
                           <option value="gemini-3.1-flash-image-preview">Banana Pro v1.4 (High Quality)</option>
-                          <option value="gemini-2.5-flash-image">Banana Free (Standard)</option>
+                          <option value="imagen-4.0-generate-001">Imagen 4 (Creative)</option>
                       </select>
                       <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
                           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>

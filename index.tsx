@@ -799,6 +799,33 @@ resBtns.forEach(btn => {
     });
 });
 
+// --- Model Selection Logic ---
+const modelSelectEl = document.querySelector('#model-select') as HTMLSelectElement;
+if (modelSelectEl && sizeSelect) {
+    const updateSizeOptions = () => {
+        const isImagen = modelSelectEl.value.startsWith('imagen');
+        const options = sizeSelect.querySelectorAll('option');
+        options.forEach(opt => {
+            if (isImagen) {
+                // Imagen 4 only supports 1:1, 9:16, 16:9, 4:3, 3:4
+                if (opt.value === '3:2' || opt.value === '2:3') {
+                    opt.disabled = true;
+                    if (sizeSelect.value === opt.value) {
+                        sizeSelect.value = '1:1';
+                    }
+                } else {
+                    opt.disabled = false;
+                }
+            } else {
+                opt.disabled = false;
+            }
+        });
+    };
+    modelSelectEl.addEventListener('change', updateSizeOptions);
+    // Run once on init
+    updateSizeOptions();
+}
+
 if (cameraProjToggle) cameraProjToggle.addEventListener('change', () => { cameraProjectionEnabled = cameraProjToggle.checked; });
 
 // --- PNG Info Functions ---
@@ -1520,6 +1547,13 @@ document.addEventListener('keydown', (e) => {
         return;
     }
 
+    // Paste PNG Info Shortcut (Alt+V)
+    if (e.altKey && e.key.toLowerCase() === 'v') {
+        e.preventDefault();
+        document.getElementById('paste-png-info-btn')?.click();
+        return;
+    }
+
     // Brush Size Shortcuts [ and ]
     if (e.key === '[' || e.key === ']') {
         const step = 5;
@@ -1551,7 +1585,6 @@ document.addEventListener('keydown', (e) => {
         case 'a': document.getElementById('tool-arrow')?.click(); break;
         case 'o': document.getElementById('tool-ellipse')?.click(); break; // O for Ellipse/Oval
         case 'x': document.getElementById('clear-mask')?.click(); break; // Reset
-        case 'v': document.getElementById('paste-png-info-btn')?.click(); break; // Paste PNG Info Shortcut
     }
 });
 
@@ -2476,7 +2509,10 @@ async function runGeneration() {
             return;
         }
 
-        if (!uploadedImageData) { showCustomAlert("Please upload a main image first.", "Input Required"); return; }
+        if (!uploadedImageData && !promptEl.value.trim()) { 
+            showCustomAlert("Please enter a prompt or upload an image first.", "Input Required"); 
+            return; 
+        }
         
         // 1. Check for API Key FIRST to avoid exception
         // We assume process.env.API_KEY is available (injected by environment or browser context)
@@ -2506,67 +2542,29 @@ async function runGeneration() {
 
         // --- MANUAL MODEL SELECTION ---
         const modelSelect = document.querySelector('#model-select') as HTMLSelectElement;
-        const selectedModel = modelSelect?.value || 'auto';
+        const selectedModel = modelSelect?.value || 'gemini-3-pro-image-preview';
 
-        if (selectedModel !== 'auto') {
-            // User manually selected a model
-            modelId = selectedModel;
-            
-            // If Pro model selected, enforce Pro checks
-            if (modelId === 'gemini-3-pro-image-preview') {
-                 if (!isPro) {
-                     console.warn("User selected Pro model but no valid Pro key detected. Attempting anyway (will fallback if fails).");
-                 }
-                 imageConfig.imageSize = selectedResolution;
-                 if(statusEl) statusEl.innerText = `Generating with Gemini 3.2 Pro (${selectedResolution})...`;
-            } else if (modelId === 'gemini-3.1-flash-image-preview') {
-                 // Banana Pro v1.4
-                 imageConfig.imageSize = selectedResolution;
-                 if(statusEl) statusEl.innerText = `Generating with Banana Pro v1.4 (${selectedResolution})...`;
-            } else {
-                 // Banana Free
-                 delete imageConfig.imageSize;
-                 if(statusEl) statusEl.innerText = "Generating with Banana Free...";
-            }
+        modelId = selectedModel;
+        
+        // If Pro model selected, enforce Pro checks
+        if (modelId === 'gemini-3-pro-image-preview') {
+             if (!isPro) {
+                 console.warn("User selected Pro model but no valid Pro key detected. Attempting anyway (will fallback if fails).");
+             }
+             imageConfig.imageSize = selectedResolution;
+             if(statusEl) statusEl.innerText = `Generating with Gemini 3.2 Pro (${selectedResolution})...`;
+        } else if (modelId === 'gemini-3.1-flash-image-preview') {
+             // Banana Pro v1.4
+             imageConfig.imageSize = selectedResolution;
+             if(statusEl) statusEl.innerText = `Generating with Banana Pro v1.4 (${selectedResolution})...`;
+        } else if (modelId.startsWith('imagen')) {
+             // Imagen 4
+             delete imageConfig.imageSize;
+             if(statusEl) statusEl.innerText = "Generating with Imagen 4...";
         } else {
-            // --- AUTO MODE (Original Logic) ---
-            if (isPro) {
-                // --- PRO / ULTRA TIER ---
-                // Unlocks Gemini 3.0 Pro Image Model
-                // Supports 1K, 2K, 4K
-                modelId = 'gemini-3-pro-image-preview';
-                
-                // Pass resolution to imageConfig
-                imageConfig.imageSize = selectedResolution; 
-                
-                if(statusEl) statusEl.innerText = `Generating with Gemini 3.2 Pro (Auto) (${selectedResolution})...`;
-            } else {
-                // --- FREE TIER ---
-                // Restricted to Gemini 1.5 (2.5 Flash Image)
-                // Restricted to 1K resolution
-                modelId = 'gemini-2.5-flash-image';
-                
-                // Enforce 1K limit
-                if (selectedResolution !== '1K') {
-                    selectedResolution = '1K';
-                    
-                    // Visual Update for Resolution Buttons
-                    resBtns.forEach(b => {
-                        if(b.getAttribute('data-value') === '1K') {
-                            b.classList.add('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
-                            b.classList.remove('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
-                        } else {
-                            b.classList.remove('active', 'border-[#262380]', 'bg-[#262380]/20', 'text-white');
-                            b.classList.add('border-[#27272a]', 'bg-[#121214]', 'text-gray-500');
-                        }
-                    });
-                }
-                
-                // Flash Image model does not support imageSize param
-                delete imageConfig.imageSize;
-                
-                if(statusEl) statusEl.innerText = "Generating with Banana Free (1K)...";
-            }
+             // Fallback
+             delete imageConfig.imageSize;
+             if(statusEl) statusEl.innerText = "Generating...";
         }
 
         isGenerating = true; abortController = new AbortController(); 
@@ -2605,15 +2603,17 @@ async function runGeneration() {
             
             let fullPrompt = `${p}\nLighting: ${l}\nScene: ${s}\nView: ${v}\n${i ? 'Inpainting Instructions: ' + i : ''}\n${cameraProjectionEnabled ? 'Apply Camera Projection correction.' : ''}`.trim();
             
-            if (maskBase64) {
+            if (maskBase64 && uploadedImageData) {
                 fullPrompt += `\nINPAINTING MODE: The second image provided is a black and white mask for the first image. White pixels in the mask indicate the area to be modified. Black pixels indicate the area to be preserved exactly as it is. Do not change any details outside the white masked area.`;
             }
 
             const parts: any[] = [];
             referenceImages.forEach(ref => { parts.push({ inlineData: { mimeType: ref.mimeType, data: ref.data } }); });
-            parts.push({ inlineData: { mimeType: uploadedImageData.mimeType, data: uploadedImageData.data } });
+            if (uploadedImageData) {
+                parts.push({ inlineData: { mimeType: uploadedImageData.mimeType, data: uploadedImageData.data } });
+            }
             
-            if (maskBase64) {
+            if (maskBase64 && uploadedImageData) {
                 parts.push({ inlineData: { mimeType: 'image/png', data: maskBase64 } });
             }
             
@@ -2639,38 +2639,67 @@ async function runGeneration() {
             const ai = new GoogleGenAI({ apiKey: finalApiKey });
 
             const processResults = async (results: any[]) => {
-                 generatedImages = []; // Clear previous
-                 for (const result of results) {
-                    const cand = result.candidates?.[0];
-                    if (cand) {
-                        for (const part of cand.content.parts) {
-                            if (part.inlineData) {
-                                const promptData: PromptData = { mega: p, lighting: l, scene: s, view: v, inpaint: i, inpaintEnabled: inpaintingPromptToggle.checked, cameraProjection: cameraProjectionEnabled };
-                                try {
-                                    let pngBase64 = await convertToPngBase64(part.inlineData.data, part.inlineData.mimeType);
-                                    
-                                    // If inpainting with a mask, composite the result with the original image
-                                    if (maskBase64) {
-                                        try {
-                                            pngBase64 = await compositeInpaint(uploadedImageData.data, pngBase64, maskBase64);
-                                        } catch (compErr) {
-                                            console.error("Compositing error", compErr);
+                  generatedImages = []; // Clear previous
+                  for (const result of results) {
+                    // Handle both GenerateContentResponse (Gemini) and GenerateImagesResponse (Imagen)
+                    if (result.candidates) {
+                        // Gemini Format
+                        const cand = result.candidates?.[0];
+                        if (cand) {
+                            for (const part of cand.content.parts) {
+                                if (part.inlineData) {
+                                    const promptData: PromptData = { mega: p, lighting: l, scene: s, view: v, inpaint: i, inpaintEnabled: inpaintingPromptToggle.checked, cameraProjection: cameraProjectionEnabled };
+                                    try {
+                                        let pngBase64 = await convertToPngBase64(part.inlineData.data, part.inlineData.mimeType);
+                                        
+                                        // If inpainting with a mask, composite the result with the original image
+                                        if (maskBase64 && uploadedImageData) {
+                                            try {
+                                                pngBase64 = await compositeInpaint(uploadedImageData.data, pngBase64, maskBase64);
+                                            } catch (compErr) {
+                                                console.error("Compositing error", compErr);
+                                            }
                                         }
-                                    }
 
-                                    const finalBase64 = await embedMetadata(pngBase64, promptData);
-                                    const src = `data:image/png;base64,${finalBase64}`;
-                                    generatedImages.push(src);
-                                    addToHistory(src, promptData);
-                                } catch (err) {
-                                    console.error("Image processing error", err);
-                                    const src = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-                                    generatedImages.push(src);
+                                        const finalBase64 = await embedMetadata(pngBase64, promptData);
+                                        const src = `data:image/png;base64,${finalBase64}`;
+                                        generatedImages.push(src);
+                                        addToHistory(src, promptData);
+                                    } catch (err) {
+                                        console.error("Image processing error", err);
+                                        const src = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+                                        generatedImages.push(src);
+                                    }
                                 }
                             }
                         }
+                    } else if (result.generatedImages) {
+                        // Imagen Format
+                        for (const img of result.generatedImages) {
+                            const promptData: PromptData = { mega: p, lighting: l, scene: s, view: v, inpaint: i, inpaintEnabled: inpaintingPromptToggle.checked, cameraProjection: cameraProjectionEnabled };
+                            try {
+                                let pngBase64 = await convertToPngBase64(img.image.imageBytes, img.image.mimeType || 'image/png');
+                                
+                                if (maskBase64 && uploadedImageData) {
+                                    try {
+                                        pngBase64 = await compositeInpaint(uploadedImageData.data, pngBase64, maskBase64);
+                                    } catch (compErr) {
+                                        console.error("Compositing error", compErr);
+                                    }
+                                }
+
+                                const finalBase64 = await embedMetadata(pngBase64, promptData);
+                                const src = `data:image/png;base64,${finalBase64}`;
+                                generatedImages.push(src);
+                                addToHistory(src, promptData);
+                            } catch (err) {
+                                console.error("Imagen processing error", err);
+                                const src = `data:${img.image.mimeType || 'image/png'};base64,${img.image.imageBytes}`;
+                                generatedImages.push(src);
+                            }
+                        }
                     }
-                }
+                  }
                 if (generatedImages.length > 0) {
                     outputContainer.classList.remove('hidden');
                     showImage(0);
@@ -2696,11 +2725,23 @@ async function runGeneration() {
                         
                         while (retries <= maxRetries) {
                             try {
-                                result = await ai.models.generateContent({ 
-                                    model: modelId, 
-                                    contents: { parts: parts }, 
-                                    config: { imageConfig: imageConfig } 
-                                });
+                                if (modelId.startsWith('imagen')) {
+                                    result = await ai.models.generateImages({
+                                        model: modelId,
+                                        prompt: fullPrompt,
+                                        config: {
+                                            numberOfImages: 1,
+                                            aspectRatio: imageConfig.aspectRatio,
+                                            outputMimeType: 'image/png'
+                                        }
+                                    });
+                                } else {
+                                    result = await ai.models.generateContent({ 
+                                        model: modelId, 
+                                        contents: { parts: parts }, 
+                                        config: { imageConfig: imageConfig } 
+                                    });
+                                }
                                 break; // Thành công thì thoát vòng lặp retry
                             } catch (retryErr: any) {
                                 const errStr = retryErr.message || JSON.stringify(retryErr);
@@ -2721,7 +2762,7 @@ async function runGeneration() {
                         // Update Cost (Vertex AI / Tier 1 Pricing)
                         // Estimate: Pro (Ultra) = $0.012, Banana Pro v1.4 (Pro) = $0.003, Banana Free (Flash) = $0.0007
                         let costPerImg = 0.0007;
-                        if (modelId.includes('pro')) costPerImg = 0.012;
+                        if (modelId.includes('pro') || modelId.includes('imagen')) costPerImg = 0.012;
                         else if (modelId.includes('3.1-flash')) costPerImg = 0.003;
                         
                         // Only track cost if using a Pro/Ultra tier (Tier 1 Billing)
@@ -2783,8 +2824,10 @@ async function runGeneration() {
                     throw e; 
                 }
 
-                // FALLBACK LOGIC for Paid Models (Pro and Banana Pro v1.4) 403/404
-                const isPaidModel = modelId === 'gemini-3-pro-image-preview' || modelId === 'gemini-3.1-flash-image-preview';
+                // FALLBACK LOGIC for Paid Models (Pro, Banana Pro v1.4, and Imagen 4) 403/404
+                const isPaidModel = modelId === 'gemini-3-pro-image-preview' || 
+                                   modelId === 'gemini-3.1-flash-image-preview' || 
+                                   modelId.startsWith('imagen');
                 if ((errStr.includes("403") || errStr.includes("404") || errStr.includes("PERMISSION_DENIED")) && isPaidModel) {
                      
                      // If manually selected, we still fallback but notify user
@@ -2797,12 +2840,17 @@ async function runGeneration() {
                          if(statusEl) statusEl.innerText = "Paid Model failed. Falling back to Flash (1K)...";
                      }
                      
-                     // If in AI Studio and it's a 403, it might be a key issue
+                     // If in AI Studio and it's a 403, it's likely a key selection/billing issue
                      if ((errStr.includes("403") || errStr.includes("PERMISSION_DENIED")) && typeof window.aistudio !== 'undefined' && window.aistudio.openSelectKey) {
                          console.warn("Permission denied. Offering to open key selection.");
-                         if (await showCustomConfirm("Lỗi 403: Bạn không có quyền sử dụng Model này. Có thể do API Key chưa được kích hoạt thanh toán hoặc không đúng. Bạn có muốn chọn lại API Key không?", "Permission Error")) {
+                         const confirmed = await showCustomConfirm(
+                             "Lỗi 403: Bạn không có quyền sử dụng Model này. Điều này thường do API Key chưa được kích hoạt thanh toán hoặc chưa được chọn đúng trong AI Studio. Bạn có muốn chọn lại API Key ngay bây giờ không?", 
+                             "Permission Error"
+                         );
+                         if (confirmed) {
                              await window.aistudio.openSelectKey();
-                             throw e; // Stop here and let user retry after selecting key
+                             // Reset UI state before returning
+                             return; 
                          }
                      }
                      
