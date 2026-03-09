@@ -134,7 +134,6 @@ const imageCounterBadge = document.querySelector('#image-counter-badge') as HTML
 // Cost Tracking
 const costDisplayEl = document.querySelector('#cost-display') as HTMLDivElement;
 const totalCostValEl = document.querySelector('#total-cost-val') as HTMLSpanElement;
-const INITIAL_CREDIT = 300.00;
 let totalUsageCost = parseFloat(localStorage.getItem('banana_usage_cost') || '0');
 
 const updateCostDisplay = (addedCost: number = 0) => {
@@ -142,16 +141,10 @@ const updateCostDisplay = (addedCost: number = 0) => {
     localStorage.setItem('banana_usage_cost', totalUsageCost.toFixed(6));
     
     if (totalCostValEl) {
-        const remaining = Math.max(0, INITIAL_CREDIT - totalUsageCost);
-        totalCostValEl.innerText = `$${remaining.toFixed(3)} / $${INITIAL_CREDIT.toFixed(0)}`;
-        // Change color if running low
-        if (remaining < 10) {
-            totalCostValEl.classList.remove('text-emerald-400');
-            totalCostValEl.classList.add('text-red-400');
-        } else {
-            totalCostValEl.classList.remove('text-red-400');
-            totalCostValEl.classList.add('text-emerald-400');
-        }
+        totalCostValEl.innerText = `$${totalUsageCost.toFixed(3)}`;
+        // Always emerald for accumulation
+        totalCostValEl.classList.remove('text-red-400');
+        totalCostValEl.classList.add('text-emerald-400');
     }
 };
 
@@ -2554,9 +2547,9 @@ async function runGeneration() {
              imageConfig.imageSize = selectedResolution;
              if(statusEl) statusEl.innerText = `Generating with Gemini 3.2 Pro (${selectedResolution})...`;
         } else if (modelId === 'gemini-3.1-flash-image-preview') {
-             // Banana Pro v1.4
+             // Banana Pro v1.5
              imageConfig.imageSize = selectedResolution;
-             if(statusEl) statusEl.innerText = `Generating with Banana Pro v1.4 (${selectedResolution})...`;
+             if(statusEl) statusEl.innerText = `Generating with Banana Pro v1.5 (${selectedResolution})...`;
         } else if (modelId.startsWith('imagen')) {
              // Imagen 4
              delete imageConfig.imageSize;
@@ -2760,7 +2753,7 @@ async function runGeneration() {
                         if (result) results.push(result);
 
                         // Update Cost (Vertex AI / Tier 1 Pricing)
-                        // Estimate: Pro (Ultra) = $0.012, Banana Pro v1.4 (Pro) = $0.003, Banana Free (Flash) = $0.0007
+                        // Estimate: Pro (Ultra) = $0.012, Banana Pro v1.5 (Pro) = $0.003, Banana Free (Flash) = $0.0007
                         let costPerImg = 0.0007;
                         if (modelId.includes('pro') || modelId.includes('imagen')) costPerImg = 0.012;
                         else if (modelId.includes('3.1-flash')) costPerImg = 0.003;
@@ -2824,7 +2817,7 @@ async function runGeneration() {
                     throw e; 
                 }
 
-                // FALLBACK LOGIC for Paid Models (Pro, Banana Pro v1.4, and Imagen 4) 403/404
+                // FALLBACK LOGIC for Paid Models (Pro, Banana Pro v1.5, and Imagen 4) 403/404
                 const isPaidModel = modelId === 'gemini-3-pro-image-preview' || 
                                    modelId === 'gemini-3.1-flash-image-preview' || 
                                    modelId.startsWith('imagen');
