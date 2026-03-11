@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773062016749&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2F290d49d21be03815e54a9704faa53558da46cbac6ce524a72eabc4baae17b680&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773062016749&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script>
+    <script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773270964405&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2F307c1e506be499ed40de11f6f19026abb13b8485d055428258bdca018bbb3d5e&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773270964405&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script>
 /* ================================
    SketchUp Web Compatibility Fix
    Prevent blocked browser APIs
@@ -15,38 +15,36 @@ if (!IS_SKETCHUP) return;
 
 console.log("Running inside SketchUp");
 
-/* Fix clipboard errors - Only if missing */
-
-if (!navigator.clipboard) {
-  navigator.clipboard = {
-    readText: async () => "",
-    writeText: async () => true
-  };
+/* Fix clipboard errors - Only if missing or broken */
+try {
+  if (!navigator.clipboard) {
+    navigator.clipboard = {
+      readText: async () => { throw new Error("Clipboard read blocked"); },
+      writeText: async (text) => { 
+        console.log("SketchUp writeText fallback");
+        return true; 
+      }
+    };
+  }
+} catch (e) {
+  console.error("Clipboard polyfill failed", e);
 }
 
 /* Prevent permission errors */
-
-if (navigator.permissions) {
-
+if (navigator.permissions && navigator.permissions.query) {
   const originalQuery = navigator.permissions.query;
-
   navigator.permissions.query = function (parameters) {
-
     if (
       parameters.name === "clipboard-read" ||
       parameters.name === "clipboard-write"
     ) {
       return Promise.resolve({ state: "granted" });
     }
-
-    return originalQuery(parameters);
-
+    return originalQuery.call(navigator.permissions, parameters);
   };
-
 }
 
 /* Mark environment */
-
 window.IS_SKETCHUP = true;
 
 })();
@@ -426,7 +424,7 @@ window.IS_SKETCHUP = true;
                                  <!-- Camera Projection Toggle -->
                                  <div class="flex items-center gap-1.5 mr-1 bg-white/5 px-2 py-0.5 rounded-md border border-white/5">
                                     <input type="checkbox" id="camera-projection-toggle" class="w-3 h-3 rounded border-gray-600 bg-[#121214] text-[#262380] focus:ring-0 cursor-pointer accent-[#262380]">
-                                    <label for="camera-projection-toggle" class="text-[8px] font-bold uppercase text-[#818cf8] cursor-pointer select-none">Cam Proj</label>
+                                    <label for="camera-projection-toggle" class="text-[8px] font-bold uppercase text-[#818cf8] cursor-pointer select-none">CAMERA PROJECTION</label>
                                  </div>
                                 <button class="paste-text-btn p-0.5 text-orange-600" data-target="view-manual"><svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg></button>
                                 <button class="clear-text-btn p-0.5 text-orange-600" data-target="view-manual"><svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>

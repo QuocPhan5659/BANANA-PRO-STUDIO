@@ -370,7 +370,6 @@ if (removeApiKeyBtn) {
             manualApiKeyInput.value = '';
             updateAccountStatusUI();
             apiKeyModal.classList.add('hidden');
-            await showCustomAlert("API Key removed. Switched to FREE mode.");
         }
     };
 }
@@ -427,8 +426,6 @@ if (saveApiKeyBtn && manualApiKeyInput) {
                     setTimeout(() => statusEl.innerText = "System Standby", 3000);
                 }
                 
-                await showCustomAlert("API Key added successfully! PRO features are now unlocked.");
-                
                 // Close modal automatically after short delay
                 setTimeout(() => {
                     apiKeyModal.classList.add('hidden');
@@ -452,9 +449,11 @@ if (saveApiKeyBtn && manualApiKeyInput) {
                     saveApiKeyBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
                     saveApiKeyBtn.disabled = false;
                 }, 2000);
+
+                await showCustomAlert("Invalid API Key. Please check your key and try again.", "Validation Error");
             }
         } else {
-            showCustomAlert("Please enter a valid API Key.");
+            await showCustomAlert("Please enter a valid API Key (at least 10 characters).", "Invalid Input");
         }
     });
 }
@@ -695,15 +694,42 @@ if (langBtnEn) langBtnEn.addEventListener('click', () => translatePrompt('EN'));
 
 // --- Icon Button Logic ---
 
+async function copyToClipboard(text: string): Promise<boolean> {
+    try {
+        await navigator.clipboard.writeText(text);
+        return true;
+    } catch (err) {
+        console.error('Clipboard write failed, trying fallback', err);
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            return successful;
+        } catch (err) {
+            document.body.removeChild(textArea);
+            return false;
+        }
+    }
+}
+
 copyBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
         const targetId = btn.getAttribute('data-target');
         const el = document.getElementById(targetId!) as HTMLTextAreaElement;
         if (el && el.value) {
-            navigator.clipboard.writeText(el.value);
-            const originalColor = btn.style.color;
-            btn.style.color = '#4ade80'; 
-            setTimeout(() => btn.style.color = originalColor, 1000);
+            const success = await copyToClipboard(el.value);
+            if (success) {
+                const originalColor = btn.style.color;
+                btn.style.color = '#4ade80'; 
+                setTimeout(() => btn.style.color = originalColor, 1000);
+            }
         }
     });
 });
@@ -716,9 +742,17 @@ pasteBtns.forEach(btn => {
             try {
                 window.focus();
                 const text = await navigator.clipboard.readText();
+                if (!text) throw new Error("Empty clipboard");
                 el.value = text;
                 autoResize(el);
-            } catch (err) { console.error('Clipboard read failed', err); }
+            } catch (err) { 
+                console.warn('Clipboard read failed, opening manual paste modal', err); 
+                const pastedText = await showCustomPaste();
+                if (pastedText) {
+                    el.value = pastedText;
+                    autoResize(el);
+                }
+            }
         }
     });
 });
@@ -2426,18 +2460,36 @@ async function renderGalleryModal() {
 function triggerDownload(src: string, filename: string) {
     // --- SketchUp Native Save Support ---
     if (window.sketchup && typeof window.sketchup.save_image === 'function') {
-        window.sketchup.save_image(src, filename);
-        console.log(`Sent to SketchUp for saving: ${filename}`);
-        if (statusEl) statusEl.innerText = "Saved to SketchUp folder.";
-        return;
+        try {
+            window.sketchup.save_image(src, filename);
+            console.log(`Sent to SketchUp for saving: ${filename}`);
+            if (statusEl) statusEl.innerText = "Saved to SketchUp folder.";
+            return;
+        } catch (e) {
+            console.error("SketchUp save_image failed", e);
+        }
+    } else if (window.sketchup) {
+        console.warn("window.sketchup.save_image not found, falling back to browser download");
+        if (statusEl) statusEl.innerText = "SketchUp save not configured. Trying browser...";
     }
 
     const a = document.createElement('a');
     a.href = src;
     a.download = filename;
+    a.style.display = 'none';
     document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    
+    try {
+        a.click();
+        if (statusEl) statusEl.innerText = "Download triggered.";
+    } catch (e) {
+        console.error("Browser download failed", e);
+        if (statusEl) statusEl.innerText = "Download failed. Try right-click save.";
+    }
+    
+    setTimeout(() => {
+        document.body.removeChild(a);
+    }, 100);
 }
 
 if (galleryClearAllBtn) {
