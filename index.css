@@ -97,6 +97,15 @@ body {
     100% { background-position: 0 0; }
 }
 
+@keyframes blink-red {
+    0%, 100% { background-color: rgba(220, 38, 38, 0.2); border-color: rgba(220, 38, 38, 0.5); color: #ef4444; }
+    50% { background-color: rgba(220, 38, 38, 0.6); border-color: rgba(220, 38, 38, 1); color: #ffffff; }
+}
+
+.blink-red {
+    animation: blink-red 1s infinite;
+}
+
 /* --- Form Elements --- */
 textarea:focus, select:focus, button:focus, input:focus {
     outline: none;

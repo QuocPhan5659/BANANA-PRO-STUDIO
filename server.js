@@ -61,5 +61,5 @@ app.post('/api/generate', async (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Banana Pro Studio Server running on http://localhost:${PORT}`);
+  console.log(`BANANA PRO Studio Server running on http://localhost:${PORT}`);
 });
