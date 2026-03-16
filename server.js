@@ -40,12 +40,33 @@ app.post('/api/generate', async (req, res) => {
 
     const ai = new GoogleGenAI({ apiKey });
     
-    // Call Google GenAI
-    const result = await ai.models.generateContent({
-      model: model,
-      contents: contents,
-      config: config
-    });
+    // Call Google GenAI with retry logic for 500/503
+    let retries = 0;
+    const maxRetries = 3;
+    let result;
+    
+    while (retries <= maxRetries) {
+      try {
+        result = await ai.models.generateContent({
+          model: model,
+          contents: contents,
+          config: config
+        });
+        break; // Success
+      } catch (error) {
+        const errStr = error.message || JSON.stringify(error);
+        const is500 = errStr.includes("500") || errStr.includes("Internal Server Error");
+        const is503 = errStr.includes("503") || errStr.includes("Service Unavailable") || errStr.includes("high demand");
+        
+        if ((is500 || is503) && retries < maxRetries) {
+          retries++;
+          console.warn(`Retry ${retries}/${maxRetries} due to ${is503 ? '503' : '500'} error.`);
+          await new Promise(resolve => setTimeout(resolve, 5000 * retries)); // Exponential backoff
+          continue;
+        }
+        throw error;
+      }
+    }
 
     // Return the response object directly
     res.json(result);

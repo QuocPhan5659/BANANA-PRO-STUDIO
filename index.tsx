@@ -24,10 +24,16 @@ document.addEventListener("DOMContentLoaded", function () {
   }
   
   // Add pulse effect to copy-all-btn on load
-  const copyAllBtn = document.getElementById('copy-all-btn');
-  if (copyAllBtn) {
-      copyAllBtn.classList.add('pulse-ring');
-  }
+  const applyPulseEffect = () => {
+      const copyAllBtn = document.getElementById('copy-all-btn');
+      if (copyAllBtn) {
+          copyAllBtn.classList.add('pulse-ring');
+      } else {
+          // Retry if not found yet
+          setTimeout(applyPulseEffect, 500);
+      }
+  };
+  applyPulseEffect();
 });
 
 interface PromptData {
@@ -2797,10 +2803,11 @@ async function runGeneration() {
                             } catch (retryErr: any) {
                                 const errStr = retryErr.message || JSON.stringify(retryErr);
                                 const is500 = errStr.includes("500") || errStr.includes("Internal Server Error");
+                                const is503 = errStr.includes("503") || errStr.includes("Service Unavailable") || errStr.includes("high demand");
                                 
-                                if (is500 && retries < maxRetries) {
+                                if ((is500 || is503) && retries < maxRetries) {
                                     retries++;
-                                    if(statusEl) statusEl.innerText = `Lỗi Server (500). Đang thử lại ${retries}/${maxRetries} (chờ 5s)...`;
+                                    if(statusEl) statusEl.innerText = `Lỗi Server (${is503 ? '503' : '500'}). Đang thử lại ${retries}/${maxRetries} (chờ 5s)...`;
                                     await sleep(5000);
                                     continue;
                                 }
