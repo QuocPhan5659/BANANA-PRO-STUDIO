@@ -22,6 +22,12 @@ document.addEventListener("DOMContentLoaded", function () {
   if (window.sketchup) {
     window.sketchup.dialog_ready();
   }
+  
+  // Add pulse effect to copy-all-btn on load
+  const copyAllBtn = document.getElementById('copy-all-btn');
+  if (copyAllBtn) {
+      copyAllBtn.classList.add('pulse-ring');
+  }
 });
 
 interface PromptData {
@@ -180,6 +186,8 @@ const customPasteModal = document.querySelector('#custom-paste-modal') as HTMLDi
 const customPasteTextarea = document.querySelector('#custom-paste-textarea') as HTMLTextAreaElement;
 const customPasteSubmit = document.querySelector('#custom-paste-submit') as HTMLButtonElement;
 const closePasteModal = document.querySelector('#close-paste-modal') as HTMLButtonElement;
+const modalCopyBtn = document.querySelector('#modal-copy-btn') as HTMLButtonElement;
+const copyAllBtn = document.querySelector('#copy-all-btn') as HTMLButtonElement;
 const modalPasteBtn = document.querySelector('#modal-paste-btn') as HTMLButtonElement;
 
 function showCustomAlert(message: string, title: string = "Notification") {
@@ -704,9 +712,13 @@ copyBtns.forEach(btn => {
         if (el && el.value) {
             const success = await copyToClipboard(el.value);
             if (success) {
-                const originalColor = btn.style.color;
-                btn.style.color = '#4ade80'; 
-                setTimeout(() => btn.style.color = originalColor, 1000);
+                const originalContent = btn.innerHTML;
+                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+                btn.style.color = '#4ade80';
+                setTimeout(() => {
+                    btn.innerHTML = originalContent;
+                    btn.style.color = '';
+                }, 1000);
             }
         }
     });
@@ -723,12 +735,28 @@ pasteBtns.forEach(btn => {
                 if (!text) throw new Error("Empty clipboard");
                 el.value = text;
                 autoResize(el);
+                
+                const originalContent = btn.innerHTML;
+                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+                btn.style.color = '#4ade80';
+                setTimeout(() => {
+                    btn.innerHTML = originalContent;
+                    btn.style.color = '';
+                }, 1000);
             } catch (err) { 
                 console.warn('Clipboard read failed, opening manual paste modal', err); 
                 const pastedText = await showCustomPaste();
                 if (pastedText) {
                     el.value = pastedText;
                     autoResize(el);
+                    
+                    const originalContent = btn.innerHTML;
+                    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+                    btn.style.color = '#4ade80';
+                    setTimeout(() => {
+                        btn.innerHTML = originalContent;
+                        btn.style.color = '';
+                    }, 1000);
                 }
             }
         }
@@ -3030,6 +3058,44 @@ globalResetBtn?.addEventListener('click', () => {
     // NOTE: Intentionally NOT calling resetImage() to keep the uploaded image/mask active.
     if(statusEl) statusEl.innerText = "Text/Settings Reset (Image Kept)";
 });
+
+if (modalCopyBtn) {
+    modalCopyBtn.addEventListener('click', async () => {
+        if (customPasteTextarea && customPasteTextarea.value) {
+            await copyToClipboard(customPasteTextarea.value);
+        }
+    });
+}
+if (copyAllBtn) {
+    copyAllBtn.addEventListener('click', async () => {
+        const allManualEntries = document.querySelectorAll('.manual-ctx-entry') as NodeListOf<HTMLTextAreaElement>;
+        let allText = '';
+        allManualEntries.forEach(el => {
+            if (el.value) {
+                allText += el.value + '\n\n';
+            }
+        });
+        if (allText) {
+            copyAllBtn.classList.add('pulse-ring');
+            
+            const success = await copyToClipboard(allText.trim());
+            
+            copyAllBtn.classList.remove('pulse-ring');
+            
+            if (success) {
+                const originalContent = copyAllBtn.innerHTML;
+                copyAllBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg><span class="text-[8px] font-black uppercase tracking-widest">OK</span>';
+                copyAllBtn.style.color = '#4ade80';
+                copyAllBtn.style.borderColor = '#4ade80';
+                setTimeout(() => {
+                    copyAllBtn.innerHTML = originalContent;
+                    copyAllBtn.style.color = '';
+                    copyAllBtn.style.borderColor = '';
+                }, 1000);
+            }
+        }
+    });
+}
 
 // --- Toolbar Buttons Wiring ---
 
