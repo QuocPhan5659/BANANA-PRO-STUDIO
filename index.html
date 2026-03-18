@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773656418695&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2Ffac360cbc48e33d7db3552f2aaddf6658bab5aaa8932edbb5dee4e618d4e6bbf&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773656418695&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script>
+    <script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773877483889&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2F3a70ef8f08f1d960801441c05fac678b9878e92750db76fe0f51005ed0fcbd8c&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773877483889&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script>
 /* ================================
    SketchUp Web Compatibility Fix
    Prevent blocked browser APIs
@@ -305,6 +305,7 @@ window.IS_SKETCHUP = true;
             </div>
             
             <a href="https://ai.studio/apps/ab75c4d4-be51-4589-a8d4-33e2ecb731f6?fullscreenApplet=true" target="_blank" class="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-lg text-[9px] font-black text-amber-500 hover:text-amber-400 transition-all uppercase tracking-widest no-underline shadow-[0_0_10px_rgba(245,158,11,0.1)]">VIEW</a>
+            <a href="https://aistudio.google.com/apps/537f84fb-f4c0-4616-a27b-e53e98db56cd?showAssistant=true&showPreview=true&fullscreenApplet=true" target="_blank" class="px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/20 rounded-lg text-[9px] font-black text-orange-500 hover:text-orange-400 transition-all uppercase tracking-widest no-underline shadow-[0_0_10px_rgba(249,115,22,0.1)]">REMOVE</a>
             <a href="https://ai.studio/apps/eb850046-813e-415b-aed6-eae7239b673d?fullscreenApplet=true" target="_blank" class="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-lg text-[9px] font-black text-amber-500 hover:text-amber-400 transition-all uppercase tracking-widest no-underline shadow-[0_0_10px_rgba(245,158,11,0.1)]">VIDEO</a>
             <a href="https://www.facebook.com/phanphan.quocvi/" target="_blank" class="w-6 h-6 flex items-center justify-center bg-blue-600/20 hover:bg-blue-600 border border-blue-600/40 rounded-full text-blue-500 hover:text-white transition-all" title="Facebook">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
@@ -586,7 +587,7 @@ window.IS_SKETCHUP = true;
               <div class="grid grid-cols-2 gap-2">
                  <button id="global-reset-btn" class="w-full bg-white/5 border border-[#27272a] hover:bg-white/10 text-orange-500 hover:text-orange-400 font-black py-2.5 rounded-2xl transition-all duration-300 text-[9px] tracking-[0.2em] uppercase">RESET ALL</button>
                  <div class="w-full bg-transparent border border-white/5 rounded-2xl flex items-center justify-center">
-                    <span class="text-[8px] font-black uppercase tracking-widest text-gray-600">BANANA PRO v1.6</span>
+                    <span class="text-[8px] font-black uppercase tracking-widest text-gray-600">BANANA PRO v1.7</span>
                  </div>
               </div>
           </div>
@@ -620,6 +621,22 @@ window.IS_SKETCHUP = true;
                             <canvas id="guide-canvas" class="absolute inset-0 w-full h-full z-20 pointer-events-none"></canvas>
                             <canvas id="mask-canvas" class="absolute inset-0 w-full h-full z-30 opacity-90 mix-blend-screen cursor-none"></canvas>
                             <canvas id="mask-preview-canvas" class="absolute inset-0 w-full h-full z-40 pointer-events-none hidden"></canvas>
+                        </div>
+                        <!-- Comparison Container -->
+                        <div id="comparison-container" class="hidden absolute inset-0 z-40 bg-black">
+                            <div id="comparison-slider" class="relative w-full h-full overflow-hidden">
+                                <img id="compare-img-1" src="" class="absolute inset-0 w-full h-full object-contain pointer-events-none" alt="Image 1" />
+                                <div id="compare-img-2-wrapper" class="absolute inset-0 w-full h-full overflow-hidden border-r-2 border-white pointer-events-none">
+                                    <img id="compare-img-2" src="" class="absolute inset-0 w-full h-full object-contain pointer-events-none" alt="Image 2" />
+                                </div>
+                                <!-- Slider handle overlay -->
+                                <div id="compare-slider-handle" class="absolute top-0 bottom-0 w-1 bg-white z-50 cursor-ew-resize flex items-center justify-center" style="left: 50%;">
+                                    <div class="w-6 h-6 bg-white rounded-full shadow-lg flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>
+                                    </div>
+                                </div>
+                                <input type="range" id="compare-slider" min="0" max="100" value="50" class="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-50" />
+                            </div>
                         </div>
                         
                         <!-- Floating Tool Controls moved INSIDE main-viewport, adjusted to bottom-6 to avoid overlapping with toolbar -->
@@ -722,6 +739,7 @@ window.IS_SKETCHUP = true;
                      <span class="bg-[#262380] text-white text-[9px] font-black uppercase px-2 py-0.5 rounded">MASTER VIEW</span>
                  </div>
                  <div class="flex gap-2">
+                    <button id="compare-toggle-btn" class="px-4 py-1.5 bg-white/5 hover:bg-[#262380] text-white text-[9px] font-black uppercase tracking-widest rounded-lg transition-all border border-white/5" title="Toggle Comparison Mode">Compare</button>
                     <button id="use-as-master" class="px-4 py-1.5 bg-white/5 hover:bg-[#262380] text-white text-[9px] font-black uppercase tracking-widest rounded-lg transition-all border border-white/5">Use as Master</button>
                     <button id="download-button-main" class="flex items-center gap-2 px-4 py-1.5 bg-[#262380] hover:bg-[#1e1b66] text-white rounded-lg transition-all text-[9px] font-black uppercase tracking-widest">
                         <span>Download</span>

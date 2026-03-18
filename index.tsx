@@ -108,10 +108,19 @@ window.addEventListener('mousemove', (e) => {
     globalMouseY = e.clientY;
 });
 
-// --- Initialization Logic ---
-document.title = "BANANA PRO Studio";
-// API Key handled via process.env.API_KEY OR Manual Input
-let manualApiKey = localStorage.getItem('manualApiKey') || '';
+// --- Comparison Logic ---
+let isComparisonMode = false;
+
+function updateComparisonImages() {
+    if (isComparisonMode) {
+        if (uploadedImageData) {
+            compareImg1.src = `data:${uploadedImageData.mimeType};base64,${uploadedImageData.data}`;
+        }
+        if (generatedImages.length > 0) {
+            compareImg2.src = generatedImages[currentImageIndex];
+        }
+    }
+}
 
 const getGenAI = () => {
     // Priority: Manual Key -> Selected Key (API_KEY) -> Default Key (GEMINI_API_KEY)
@@ -169,6 +178,7 @@ const resetCost = () => {
 updateCostDisplay(0);
 
 // API Key UI Elements
+let manualApiKey = localStorage.getItem('manualApiKey') || '';
 const apiKeyBtn = document.querySelector('#api-key-btn') as HTMLButtonElement;
 const apiKeyModal = document.querySelector('#api-key-modal') as HTMLDivElement;
 const closeApiKeyBtn = document.querySelector('#close-api-key-btn') as HTMLButtonElement;
@@ -181,6 +191,14 @@ const customAlertModal = document.querySelector('#custom-alert-modal') as HTMLDi
 const customAlertTitle = document.querySelector('#custom-alert-title') as HTMLHeadingElement;
 const customAlertMessage = document.querySelector('#custom-alert-message') as HTMLParagraphElement;
 const customAlertOk = document.querySelector('#custom-alert-ok') as HTMLButtonElement;
+
+// --- Comparison Elements ---
+const compareToggleBtn = document.querySelector('#compare-toggle-btn') as HTMLButtonElement;
+const comparisonContainer = document.querySelector('#comparison-container') as HTMLDivElement;
+const compareSlider = document.querySelector('#compare-slider') as HTMLInputElement;
+const compareImg1 = document.querySelector('#compare-img-1') as HTMLImageElement;
+const compareImg2 = document.querySelector('#compare-img-2') as HTMLImageElement;
+const compareImg2Wrapper = document.querySelector('#compare-img-2-wrapper') as HTMLDivElement;
 
 const customConfirmModal = document.querySelector('#custom-confirm-modal') as HTMLDivElement;
 const customConfirmTitle = document.querySelector('#custom-confirm-title') as HTMLHeadingElement;
@@ -1091,6 +1109,7 @@ function handleMainImage(file: File) {
     reader.onload = async (e) => {
         const result = e.target?.result as string;
         uploadedImageData = { data: result.split(',')[1], mimeType: file.type };
+        updateComparisonImages();
         
         // --- AUTO RATIO DETECTION LOGIC ---
         const imgObj = new Image();
@@ -2999,6 +3018,7 @@ function showImage(index: number) {
     if (index < 0 || index >= generatedImages.length) return;
     currentImageIndex = index;
     outputImage.src = generatedImages[index];
+    updateComparisonImages();
     
     // If zoom is open, update zoomed image too
     if (!zoomOverlay.classList.contains('hidden')) {
@@ -3177,6 +3197,33 @@ if (brushSlider) {
         if (zoomBrushSizeVal) zoomBrushSizeVal.innerText = brushSizeVal.innerText;
     });
 }
+// --- Comparison Event Listeners ---
+if (compareToggleBtn) {
+    compareToggleBtn.addEventListener('click', () => {
+        isComparisonMode = !isComparisonMode;
+        if (isComparisonMode) {
+            updateComparisonImages();
+            comparisonContainer.classList.remove('hidden');
+            outputContainer.classList.add('hidden');
+            compareToggleBtn.classList.add('bg-[#262380]');
+            compareToggleBtn.classList.remove('bg-white/5');
+        } else {
+            comparisonContainer.classList.add('hidden');
+            compareToggleBtn.classList.remove('bg-[#262380]');
+            compareToggleBtn.classList.add('bg-white/5');
+        }
+    });
+}
+
+if (compareSlider) {
+    compareSlider.addEventListener('input', (e) => {
+        const value = (e.target as HTMLInputElement).value;
+        compareImg2Wrapper.style.width = `${value}%`;
+        const handle = document.getElementById('compare-slider-handle');
+        if (handle) handle.style.left = `${value}%`;
+    });
+}
+
 if (zoomBrushSizeSlider) {
     zoomBrushSizeSlider.addEventListener('input', () => {
         brushSlider.value = zoomBrushSizeSlider.value;
