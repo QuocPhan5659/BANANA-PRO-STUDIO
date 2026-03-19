@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773915280607&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2F9c9036212addea102ced8dfeafd5b51545a0d72faa38d34c1222c09f630e90e5&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773915280607&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773909881400&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2Fc9982e7cce1844481e0adf5da39ba72aafb5a7261b414bc2beaa5fb961992f7f&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773909881400&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773877483889&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2F3a70ef8f08f1d960801441c05fac678b9878e92750db76fe0f51005ed0fcbd8c&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773877483889&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script>
+    <script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773917079408&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2Fe2954ae76b99831519b2504242fd180d92a76ca473630daddc95529b54c89862&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773917079408&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773909881400&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2Fc9982e7cce1844481e0adf5da39ba72aafb5a7261b414bc2beaa5fb961992f7f&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773909881400&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773877483889&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2F3a70ef8f08f1d960801441c05fac678b9878e92750db76fe0f51005ed0fcbd8c&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773877483889&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script>
 /* ================================
    SketchUp Web Compatibility Fix
    Prevent blocked browser APIs
@@ -170,6 +170,23 @@ window.IS_SKETCHUP = true;
         </div>
     </div>
 
+    <!-- GPT Prompt Modal -->
+    <div id="gpt-modal" class="fixed inset-0 z-[1000] bg-black/80 backdrop-blur-sm hidden flex items-center justify-center animate-in fade-in duration-200">
+        <div class="bg-[#121214] border border-white/10 p-6 rounded-2xl max-w-lg w-full shadow-2xl relative pointer-events-auto">
+            <button id="close-gpt-btn" class="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors z-50">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            <h2 class="text-xl font-bold text-white mb-6 tracking-tight uppercase italic border-b border-white/10 pb-2">GPT Prompt Instructions</h2>
+            <p class="text-sm text-gray-300 leading-relaxed mb-4">
+                Hãy phân tích thật chi tiết bức ảnh tôi vừa gửi và viết ngược lại thành 1 câu Prompt tiếng Anh (Image-to-Prompt) để tôi dùng cho các AI tạo ảnh siêu thực cho hình ảnh ngành Kiến Trúc - Nội Thất. Bao gồm mô tả: Chủ thể chính, Phong cách Kiến Trúc / Không Gian Nội Thất, Ánh sáng (Lighting), Bố cục (Composition), Góc Chụp và Môi trường, Tỷ Lệ Khung Ảnh.
+            </p>
+            <p class="text-sm text-amber-400 font-bold leading-relaxed mb-6">
+                LỆNH BẮT BUỘC: CHỈ TRẢ VỀ ĐÚNG 1 CÂU PROMPT TIẾNG ANH LIÊN TỤC NẰM TRONG 1 ĐOẠN VĂN, KHÔNG XUỐNG DÒNG, KHÔNG GIẢI THÍCH, KHÔNG CHÀO HỎI. Chỉ nhả ra Text để tôi copy.
+            </p>
+            <button id="close-gpt-ok-btn" class="w-full bg-[#262380] hover:bg-[#1e1b66] text-white font-black py-3 rounded-xl transition-all uppercase tracking-widest text-xs">OK</button>
+        </div>
+    </div>
+
     <!-- Help Modal -->
     <div id="help-modal" class="fixed inset-0 z-[400] bg-black/80 backdrop-blur-sm hidden flex items-center justify-center animate-in fade-in duration-200">
         <div class="bg-[#121214] border border-white/10 p-6 rounded-2xl max-w-md w-full shadow-2xl relative pointer-events-auto">
@@ -304,18 +321,21 @@ window.IS_SKETCHUP = true;
                 <!-- Content injected via JS -->
             </div>
             
-            <a href="https://ai.studio/apps/ab75c4d4-be51-4589-a8d4-33e2ecb731f6?fullscreenApplet=true" target="_blank" class="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-lg text-[9px] font-black text-amber-500 hover:text-amber-400 transition-all uppercase tracking-widest no-underline shadow-[0_0_10px_rgba(245,158,11,0.1)]">VIEW</a>
-            <a href="https://aistudio.google.com/apps/537f84fb-f4c0-4616-a27b-e53e98db56cd?showAssistant=true&showPreview=true&fullscreenApplet=true" target="_blank" class="px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/20 rounded-lg text-[9px] font-black text-orange-500 hover:text-orange-400 transition-all uppercase tracking-widest no-underline shadow-[0_0_10px_rgba(249,115,22,0.1)]">REMOVE</a>
-            <a href="https://ai.studio/apps/eb850046-813e-415b-aed6-eae7239b673d?fullscreenApplet=true" target="_blank" class="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-lg text-[9px] font-black text-amber-500 hover:text-amber-400 transition-all uppercase tracking-widest no-underline shadow-[0_0_10px_rgba(245,158,11,0.1)]">VIDEO</a>
-            <a href="https://www.facebook.com/phanphan.quocvi/" target="_blank" class="w-6 h-6 flex items-center justify-center bg-blue-600/20 hover:bg-blue-600 border border-blue-600/40 rounded-full text-blue-500 hover:text-white transition-all" title="Facebook">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                </svg>
-            </a>
-            <button id="png-info-tab-btn" class="px-3 py-1.5 bg-[#262380]/20 hover:bg-[#262380] border border-[#262380]/30 rounded-lg text-[9px] font-black text-[#818cf8] hover:text-white transition-all uppercase tracking-widest shadow-[0_0_10px_rgba(38,35,128,0.2)]">PNG INFO</button>
+            <a href="https://ai.studio/apps/ab75c4d4-be51-4589-a8d4-33e2ecb731f6?fullscreenApplet=true" target="_blank" class="px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-600/40 rounded-lg text-[9px] font-black text-emerald-500 hover:text-white transition-all uppercase tracking-widest no-underline shadow-[0_0_10px_rgba(16,185,129,0.1)]">VIEW</a>
+            <a href="https://aistudio.google.com/apps/537f84fb-f4c0-4616-a27b-e53e98db56cd?showAssistant=true&showPreview=true&fullscreenApplet=true" target="_blank" class="px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-600/40 rounded-lg text-[9px] font-black text-emerald-500 hover:text-white transition-all uppercase tracking-widest no-underline shadow-[0_0_10px_rgba(16,185,129,0.1)]">REMOVE</a>
+            <a href="https://ai.studio/apps/eb850046-813e-415b-aed6-eae7239b673d?fullscreenApplet=true" target="_blank" class="px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-600/40 rounded-lg text-[9px] font-black text-emerald-500 hover:text-white transition-all uppercase tracking-widest no-underline shadow-[0_0_10px_rgba(16,185,129,0.1)]">VIDEO</a>
+            <button id="gpt-info-btn" class="px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-600/40 rounded-lg text-[9px] font-black text-emerald-500 hover:text-white transition-all uppercase tracking-widest shadow-[0_0_10px_rgba(16,185,129,0.1)]" title="GPT Prompt Instructions">
+                GPT
+            </button>
+            <button id="png-info-tab-btn" class="px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-600/40 rounded-lg text-[9px] font-black text-emerald-500 hover:text-white transition-all uppercase tracking-widest shadow-[0_0_10px_rgba(16,185,129,0.1)]">PNG INFO</button>
         </div>
       </div>
       <div class="flex items-center gap-3">
+          <a href="https://www.facebook.com/phanphan.quocvi/" target="_blank" class="w-6 h-6 flex items-center justify-center bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-600/40 rounded-lg text-emerald-500 hover:text-white transition-all" title="Facebook">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+              </svg>
+          </a>
           <div id="cost-display" class="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-[#121214] border border-white/5 rounded-lg">
               <span class="text-[9px] font-black uppercase tracking-widest text-gray-500">Usage:</span>
               <span id="total-cost-val" class="text-[9px] font-black text-emerald-400">$0.000</span>

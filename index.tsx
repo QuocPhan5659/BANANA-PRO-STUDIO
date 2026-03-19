@@ -513,6 +513,12 @@ const helpBtn = document.querySelector('#help-btn') as HTMLButtonElement;
 const helpModal = document.querySelector('#help-modal') as HTMLDivElement;
 const closeHelpBtn = document.querySelector('#close-help-btn') as HTMLButtonElement;
 
+// GPT Elements
+const gptBtn = document.querySelector('#gpt-info-btn') as HTMLButtonElement;
+const gptModal = document.querySelector('#gpt-modal') as HTMLDivElement;
+const closeGptBtn = document.querySelector('#close-gpt-btn') as HTMLButtonElement;
+const closeGptOkBtn = document.querySelector('#close-gpt-ok-btn') as HTMLButtonElement;
+
 // Add Listeners
 if (helpBtn && helpModal && closeHelpBtn) {
     helpBtn.addEventListener('click', (e) => {
@@ -525,6 +531,22 @@ if (helpBtn && helpModal && closeHelpBtn) {
     });
     helpModal.addEventListener('click', (e) => {
         if (e.target === helpModal) helpModal.classList.add('hidden');
+    });
+}
+
+if (gptBtn && gptModal) {
+    gptBtn.addEventListener('click', () => {
+        gptModal.classList.remove('hidden');
+    });
+    
+    const closeGpt = () => {
+        gptModal.classList.add('hidden');
+    };
+    
+    if (closeGptBtn) closeGptBtn.addEventListener('click', closeGpt);
+    if (closeGptOkBtn) closeGptOkBtn.addEventListener('click', closeGpt);
+    gptModal.addEventListener('click', (e) => {
+        if (e.target === gptModal) closeGpt();
     });
 }
 
@@ -1921,17 +1943,17 @@ document.querySelectorAll('.png-info-ar-btn').forEach(btn => {
         });
 
         // Remove existing AR line from content
-        let content = pngInfoContent.innerHTML;
+        let content = pngInfoContentTop.innerHTML;
         content = content.replace(/<br><span class="text-amber-500">AR:<\/span> --ar:.*$/, '');
 
         if (isActive) {
             // Deselected
-            pngInfoContent.innerHTML = content;
+            pngInfoContentTop.innerHTML = content;
         } else {
             // Selected
             btn.classList.remove('bg-amber-900/20', 'border-amber-500/20', 'text-amber-400');
             btn.classList.add('bg-amber-900/40', 'border-amber-500/50', 'text-amber-400');
-            pngInfoContent.innerHTML = content + `<br><span class="text-amber-500">AR:</span> --ar:${ar}`;
+            pngInfoContentTop.innerHTML = content + `<br><span class="text-amber-500">AR:</span> --ar:${ar}`;
         }
         
         // Visual feedback
