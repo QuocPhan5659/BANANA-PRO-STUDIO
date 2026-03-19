@@ -217,11 +217,20 @@ const modalPasteBtn = document.querySelector('#modal-paste-btn') as HTMLButtonEl
 // --- PNG Info Viewport Elements ---
 const pngInfoTabBtn = document.querySelector('#png-info-tab-btn') as HTMLButtonElement;
 const pngInfoViewport = document.querySelector('#png-info-viewport') as HTMLDivElement;
-const pngInfoContent = document.querySelector('#png-info-content') as HTMLDivElement;
-const pngInfoCopyBtn = document.querySelector('#png-info-copy-btn') as HTMLButtonElement;
-const pngInfoPasteBtn = document.querySelector('#png-info-paste-btn') as HTMLButtonElement;
-const pngInfoClearBtn = document.querySelector('#png-info-clear-btn') as HTMLButtonElement;
+const pngInfoViewportTop = document.querySelector('#png-info-viewport-top') as HTMLDivElement;
+const pngInfoViewportBottom = document.querySelector('#png-info-viewport-bottom') as HTMLDivElement;
+const pngInfoContentTop = document.querySelector('#png-info-content-top') as HTMLDivElement;
+const pngInfoContentBottom = document.querySelector('#png-info-content-bottom') as HTMLDivElement;
+const pngInfoCopyBtnTop = document.querySelector('#png-info-copy-btn-top') as HTMLButtonElement;
+const pngInfoPasteBtnTop = document.querySelector('#png-info-paste-btn-top') as HTMLButtonElement;
+const pngInfoClearBtnTop = document.querySelector('#png-info-clear-btn-top') as HTMLButtonElement;
+const pngInfoCopyBtnBottom = document.querySelector('#png-info-copy-btn-bottom') as HTMLButtonElement;
+const pngInfoPasteBtnBottom = document.querySelector('#png-info-paste-btn-bottom') as HTMLButtonElement;
+const pngInfoClearBtnBottom = document.querySelector('#png-info-clear-btn-bottom') as HTMLButtonElement;
 const pngInfoCloseBtn = document.querySelector('#png-info-close-btn') as HTMLButtonElement;
+const pngInfoSendBtn = document.querySelector('#png-info-send-btn') as HTMLButtonElement;
+const pngInfoTemplateBtnTop = document.querySelector('#png-info-template-btn-top') as HTMLButtonElement;
+const pngInfoTemplateBtnBottom = document.querySelector('#png-info-template-btn-bottom') as HTMLButtonElement;
 
 function showCustomAlert(message: string, title: string = "SUCCESS") {
     if (!customAlertModal) return;
@@ -1763,101 +1772,139 @@ if (pngInfoCloseBtn) {
     });
 }
 
-if (pngInfoClearBtn) {
-    pngInfoClearBtn.addEventListener('click', () => {
-        pngInfoContent.innerText = 'Drag a PNG image here to view its metadata...';
-        // Visual feedback
-        const originalClass = pngInfoClearBtn.className;
-        pngInfoClearBtn.className = pngInfoClearBtn.className.replace('text-blue-400', 'text-emerald-400').replace('border-blue-500/20', 'border-emerald-500/50');
-        setTimeout(() => pngInfoClearBtn.className = originalClass, 500);
-    });
-}
-
-// Drag and drop for PNG Info Viewport
-pngInfoViewport.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); });
-pngInfoViewport.addEventListener('drop', async (e) => {
-    e.preventDefault(); e.stopPropagation();
-    if (e.dataTransfer?.files?.[0]) {
-        const file = e.dataTransfer.files[0];
-        if (file.type === 'image/png') {
-            const data = await extractMetadata(file);
-            if (data) {
-                pngInfoContent.innerHTML = `<span class="text-amber-500">PROMPT:</span> ${(data.mega || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}<br><span class="text-amber-500">LIGHTING:</span> ${(data.lighting || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}<br><span class="text-amber-500">SCENE:</span> ${(data.scene || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}<br><span class="text-amber-500">VIEW:</span> ${(data.view || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}`;
-            } else {
-                pngInfoContent.innerText = "No BananaProData metadata found in this image.";
+function setupPngInfoViewport(
+    viewport: HTMLDivElement,
+    content: HTMLDivElement,
+    copyBtn: HTMLButtonElement,
+    pasteBtn: HTMLButtonElement,
+    clearBtn: HTMLButtonElement,
+    templateBtn: HTMLButtonElement | null
+) {
+    // Copy
+    if (copyBtn) {
+        copyBtn.addEventListener('click', async () => {
+            const text = content.innerText;
+            if (text && text !== 'Drag a PNG image here to view its metadata...') {
+                const success = await copyToClipboard(text);
+                if (success) {
+                    const originalClass = copyBtn.className;
+                    copyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+                    copyBtn.className = copyBtn.className.replace('text-blue-400', 'text-emerald-400').replace('border-blue-500/20', 'border-emerald-500/50');
+                    setTimeout(() => {
+                        copyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>';
+                        copyBtn.className = originalClass;
+                    }, 1000);
+                }
             }
-        } else {
-            pngInfoContent.innerText = "Please drop a PNG image.";
-        }
+        });
     }
-});
 
-// Copy and Paste for PNG Info Viewport
-if (pngInfoCopyBtn) {
-    pngInfoCopyBtn.addEventListener('click', async () => {
-        const text = pngInfoContent.innerText;
-        if (text && text !== 'Drag a PNG image here to view its metadata...') {
-            const success = await copyToClipboard(text);
-            if (success) {
-                const originalClass = pngInfoCopyBtn.className;
-                pngInfoCopyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
-                pngInfoCopyBtn.className = pngInfoCopyBtn.className.replace('text-blue-400', 'text-emerald-400').replace('border-blue-500/20', 'border-emerald-500/50');
-                setTimeout(() => {
-                    pngInfoCopyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>';
-                    pngInfoCopyBtn.className = originalClass;
-                }, 1000);
+    // Paste
+    if (pasteBtn) {
+        pasteBtn.addEventListener('click', async () => {
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text) {
+                    try {
+                        const data = JSON.parse(text);
+                        content.innerHTML = `<span class="text-amber-500">PROMPT:</span> ${(data.mega || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}<br><span class="text-amber-500">LIGHTING:</span> ${(data.lighting || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}<br><span class="text-amber-500">SCENE:</span> ${(data.scene || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}<br><span class="text-amber-500">VIEW:</span> ${(data.view || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}`;
+                        // Visual feedback
+                        const originalClass = pasteBtn.className;
+                        pasteBtn.className = pasteBtn.className.replace('text-blue-400', 'text-emerald-400').replace('border-blue-500/20', 'border-emerald-500/50');
+                        setTimeout(() => pasteBtn.className = originalClass, 500);
+                    } catch (e) {
+                        content.innerText = "Invalid JSON format.";
+                        // Error feedback
+                        const originalClass = pasteBtn.className;
+                        pasteBtn.className = pasteBtn.className.replace('text-blue-400', 'text-red-400').replace('border-blue-500/20', 'border-red-500/50');
+                        setTimeout(() => pasteBtn.className = originalClass, 500);
+                    }
+                }
+            } catch (e) {
+                // Error feedback
+                const originalClass = pasteBtn.className;
+                pasteBtn.className = pasteBtn.className.replace('text-blue-400', 'text-red-400').replace('border-blue-500/20', 'border-red-500/50');
+                setTimeout(() => pasteBtn.className = originalClass, 500);
             }
-        }
-    });
-}
+        });
+    }
 
-// PNG Info Viewport - Template button logic
-const templateBtn = document.querySelector('#png-info-template-btn') as HTMLButtonElement;
-if (templateBtn) {
-    templateBtn.addEventListener('click', () => {
-        const template = `PROMPT (MÔ TẢ):
+    // Template
+    if (templateBtn) {
+        templateBtn.addEventListener('click', () => {
+            const template = `PROMPT (MÔ TẢ):
 Tạo ảnh siêu thực từ hình ảnh tải lên. Giữ nguyên chi tiết và thiết kế từ hình ảnh sketch tham chiếu
 
 Chi tiết: 
 LIGHTING (ÁNH SÁNG):
 SCENE (BỐI CẢNH):
 VIEW (GÓC CHỤP):`;
-        
-        // Replace content with template
-        pngInfoContent.innerText = template;
+            
+            // Replace content with template
+            content.innerText = template;
+        });
+    }
+
+    // Ensure content is editable by default
+    content.setAttribute('contenteditable', 'true');
+    content.classList.add('border-amber-500/50');
+    
+    // Drag and drop
+    viewport.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); });
+    viewport.addEventListener('drop', async (e) => {
+        e.preventDefault(); e.stopPropagation();
+        if (e.dataTransfer?.files?.[0]) {
+            const file = e.dataTransfer.files[0];
+            if (file.type === 'image/png') {
+                const data = await extractMetadata(file);
+                if (data) {
+                    content.innerHTML = `<span class="text-amber-500">PROMPT:</span> ${(data.mega || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}<br><span class="text-amber-500">LIGHTING:</span> ${(data.lighting || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}<br><span class="text-amber-500">SCENE:</span> ${(data.scene || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}<br><span class="text-amber-500">VIEW:</span> ${(data.view || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}`;
+                } else {
+                    content.innerText = "No BananaProData metadata found in this image.";
+                }
+            } else {
+                content.innerText = "Please drop a PNG image.";
+            }
+        }
     });
+
+    // Clear
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            content.innerText = '';
+            // Visual feedback
+            const originalClass = clearBtn.className;
+            clearBtn.className = clearBtn.className.replace('text-blue-400', 'text-emerald-400').replace('border-blue-500/20', 'border-emerald-500/50');
+            setTimeout(() => clearBtn.className = originalClass, 500);
+        });
+    }
 }
 
-// Ensure content is editable by default
-pngInfoContent.setAttribute('contenteditable', 'true');
-pngInfoContent.classList.add('border-amber-500/50');
+if (pngInfoViewportTop) {
+    setupPngInfoViewport(
+        pngInfoViewportTop,
+        pngInfoContentTop,
+        pngInfoCopyBtnTop,
+        pngInfoPasteBtnTop,
+        pngInfoClearBtnTop,
+        pngInfoTemplateBtnTop
+    );
+}
 
-if (pngInfoPasteBtn) {
-    pngInfoPasteBtn.addEventListener('click', async () => {
-        try {
-            const text = await navigator.clipboard.readText();
-            if (text) {
-                try {
-                    const data = JSON.parse(text);
-                    pngInfoContent.innerHTML = `<span class="text-amber-500">PROMPT:</span> ${(data.mega || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}<br><span class="text-amber-500">LIGHTING:</span> ${(data.lighting || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}<br><span class="text-amber-500">SCENE:</span> ${(data.scene || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}<br><span class="text-amber-500">VIEW:</span> ${(data.view || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}`;
-                    // Visual feedback
-                    const originalClass = pngInfoPasteBtn.className;
-                    pngInfoPasteBtn.className = pngInfoPasteBtn.className.replace('text-blue-400', 'text-emerald-400').replace('border-blue-500/20', 'border-emerald-500/50');
-                    setTimeout(() => pngInfoPasteBtn.className = originalClass, 500);
-                } catch (e) {
-                    pngInfoContent.innerText = "Invalid JSON format.";
-                    // Error feedback
-                    const originalClass = pngInfoPasteBtn.className;
-                    pngInfoPasteBtn.className = pngInfoPasteBtn.className.replace('text-blue-400', 'text-red-400').replace('border-blue-500/20', 'border-red-500/50');
-                    setTimeout(() => pngInfoPasteBtn.className = originalClass, 500);
-                }
-            }
-        } catch (e) {
-            // Error feedback
-            const originalClass = pngInfoPasteBtn.className;
-            pngInfoPasteBtn.className = pngInfoPasteBtn.className.replace('text-blue-400', 'text-red-400').replace('border-blue-500/20', 'border-red-500/50');
-            setTimeout(() => pngInfoPasteBtn.className = originalClass, 500);
-        }
+if (pngInfoViewportBottom) {
+    setupPngInfoViewport(
+        pngInfoViewportBottom,
+        pngInfoContentBottom,
+        pngInfoCopyBtnBottom,
+        pngInfoPasteBtnBottom,
+        pngInfoClearBtnBottom,
+        pngInfoTemplateBtnBottom
+    );
+}
+
+if (pngInfoSendBtn) {
+    pngInfoSendBtn.addEventListener('click', () => {
+        pngInfoContentTop.innerHTML += (pngInfoContentTop.innerHTML ? '<br>' : '') + pngInfoContentBottom.innerHTML;
     });
 }
 
