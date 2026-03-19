@@ -545,13 +545,14 @@ if (gptBtn && gptModal) {
     
     if (closeGptBtn) closeGptBtn.addEventListener('click', closeGpt);
     if (closeGptOkBtn) {
-        closeGptOkBtn.addEventListener('click', () => {
+        closeGptOkBtn.addEventListener('click', async () => {
             const promptText = `Hãy phân tích thật chi tiết bức ảnh tôi vừa gửi và viết ngược lại thành 1 câu Prompt tiếng Anh (Image-to-Prompt) để tôi dùng cho các AI tạo ảnh siêu thực cho hình ảnh ngành Kiến Trúc - Nội Thất. Bao gồm mô tả: Chủ thể chính, Phong cách Kiến Trúc / Không Gian Nội Thất, Ánh sáng (Lighting), Bố cục (Composition), Góc Chụp và Môi trường, Tỷ Lệ Khung Ảnh. LỆNH BẮT BUỘC: CHỈ TRẢ VỀ ĐÚNG 1 CÂU PROMPT TIẾNG ANH LIÊN TỤC NẰM TRONG 1 ĐOẠN VĂN, KHÔNG XUỐNG DÒNG, KHÔNG GIẢI THÍCH, KHÔNG CHÀO HỎI. Chỉ nhả ra Text để tôi copy.`;
-            navigator.clipboard.writeText(promptText).then(() => {
+            const success = await copyToClipboard(promptText);
+            if (success) {
                 closeGpt();
-            }).catch(err => {
-                console.error('Failed to copy: ', err);
-            });
+            } else {
+                console.error('Failed to copy');
+            }
         });
     }
     gptModal.addEventListener('click', (e) => {
