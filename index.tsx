@@ -214,16 +214,45 @@ const modalCopyBtn = document.querySelector('#modal-copy-btn') as HTMLButtonElem
 const copyAllBtn = document.querySelector('#copy-all-btn') as HTMLButtonElement;
 const modalPasteBtn = document.querySelector('#modal-paste-btn') as HTMLButtonElement;
 
-function showCustomAlert(message: string, title: string = "Notification") {
+// --- PNG Info Viewport Elements ---
+const pngInfoTabBtn = document.querySelector('#png-info-tab-btn') as HTMLButtonElement;
+const pngInfoViewport = document.querySelector('#png-info-viewport') as HTMLDivElement;
+const pngInfoContent = document.querySelector('#png-info-content') as HTMLDivElement;
+const pngInfoCopyBtn = document.querySelector('#png-info-copy-btn') as HTMLButtonElement;
+const pngInfoPasteBtn = document.querySelector('#png-info-paste-btn') as HTMLButtonElement;
+const pngInfoClearBtn = document.querySelector('#png-info-clear-btn') as HTMLButtonElement;
+const pngInfoCloseBtn = document.querySelector('#png-info-close-btn') as HTMLButtonElement;
+
+function showCustomAlert(message: string, title: string = "SUCCESS") {
     if (!customAlertModal) return;
+    
+    // Update icon to green tick
+    const iconContainer = document.getElementById('custom-alert-icon');
+    if (iconContainer) {
+        iconContainer.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>`;
+    }
+    
     customAlertTitle.innerText = title;
+    customAlertTitle.classList.add('text-amber-500');
+    customAlertTitle.classList.remove('text-white');
+    
     customAlertMessage.innerText = message;
+    customAlertMessage.classList.add('text-amber-400');
+    customAlertMessage.classList.remove('text-gray-400');
+    
     customAlertModal.classList.remove('hidden');
     
     return new Promise<void>((resolve) => {
         const handleOk = () => {
             customAlertModal.classList.add('hidden');
             customAlertOk.removeEventListener('click', handleOk);
+            
+            // Reset to default styles for next time
+            customAlertTitle.classList.remove('text-amber-500');
+            customAlertTitle.classList.add('text-white');
+            customAlertMessage.classList.remove('text-amber-400');
+            customAlertMessage.classList.add('text-gray-400');
+            
             resolve();
         };
         customAlertOk.addEventListener('click', handleOk);
@@ -1717,6 +1746,91 @@ if (historyLabelContainer) {
     historyLabelContainer.addEventListener('click', () => {
         if (historyList) {
             historyList.innerHTML = '<div class="text-[9px] text-gray-700 font-bold uppercase tracking-widest px-4">No history yet</div>';
+        }
+    });
+}
+
+// --- PNG Info Viewport Logic ---
+if (pngInfoTabBtn) {
+    pngInfoTabBtn.addEventListener('click', () => {
+        pngInfoViewport.classList.remove('hidden');
+    });
+}
+
+if (pngInfoCloseBtn) {
+    pngInfoCloseBtn.addEventListener('click', () => {
+        pngInfoViewport.classList.add('hidden');
+    });
+}
+
+if (pngInfoClearBtn) {
+    pngInfoClearBtn.addEventListener('click', () => {
+        pngInfoContent.innerText = 'Drag a PNG image here to view its metadata...';
+        // Visual feedback
+        const originalClass = pngInfoClearBtn.className;
+        pngInfoClearBtn.className = pngInfoClearBtn.className.replace('text-blue-400', 'text-emerald-400').replace('border-blue-500/20', 'border-emerald-500/50');
+        setTimeout(() => pngInfoClearBtn.className = originalClass, 500);
+    });
+}
+
+// Drag and drop for PNG Info Viewport
+pngInfoViewport.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); });
+pngInfoViewport.addEventListener('drop', async (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (e.dataTransfer?.files?.[0]) {
+        const file = e.dataTransfer.files[0];
+        if (file.type === 'image/png') {
+            const data = await extractMetadata(file);
+            if (data) {
+                pngInfoContent.innerHTML = `<span class="text-amber-500">PROMPT:</span> ${(data.mega || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}<br><span class="text-amber-500">LIGHTING:</span> ${(data.lighting || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}<br><span class="text-amber-500">SCENE:</span> ${(data.scene || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}<br><span class="text-amber-500">VIEW:</span> ${(data.view || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}`;
+            } else {
+                pngInfoContent.innerText = "No BananaProData metadata found in this image.";
+            }
+        } else {
+            pngInfoContent.innerText = "Please drop a PNG image.";
+        }
+    }
+});
+
+// Copy and Paste for PNG Info Viewport
+if (pngInfoCopyBtn) {
+    pngInfoCopyBtn.addEventListener('click', () => {
+        const text = pngInfoContent.innerText;
+        if (text && text !== 'Drag a PNG image here to view its metadata...') {
+            navigator.clipboard.writeText(text);
+            // Visual feedback
+            const originalClass = pngInfoCopyBtn.className;
+            pngInfoCopyBtn.className = pngInfoCopyBtn.className.replace('text-blue-400', 'text-emerald-400').replace('border-blue-500/20', 'border-emerald-500/50');
+            setTimeout(() => pngInfoCopyBtn.className = originalClass, 500);
+        }
+    });
+}
+
+if (pngInfoPasteBtn) {
+    pngInfoPasteBtn.addEventListener('click', async () => {
+        try {
+            const text = await navigator.clipboard.readText();
+            if (text) {
+                try {
+                    const data = JSON.parse(text);
+                    pngInfoContent.innerHTML = `<span class="text-amber-500">PROMPT:</span> ${(data.mega || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}<br><span class="text-amber-500">LIGHTING:</span> ${(data.lighting || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}<br><span class="text-amber-500">SCENE:</span> ${(data.scene || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}<br><span class="text-amber-500">VIEW:</span> ${(data.view || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}`;
+                    // Visual feedback
+                    const originalClass = pngInfoPasteBtn.className;
+                    pngInfoPasteBtn.className = pngInfoPasteBtn.className.replace('text-blue-400', 'text-emerald-400').replace('border-blue-500/20', 'border-emerald-500/50');
+                    setTimeout(() => pngInfoPasteBtn.className = originalClass, 500);
+                } catch (e) {
+                    pngInfoContent.innerText = "Invalid JSON format.";
+                    // Error feedback
+                    const originalClass = pngInfoPasteBtn.className;
+                    pngInfoPasteBtn.className = pngInfoPasteBtn.className.replace('text-blue-400', 'text-red-400').replace('border-blue-500/20', 'border-red-500/50');
+                    setTimeout(() => pngInfoPasteBtn.className = originalClass, 500);
+                }
+            }
+        } catch (e) {
+            // Error feedback
+            const originalClass = pngInfoPasteBtn.className;
+            pngInfoPasteBtn.className = pngInfoPasteBtn.className.replace('text-blue-400', 'text-red-400').replace('border-blue-500/20', 'border-red-500/50');
+            setTimeout(() => pngInfoPasteBtn.className = originalClass, 500);
         }
     });
 }
