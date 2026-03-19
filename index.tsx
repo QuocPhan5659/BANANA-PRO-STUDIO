@@ -1794,17 +1794,43 @@ pngInfoViewport.addEventListener('drop', async (e) => {
 
 // Copy and Paste for PNG Info Viewport
 if (pngInfoCopyBtn) {
-    pngInfoCopyBtn.addEventListener('click', () => {
+    pngInfoCopyBtn.addEventListener('click', async () => {
         const text = pngInfoContent.innerText;
         if (text && text !== 'Drag a PNG image here to view its metadata...') {
-            navigator.clipboard.writeText(text);
-            // Visual feedback
-            const originalClass = pngInfoCopyBtn.className;
-            pngInfoCopyBtn.className = pngInfoCopyBtn.className.replace('text-blue-400', 'text-emerald-400').replace('border-blue-500/20', 'border-emerald-500/50');
-            setTimeout(() => pngInfoCopyBtn.className = originalClass, 500);
+            const success = await copyToClipboard(text);
+            if (success) {
+                const originalClass = pngInfoCopyBtn.className;
+                pngInfoCopyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+                pngInfoCopyBtn.className = pngInfoCopyBtn.className.replace('text-blue-400', 'text-emerald-400').replace('border-blue-500/20', 'border-emerald-500/50');
+                setTimeout(() => {
+                    pngInfoCopyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>';
+                    pngInfoCopyBtn.className = originalClass;
+                }, 1000);
+            }
         }
     });
 }
+
+// PNG Info Viewport - Template button logic
+const templateBtn = document.querySelector('#png-info-template-btn') as HTMLButtonElement;
+if (templateBtn) {
+    templateBtn.addEventListener('click', () => {
+        const template = `PROMPT (MÔ TẢ):
+Tạo ảnh siêu thực từ hình ảnh tải lên. Giữ nguyên chi tiết và thiết kế từ hình ảnh sketch tham chiếu
+
+Chi tiết: 
+LIGHTING (ÁNH SÁNG):
+SCENE (BỐI CẢNH):
+VIEW (GÓC CHỤP):`;
+        
+        // Replace content with template
+        pngInfoContent.innerText = template;
+    });
+}
+
+// Ensure content is editable by default
+pngInfoContent.setAttribute('contenteditable', 'true');
+pngInfoContent.classList.add('border-amber-500/50');
 
 if (pngInfoPasteBtn) {
     pngInfoPasteBtn.addEventListener('click', async () => {
