@@ -545,14 +545,30 @@ if (gptBtn && gptModal) {
     
     if (closeGptBtn) closeGptBtn.addEventListener('click', closeGpt);
     if (closeGptOkBtn) {
-        closeGptOkBtn.addEventListener('click', async () => {
+        closeGptOkBtn.addEventListener('click', () => {
             const promptText = `Hãy phân tích thật chi tiết bức ảnh tôi vừa gửi và viết ngược lại thành 1 câu Prompt tiếng Anh (Image-to-Prompt) để tôi dùng cho các AI tạo ảnh siêu thực cho hình ảnh ngành Kiến Trúc - Nội Thất. Bao gồm mô tả: Chủ thể chính, Phong cách Kiến Trúc / Không Gian Nội Thất, Ánh sáng (Lighting), Bố cục (Composition), Góc Chụp và Môi trường, Tỷ Lệ Khung Ảnh. LỆNH BẮT BUỘC: CHỈ TRẢ VỀ ĐÚNG 1 CÂU PROMPT TIẾNG ANH LIÊN TỤC NẰM TRONG 1 ĐOẠN VĂN, KHÔNG XUỐNG DÒNG, KHÔNG GIẢI THÍCH, KHÔNG CHÀO HỎI. Chỉ nhả ra Text để tôi copy.`;
-            const success = await copyToClipboard(promptText);
-            if (success) {
-                closeGpt();
-            } else {
-                console.error('Failed to copy');
+            
+            // Direct approach for better SketchUp compatibility
+            const textArea = document.createElement("textarea");
+            textArea.value = promptText;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            textArea.style.top = "0";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    closeGpt();
+                } else {
+                    console.error('Copy command failed');
+                }
+            } catch (err) {
+                console.error('Failed to copy', err);
             }
+            document.body.removeChild(textArea);
         });
     }
     gptModal.addEventListener('click', (e) => {
