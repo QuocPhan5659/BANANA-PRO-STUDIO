@@ -116,10 +116,8 @@ function updateComparisonImages() {
         if (uploadedImageData) {
             compareImg1.src = `data:${uploadedImageData.mimeType};base64,${uploadedImageData.data}`;
         }
-        if (generatedImages.length > 0 && currentImageIndex >= 0 && currentImageIndex < generatedImages.length) {
+        if (generatedImages.length > 0) {
             compareImg2.src = generatedImages[currentImageIndex];
-        } else if (generatedImages.length > 0) {
-            compareImg2.src = generatedImages[generatedImages.length - 1];
         }
     }
 }
@@ -1882,15 +1880,16 @@ function setupPngInfoViewport(
     // Template
     if (templateBtn) {
         templateBtn.addEventListener('click', () => {
-            const template = `<span class="text-amber-500">PROMPT (MÔ TẢ):</span>
-Tạo ảnh siêu thực từ hình ảnh tải lên. Giữ nguyên chi tiết và thiết kế từ hình ảnh sketch tham chiếu<br><br>
-Chi tiết: <br>
-<span class="text-amber-500">LIGHTING (ÁNH SÁNG):</span><br>
-<span class="text-amber-500">SCENE (BỐI CẢNH):</span><br>
-<span class="text-amber-500">VIEW (GÓC CHỤP):</span>`;
+            const template = `PROMPT (MÔ TẢ):
+Tạo ảnh siêu thực từ hình ảnh tải lên. Giữ nguyên chi tiết và thiết kế từ hình ảnh sketch tham chiếu
+
+Chi tiết: 
+LIGHTING (ÁNH SÁNG):
+SCENE (BỐI CẢNH):
+VIEW (GÓC CHỤP):`;
             
             // Replace content with template
-            content.innerHTML = template;
+            content.innerText = template;
         });
     }
 
