@@ -1936,24 +1936,33 @@ document.querySelectorAll('.png-info-ar-btn').forEach(btn => {
         const ar = btn.getAttribute('data-ar');
         const isActive = btn.classList.contains('bg-amber-900/40');
         
-        // Remove active state from all buttons
-        document.querySelectorAll('.png-info-ar-btn').forEach(b => {
+        // Find the parent viewport container
+        const viewport = btn.closest('#png-info-viewport-top, #png-info-viewport-bottom');
+        if (!viewport) return;
+        
+        // Find the content element within the viewport
+        const contentEl = viewport.querySelector('#png-info-content-top, #png-info-content-bottom') as HTMLElement;
+        if (!contentEl) return;
+
+        // Remove active state from all buttons in the same viewport
+        viewport.querySelectorAll('.png-info-ar-btn').forEach(b => {
             b.classList.remove('bg-amber-900/40', 'border-amber-500/50', 'text-amber-400');
             b.classList.add('bg-amber-900/20', 'border-amber-500/20', 'text-amber-400');
         });
 
         // Remove existing AR line from content
-        let content = pngInfoContentTop.innerHTML;
-        content = content.replace(/<br><span class="text-amber-500">AR:<\/span> --ar:.*$/, '');
+        let content = contentEl.innerHTML;
+        // More robust regex to remove any existing AR line
+        content = content.replace(/<br><span class="text-amber-500">AR:<\/span> --ar:.*$/g, '').replace(/<br><span class="text-amber-400">AR:<\/span> --ar:.*$/g, '');
 
         if (isActive) {
             // Deselected
-            pngInfoContentTop.innerHTML = content;
+            contentEl.innerHTML = content;
         } else {
             // Selected
             btn.classList.remove('bg-amber-900/20', 'border-amber-500/20', 'text-amber-400');
             btn.classList.add('bg-amber-900/40', 'border-amber-500/50', 'text-amber-400');
-            pngInfoContentTop.innerHTML = content + `<br><span class="text-amber-500">AR:</span> --ar:${ar}`;
+            contentEl.innerHTML = content + `<br><span class="text-amber-400">AR:</span> ${ar}`;
         }
         
         // Visual feedback
