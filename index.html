@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773904479456&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2F4463306825ee30c64ddfd2daa8aa7b17d34989eba02902986a958cbe16edd3c5&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773904479456&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773877483889&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2F3a70ef8f08f1d960801441c05fac678b9878e92750db76fe0f51005ed0fcbd8c&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773877483889&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script>
+    <script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773904479456&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2F4f2ebb6626dcb06073603d2e60aa48a1f73766692e1b50fac10c97b37285d6e4&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773904479456&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773877483889&amp;type=content-script&amp;dmn=aistudio.google.com&amp;url=https%3A%2F%2Faistudio.google.com%2F_%2Fupload%2Fdd8b8c9a-fcd9-48a1-a591-379c25bb49ae%2Ffile%2F3a70ef8f08f1d960801441c05fac678b9878e92750db76fe0f51005ed0fcbd8c&amp;app=msedge.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="4f95084d1e8a47b6ab665a7357c" src="//local.adguard.org?ts=1773877483889&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script>
 /* ================================
    SketchUp Web Compatibility Fix
    Prevent blocked browser APIs
@@ -770,22 +770,54 @@ window.IS_SKETCHUP = true;
 
     <!-- PNG Info Viewport -->
     <div id="png-info-viewport" class="fixed inset-0 z-[600] bg-black/90 backdrop-blur-md hidden flex flex-col p-6 animate-in fade-in zoom-in-95 duration-300">
-        <div class="flex items-center gap-4 mb-4">
-            <div class="flex gap-2">
-                <button id="png-info-copy-btn" class="p-2 bg-blue-900/20 hover:bg-blue-900/40 text-blue-400 rounded-lg border border-blue-500/20 transition-all" title="Copy">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                </button>
-                <button id="png-info-paste-btn" class="p-2 bg-blue-900/20 hover:bg-blue-900/40 text-blue-400 rounded-lg border border-blue-500/20 transition-all" title="Paste">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-                </button>
-                <button id="png-info-clear-btn" class="p-2 bg-blue-900/20 hover:bg-blue-900/40 text-blue-400 rounded-lg border border-blue-500/20 transition-all" title="Clear">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                </button>
-                <button id="png-info-close-btn" class="p-2 bg-blue-900/20 hover:bg-blue-900/40 text-blue-400 rounded-lg border border-blue-500/20 transition-all" title="Close">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
+        <div class="flex flex-col gap-4 mb-4">
+            <div class="flex items-center gap-4">
+                <div class="flex gap-2">
+                    <button id="png-info-copy-btn" class="p-2 bg-blue-900/20 hover:bg-blue-900/40 text-blue-400 rounded-lg border border-blue-500/20 transition-all" title="Copy">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                    </button>
+                    <button id="png-info-paste-btn" class="p-2 bg-blue-900/20 hover:bg-blue-900/40 text-blue-400 rounded-lg border border-blue-500/20 transition-all" title="Paste">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                    </button>
+                    <button id="png-info-clear-btn" class="p-2 bg-blue-900/20 hover:bg-blue-900/40 text-blue-400 rounded-lg border border-blue-500/20 transition-all" title="Clear">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    </button>
+                    <button id="png-info-close-btn" class="p-2 bg-blue-900/20 hover:bg-blue-900/40 text-blue-400 rounded-lg border border-blue-500/20 transition-all" title="Close">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+                <h3 class="text-lg font-bold text-white uppercase italic tracking-tight">PNG Info Viewport</h3>
             </div>
-            <h3 class="text-lg font-bold text-white uppercase italic tracking-tight">PNG Info Viewport</h3>
+            <div id="png-info-ar-buttons" class="flex flex-wrap gap-4">
+                <div class="flex flex-col items-center gap-1">
+                    <button data-ar="1:1" class="png-info-ar-btn p-2 bg-amber-900/20 hover:bg-amber-900/40 text-amber-400 rounded-lg border border-amber-500/20 transition-all" title="1:1"><svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/></svg></button>
+                    <span class="text-[10px] text-gray-400 font-bold">1:1</span>
+                </div>
+                <div class="flex flex-col items-center gap-1">
+                    <button data-ar="3:2" class="png-info-ar-btn p-2 bg-amber-900/20 hover:bg-amber-900/40 text-amber-400 rounded-lg border border-amber-500/20 transition-all" title="3:2"><svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/></svg></button>
+                    <span class="text-[10px] text-gray-400 font-bold">3:2</span>
+                </div>
+                <div class="flex flex-col items-center gap-1">
+                    <button data-ar="2:3" class="png-info-ar-btn p-2 bg-amber-900/20 hover:bg-amber-900/40 text-amber-400 rounded-lg border border-amber-500/20 transition-all" title="2:3"><svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/></svg></button>
+                    <span class="text-[10px] text-gray-400 font-bold">2:3</span>
+                </div>
+                <div class="flex flex-col items-center gap-1">
+                    <button data-ar="16:9" class="png-info-ar-btn p-2 bg-amber-900/20 hover:bg-amber-900/40 text-amber-400 rounded-lg border border-amber-500/20 transition-all" title="16:9"><svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="6" width="22" height="12" rx="2"/></svg></button>
+                    <span class="text-[10px] text-gray-400 font-bold">16:9</span>
+                </div>
+                <div class="flex flex-col items-center gap-1">
+                    <button data-ar="9:16" class="png-info-ar-btn p-2 bg-amber-900/20 hover:bg-amber-900/40 text-amber-400 rounded-lg border border-amber-500/20 transition-all" title="9:16"><svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="1" width="12" height="22" rx="2"/></svg></button>
+                    <span class="text-[10px] text-gray-400 font-bold">9:16</span>
+                </div>
+                <div class="flex flex-col items-center gap-1">
+                    <button data-ar="3:4" class="png-info-ar-btn p-2 bg-amber-900/20 hover:bg-amber-900/40 text-amber-400 rounded-lg border border-amber-500/20 transition-all" title="3:4"><svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/></svg></button>
+                    <span class="text-[10px] text-gray-400 font-bold">3:4</span>
+                </div>
+                <div class="flex flex-col items-center gap-1">
+                    <button data-ar="4:3" class="png-info-ar-btn p-2 bg-amber-900/20 hover:bg-amber-900/40 text-amber-400 rounded-lg border border-amber-500/20 transition-all" title="4:3"><svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/></svg></button>
+                    <span class="text-[10px] text-gray-400 font-bold">4:3</span>
+                </div>
+            </div>
         </div>
         <div id="png-info-content" class="flex-1 bg-[#121214] rounded-2xl p-6 overflow-y-auto text-sm text-gray-300 font-mono border border-white/10">
             Drag a PNG image here to view its metadata...

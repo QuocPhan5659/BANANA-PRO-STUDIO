@@ -1835,6 +1835,39 @@ if (pngInfoPasteBtn) {
     });
 }
 
+// Aspect Ratio buttons
+document.querySelectorAll('.png-info-ar-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const ar = btn.getAttribute('data-ar');
+        const isActive = btn.classList.contains('bg-amber-900/40');
+        
+        // Remove active state from all buttons
+        document.querySelectorAll('.png-info-ar-btn').forEach(b => {
+            b.classList.remove('bg-amber-900/40', 'border-amber-500/50', 'text-amber-400');
+            b.classList.add('bg-amber-900/20', 'border-amber-500/20', 'text-amber-400');
+        });
+
+        // Remove existing AR line from content
+        let content = pngInfoContent.innerHTML;
+        content = content.replace(/<br><span class="text-amber-500">AR:<\/span> --ar:.*$/, '');
+
+        if (isActive) {
+            // Deselected
+            pngInfoContent.innerHTML = content;
+        } else {
+            // Selected
+            btn.classList.remove('bg-amber-900/20', 'border-amber-500/20', 'text-amber-400');
+            btn.classList.add('bg-amber-900/40', 'border-amber-500/50', 'text-amber-400');
+            pngInfoContent.innerHTML = content + `<br><span class="text-amber-500">AR:</span> --ar:${ar}`;
+        }
+        
+        // Visual feedback
+        const originalClass = btn.className;
+        btn.className = btn.className.replace('text-amber-400', 'text-emerald-400').replace('border-amber-500/20', 'border-emerald-500/50');
+        setTimeout(() => btn.className = originalClass, 500);
+    });
+});
+
 // --- PNG Info Logic ---
 if (pngInfoDropZone) {
     pngInfoDropZone.addEventListener('click', () => pngInfoInput?.click());
