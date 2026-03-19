@@ -1745,6 +1745,28 @@ if (pngInfoInput) {
 }
 
 // --- Paste PNG Info Button (UPDATED to Read JSON Text) ---
+async function applyMetadata(data: any) {
+    // Basic validation to check if it looks like our metadata structure
+    const isPromptData = data && (
+        'mega' in data || 
+        'lighting' in data || 
+        'scene' in data || 
+        'view' in data ||
+        'BananaProData' in data
+    );
+
+    if (isPromptData) {
+        populateMetadata(data);
+        if(statusEl) {
+            statusEl.innerText = "Data Paste Success";
+            setTimeout(() => statusEl.innerText = "System Standby", 2000);
+        }
+    } else {
+        console.warn("Clipboard JSON does not match PromptData structure:", data);
+        showCustomAlert("Clipboard JSON does not match the expected Data PNG Info format.", "Format Error");
+    }
+}
+
 if (pastePngInfoBtn) {
     pastePngInfoBtn.addEventListener('click', async () => {
         try {
@@ -1768,26 +1790,7 @@ if (pastePngInfoBtn) {
             try {
                 // Attempt to parse text as JSON (Data PNG info format)
                 const data = JSON.parse(text);
-                
-                // Basic validation to check if it looks like our metadata structure
-                const isPromptData = data && (
-                    'mega' in data || 
-                    'lighting' in data || 
-                    'scene' in data || 
-                    'view' in data ||
-                    'BananaProData' in data
-                );
-
-                if (isPromptData) {
-                    populateMetadata(data);
-                    if(statusEl) {
-                        statusEl.innerText = "Data Paste Success";
-                        setTimeout(() => statusEl.innerText = "System Standby", 2000);
-                    }
-                } else {
-                    console.warn("Clipboard JSON does not match PromptData structure:", data);
-                    showCustomAlert("Clipboard JSON does not match the expected Data PNG Info format.", "Format Error");
-                }
+                await applyMetadata(data);
             } catch (jsonErr) {
                 console.error("JSON Parse Error", jsonErr);
                 showCustomAlert("Clipboard text is not valid JSON Data.", "Parse Error");
@@ -2459,16 +2462,9 @@ async function renderGalleryModal() {
             if (id) {
                 const item = displayGallery.find(i => i.id === id);
                 if (item && item.metadata) {
-                    // Instead of just populating metadata, we simulate the PNG Info flow
-                    // by setting the JSON text to clipboard and triggering the paste logic
-                    const jsonStr = JSON.stringify(item.metadata);
-                    navigator.clipboard.writeText(jsonStr).then(() => {
-                        document.getElementById('paste-png-info-btn')?.click();
-                        galleryModal?.classList.add('hidden');
-                    }).catch(err => {
-                        console.error("Failed to copy metadata to clipboard for PNG Info", err);
-                        if (statusEl) statusEl.innerText = "Failed to load PNG Info.";
-                    });
+                    // Directly apply metadata without clipboard
+                    applyMetadata(item.metadata);
+                    galleryModal?.classList.add('hidden');
                 } else {
                     if (statusEl) statusEl.innerText = "No metadata found for this image.";
                 }
@@ -3198,6 +3194,13 @@ if (brushSlider) {
     });
 }
 // --- Comparison Event Listeners ---
+let comparisonZoom = 1;
+let comparisonOffsetX = 0;
+let comparisonOffsetY = 0;
+let isComparePanning = false;
+let compareStartX = 0;
+let compareStartY = 0;
+
 if (compareToggleBtn) {
     compareToggleBtn.addEventListener('click', () => {
         isComparisonMode = !isComparisonMode;
@@ -3207,13 +3210,54 @@ if (compareToggleBtn) {
             outputContainer.classList.add('hidden');
             compareToggleBtn.classList.add('bg-[#262380]');
             compareToggleBtn.classList.remove('bg-white/5');
+            // Reset zoom/pan on open
+            comparisonZoom = 1;
+            comparisonOffsetX = 0;
+            comparisonOffsetY = 0;
+            updateComparisonTransform();
         } else {
             comparisonContainer.classList.add('hidden');
+            outputContainer.classList.remove('hidden');
             compareToggleBtn.classList.remove('bg-[#262380]');
             compareToggleBtn.classList.add('bg-white/5');
         }
     });
 }
+
+function updateComparisonTransform() {
+    const transform = `translate(${comparisonOffsetX}px, ${comparisonOffsetY}px) scale(${comparisonZoom})`;
+    compareImg1.style.transform = transform;
+    compareImg2.style.transform = transform;
+}
+
+comparisonContainer.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    comparisonZoom = Math.min(Math.max(comparisonZoom * delta, 1), 5);
+    updateComparisonTransform();
+}, { passive: false });
+
+comparisonContainer.addEventListener('mousedown', (e) => {
+    if (e.button === 1) { // Middle mouse button
+        isComparePanning = true;
+        compareStartX = e.clientX - comparisonOffsetX;
+        compareStartY = e.clientY - comparisonOffsetY;
+        comparisonContainer.style.cursor = 'grabbing';
+    }
+});
+
+window.addEventListener('mousemove', (e) => {
+    if (isComparePanning) {
+        comparisonOffsetX = e.clientX - compareStartX;
+        comparisonOffsetY = e.clientY - compareStartY;
+        updateComparisonTransform();
+    }
+});
+
+window.addEventListener('mouseup', () => {
+    isComparePanning = false;
+    comparisonContainer.style.cursor = 'default';
+});
 
 if (compareSlider) {
     compareSlider.addEventListener('input', (e) => {
