@@ -799,6 +799,46 @@ if (langBtnEn) langBtnEn.addEventListener('click', () => translatePrompt('EN'));
 
 // --- Icon Button Logic ---
 
+async function translateText(html: string): Promise<string> {
+    isEnglish = !isEnglish;
+    let newHtml = html;
+    
+    if (isEnglish) {
+        newHtml = newHtml.replace(/MÔ TẢ/g, 'DESCRIPTION')
+                         .replace(/ÁNH SÁNG/g, 'LIGHTING')
+                         .replace(/BỐI CẢNH/g, 'SCENE')
+                         .replace(/GÓC CHỤP/g, 'VIEW')
+                         .replace(/Tạo ảnh siêu thực từ hình ảnh tải lên./g, 'Create photorealistic image from uploaded image.')
+                         .replace(/Giữ nguyên chi tiết và thiết kế từ hình ảnh sketch tham chiếu/g, 'Keep details and design from the reference sketch image')
+                         .replace(/Chi tiết:/g, 'Details:');
+    } else {
+        newHtml = newHtml.replace(/DESCRIPTION/g, 'MÔ TẢ')
+                         .replace(/LIGHTING/g, 'ÁNH SÁNG')
+                         .replace(/SCENE/g, 'BỐI CẢNH')
+                         .replace(/VIEW/g, 'GÓC CHỤP')
+                         .replace(/Create photorealistic image from uploaded image./g, 'Tạo ảnh siêu thực từ hình ảnh tải lên.')
+                         .replace(/Keep details and design from the reference sketch image/g, 'Giữ nguyên chi tiết và thiết kế từ hình ảnh sketch tham chiếu')
+                         .replace(/Details:/g, 'Chi tiết:');
+    }
+    return newHtml;
+}
+
+async function translateTextGeneric(text: string, targetLang: 'VN' | 'EN'): Promise<string> {
+    const ai = getGenAI();
+    const systemPrompt = targetLang === 'VN' 
+        ? `You are a professional translator. Translate the provided text to Vietnamese. Keep technical terms if appropriate. Return ONLY the translated text.`
+        : `You are a professional translator. Translate the provided text to English. Optimize for AI image generation. Return ONLY the translated text.`;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview', 
+        contents: { parts: [{ text: text }] },
+        config: { 
+            systemInstruction: systemPrompt,
+        }
+    });
+    return response.text || text;
+}
+
 async function copyToClipboard(text: string): Promise<boolean> {
     try {
         await navigator.clipboard.writeText(text);
@@ -1985,42 +2025,57 @@ function setupPngInfoViewport(
         });
     }
 
-    // Paste
+    // Paste (Removed per request)
     if (pasteBtn) {
-        pasteBtn.addEventListener('click', async () => {
-            try {
-                const text = await navigator.clipboard.readText();
-                if (text) {
-                    try {
-                        const data = JSON.parse(text);
-                        content.innerHTML = `<span class="text-amber-500">PROMPT:</span> ${(data.mega || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}<br><span class="text-amber-500">LIGHTING:</span> ${(data.lighting || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}<br><span class="text-amber-500">SCENE:</span> ${(data.scene || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}<br><span class="text-amber-500">VIEW:</span> ${(data.view || '').replace(/&/g, "&amp;").replace(/</g, "&lt;")}`;
-                        // Visual feedback
-                        const originalClass = pasteBtn.className;
-                        pasteBtn.className = pasteBtn.className.replace('text-blue-400', 'text-emerald-400').replace('border-blue-500/20', 'border-emerald-500/50');
-                        setTimeout(() => pasteBtn.className = originalClass, 500);
-                    } catch (e) {
-                        content.innerText = "Invalid JSON format.";
-                        // Error feedback
-                        const originalClass = pasteBtn.className;
-                        pasteBtn.className = pasteBtn.className.replace('text-blue-400', 'text-red-400').replace('border-blue-500/20', 'border-red-500/50');
-                        setTimeout(() => pasteBtn.className = originalClass, 500);
-                    }
-                }
-            } catch (e) {
-                // Error feedback
-                const originalClass = pasteBtn.className;
-                pasteBtn.className = pasteBtn.className.replace('text-blue-400', 'text-red-400').replace('border-blue-500/20', 'border-red-500/50');
-                setTimeout(() => pasteBtn.className = originalClass, 500);
-            }
-        });
+        pasteBtn.style.display = 'none';
     }
 
-    // Send To Top
+    // Add scroll adjustment for Font and Size
+    let lastScrollTime = 0;
+    function setupScrollAdjust(element: HTMLElement, type: 'select' | 'number') {
+        element.addEventListener('wheel', (e) => {
+            const now = Date.now();
+            if (now - lastScrollTime < 150) return; // Throttle to prevent rapid jumps
+            lastScrollTime = now;
+            
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -1 : 1;
+
+            if (type === 'select') {
+                const select = element as HTMLSelectElement;
+                let newIndex = select.selectedIndex + (-delta);
+                if (newIndex < 0) newIndex = 0;
+                if (newIndex >= select.options.length) newIndex = select.options.length - 1;
+                select.selectedIndex = newIndex;
+                select.dispatchEvent(new Event('change'));
+            } else if (type === 'number') {
+                const input = element as HTMLInputElement;
+                let val = parseInt(input.value) + delta;
+                const min = parseInt(input.min) || 0;
+                const max = parseInt(input.max) || 100;
+                if (val < min) val = min;
+                if (val > max) val = max;
+                input.value = val.toString();
+                input.dispatchEvent(new Event('input'));
+            }
+        }, { passive: false });
+    }
+
+const fontSelect = document.getElementById('png-info-font-select') as HTMLSelectElement;
+if (fontSelect) setupScrollAdjust(fontSelect, 'select');
+
+const sizeInput = document.getElementById('png-info-size-input') as HTMLInputElement;
+if (sizeInput) setupScrollAdjust(sizeInput, 'number');
+
+// Send To Top
     const sendTopBtn = document.getElementById('png-info-send-top-btn') as HTMLButtonElement;
     if (sendTopBtn) {
         sendTopBtn.addEventListener('click', () => {
             const contentTop = document.getElementById('png-info-content-top') as HTMLDivElement;
-            contentTop.innerText = content.innerText;
+            if (contentTop && content !== contentTop) {
+                contentTop.innerHTML += (contentTop.innerHTML ? '<br>' : '') + content.innerHTML;
+                content.innerHTML = ''; // Xóa nội dung Viewport dưới
+            }
         });
     }
 
@@ -2038,6 +2093,21 @@ Chi tiết: <br>
             content.innerHTML = template;
         });
     }
+
+    // Translate Button
+    const translateBtn = document.createElement('button');
+    translateBtn.innerText = 'VN-EN';
+    translateBtn.className = 'text-xs bg-amber-900/20 border border-amber-500/20 text-amber-400 px-2 py-1 rounded hover:bg-amber-900/40';
+    let currentLang: 'VN' | 'EN' = 'VN';
+    translateBtn.addEventListener('click', async () => {
+        translateBtn.innerText = 'Đang dịch...';
+        const html = content.innerHTML;
+        const targetLang = currentLang === 'VN' ? 'EN' : 'VN';
+        content.innerHTML = await translateTextGeneric(html, targetLang);
+        currentLang = targetLang;
+        translateBtn.innerText = currentLang === 'VN' ? 'VN-EN' : 'EN-VN';
+    });
+    viewport.appendChild(translateBtn);
 
     // Ensure content is editable by default
     content.setAttribute('contenteditable', 'true');
