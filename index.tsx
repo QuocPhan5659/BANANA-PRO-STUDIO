@@ -1,5 +1,6 @@
 /* tslint:disable */
 import { GoogleGenAI } from '@google/genai';
+import exifr from 'exifr';
 
 // --- Global Types & Interfaces ---
 declare global {
@@ -233,6 +234,12 @@ const pngInfoCloseBtn = document.querySelector('#png-info-close-btn') as HTMLBut
 const pngInfoSendBtn = document.querySelector('#png-info-send-btn') as HTMLButtonElement;
 const pngInfoTemplateBtnTop = document.querySelector('#png-info-template-btn-top') as HTMLButtonElement;
 const pngInfoTemplateBtnBottom = document.querySelector('#png-info-template-btn-bottom') as HTMLButtonElement;
+const pngInfoFontSelect = document.querySelector('#png-info-font-select') as HTMLSelectElement;
+const pngInfoSizeInput = document.querySelector('#png-info-size-input') as HTMLInputElement;
+const pngInfoDownloadDataBtn = document.querySelector('#png-info-download-data-btn') as HTMLButtonElement;
+const pngInfoDownloadTxtBtn = document.querySelector('#png-info-download-txt-btn') as HTMLButtonElement;
+const pngInfoDropZoneTop = document.querySelector('#png-info-drop-zone-top') as HTMLDivElement;
+const pngInfoFileInputTop = document.querySelector('#png-info-file-input-top') as HTMLInputElement;
 
 function showCustomAlert(message: string, title: string = "SUCCESS") {
     if (!customAlertModal) return;
@@ -1822,6 +1829,135 @@ if (pngInfoCloseBtn) {
     });
 }
 
+// Font and Size
+if (pngInfoFontSelect) {
+    pngInfoFontSelect.addEventListener('change', () => {
+        const font = pngInfoFontSelect.value;
+        pngInfoContentTop.style.fontFamily = font;
+        pngInfoContentBottom.style.fontFamily = font;
+    });
+}
+
+if (pngInfoSizeInput) {
+    pngInfoSizeInput.addEventListener('input', () => {
+        const size = pngInfoSizeInput.value + 'px';
+        pngInfoContentTop.style.fontSize = size;
+        pngInfoContentBottom.style.fontSize = size;
+    });
+}
+
+// Download
+if (pngInfoDownloadDataBtn) {
+    pngInfoDownloadDataBtn.addEventListener('click', () => {
+        const text = pngInfoContentTop.innerText;
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'png_info_data.txt';
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+}
+
+const pngInfoDownloadPngBtn = document.querySelector('#png-info-download-png-btn') as HTMLButtonElement;
+if (pngInfoDownloadPngBtn) {
+    pngInfoDownloadPngBtn.addEventListener('click', () => {
+        const text = pngInfoContentTop.innerText;
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const fontSize = parseInt(pngInfoSizeInput.value) || 14;
+        const fontFamily = pngInfoFontSelect.value || 'monospace';
+        
+        ctx.font = `${fontSize}px ${fontFamily}`;
+        const lines = text.split('\n');
+        
+        // Calculate dimensions
+        let maxWidth = 0;
+        lines.forEach(line => {
+            const width = ctx.measureText(line).width;
+            if (width > maxWidth) maxWidth = width;
+        });
+        
+        canvas.width = maxWidth + 40;
+        canvas.height = lines.length * (fontSize + 10) + 40;
+        
+        // Draw
+        ctx.fillStyle = '#121214';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#d1d5db';
+        ctx.font = `${fontSize}px ${fontFamily}`;
+        
+        lines.forEach((line, i) => {
+            ctx.fillText(line, 20, 30 + i * (fontSize + 10));
+        });
+        
+        // In a real app, we would use a library to embed metadata into the PNG blob.
+        // For now, we just download the visual representation.
+        const url = canvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'png_info.png';
+        a.click();
+    });
+}
+
+// Drag and Drop Helper
+const setupDropZone = (dropZone: HTMLElement, fileInput: HTMLInputElement, contentArea: HTMLDivElement) => {
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => e.preventDefault());
+    dropZone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        const file = e.dataTransfer?.files[0];
+        if (!file) return;
+
+        if (file.type === 'text/plain') {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                contentArea.innerText = e.target?.result as string;
+            };
+            reader.readAsText(file);
+        } else if (file.type === 'image/png') {
+            try {
+                const metadata = await exifr.parse(file);
+                const text = JSON.stringify(metadata, null, 2);
+                contentArea.innerText = text;
+            } catch (err) {
+                console.error('Failed to parse PNG metadata', err);
+                contentArea.innerText = 'Failed to load metadata from image.';
+            }
+        }
+    });
+    fileInput.addEventListener('change', async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+        if (file.type === 'text/plain') {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                contentArea.innerText = e.target?.result as string;
+            };
+            reader.readAsText(file);
+        } else if (file.type === 'image/png') {
+            try {
+                const metadata = await exifr.parse(file);
+                const text = JSON.stringify(metadata, null, 2);
+                contentArea.innerText = text;
+            } catch (err) {
+                console.error('Failed to parse PNG metadata', err);
+                contentArea.innerText = 'Failed to load metadata from image.';
+            }
+        }
+    });
+};
+
+setupDropZone(pngInfoDropZoneTop, pngInfoFileInputTop, pngInfoContentTop);
+
+const pngInfoDropZoneBottom = document.getElementById('png-info-drop-zone-bottom') as HTMLDivElement;
+const pngInfoFileInputBottom = document.getElementById('png-info-file-input-bottom') as HTMLInputElement;
+setupDropZone(pngInfoDropZoneBottom, pngInfoFileInputBottom, pngInfoContentBottom);
+
 function setupPngInfoViewport(
     viewport: HTMLDivElement,
     content: HTMLDivElement,
@@ -1876,6 +2012,15 @@ function setupPngInfoViewport(
                 pasteBtn.className = pasteBtn.className.replace('text-blue-400', 'text-red-400').replace('border-blue-500/20', 'border-red-500/50');
                 setTimeout(() => pasteBtn.className = originalClass, 500);
             }
+        });
+    }
+
+    // Send To Top
+    const sendTopBtn = document.getElementById('png-info-send-top-btn') as HTMLButtonElement;
+    if (sendTopBtn) {
+        sendTopBtn.addEventListener('click', () => {
+            const contentTop = document.getElementById('png-info-content-top') as HTMLDivElement;
+            contentTop.innerText = content.innerText;
         });
     }
 
