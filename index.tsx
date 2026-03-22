@@ -529,7 +529,9 @@ const closeGptBtn = document.querySelector('#close-gpt-btn') as HTMLButtonElemen
 const closeGptOkBtn = document.querySelector('#close-gpt-ok-btn') as HTMLButtonElement;
 const gptImgBtn = document.querySelector('#gpt-img-btn') as HTMLButtonElement;
 const gptVideoBtn = document.querySelector('#gpt-video-btn') as HTMLButtonElement;
+const gptInstructionContainer = document.querySelector('#gpt-instruction-container') as HTMLDivElement;
 const gptInstructionText = document.querySelector('#gpt-instruction-text') as HTMLParagraphElement;
+const gptInstructionCommand = document.querySelector('#gpt-instruction-command') as HTMLParagraphElement;
 
 // Add Listeners
 if (helpBtn && helpModal && closeHelpBtn) {
@@ -555,27 +557,26 @@ if (gptBtn && gptModal) {
         gptModal.classList.add('hidden');
     });
 
-    closeGptOkBtn.addEventListener('click', () => {
-        const textToCopy = gptInstructionText.innerText;
-        navigator.clipboard.writeText(textToCopy);
-        gptModal.classList.add('hidden');
-    });
-
     gptImgBtn.addEventListener('click', () => {
         gptImgBtn.className = 'flex-1 bg-[#262380] text-white font-black py-2 rounded-xl text-xs uppercase tracking-widest transition-all';
         gptVideoBtn.className = 'flex-1 bg-white/5 hover:bg-white/10 text-gray-400 font-black py-2 rounded-xl text-xs uppercase tracking-widest transition-all';
         gptInstructionText.innerText = 'Hãy phân tích thật chi tiết bức ảnh tôi vừa gửi và viết ngược lại thành 1 câu Prompt tiếng Anh (Image-to-Prompt) để tôi dùng cho các AI tạo ảnh siêu thực cho hình ảnh ngành Kiến Trúc - Nội Thất. Bao gồm mô tả: Chủ thể chính, Phong cách Kiến Trúc / Không Gian Nội Thất, Ánh sáng (Lighting), Bố cục (Composition), Góc Chụp và Môi trường, Tỷ Lệ Khung Ảnh.';
+        gptInstructionCommand.innerText = 'LỆNH BẮT BUỘC: CHỈ TRẢ VỀ ĐÚNG 1 CÂU PROMPT TIẾNG ANH LIÊN TỤC NẰM TRONG 1 ĐOẠN VĂN, KHÔNG XUỐNG DÒNG, KHÔNG GIẢI THÍCH, KHÔNG CHÀO HỎI. Chỉ nhả ra Text để tôi copy.';
     });
 
     gptVideoBtn.addEventListener('click', () => {
         gptVideoBtn.className = 'flex-1 bg-[#262380] text-white font-black py-2 rounded-xl text-xs uppercase tracking-widest transition-all';
         gptImgBtn.className = 'flex-1 bg-white/5 hover:bg-white/10 text-gray-400 font-black py-2 rounded-xl text-xs uppercase tracking-widest transition-all';
         gptInstructionText.innerText = 'Hãy phân tích thật chi tiết bức ảnh tôi vừa gửi và viết ngược lại thành Prompt tiếng Anh (Image-to-Prompt) để tôi dùng cho các AI tạo VIDEO.';
+        gptInstructionCommand.innerText = 'LỆNH BẮT BUỘC: CHỈ TRẢ VỀ ĐÚNG 1 CÂU PROMPT TIẾNG ANH LIÊN TỤC NẰM TRONG 1 ĐOẠN VĂN, KHÔNG XUỐNG DÒNG, KHÔNG GIẢI THÍCH, KHÔNG CHÀO HỎI. Chỉ nhả ra Text để tôi copy.';
     });
 
     if (closeGptOkBtn) {
         closeGptOkBtn.addEventListener('click', () => {
-            const promptText = gptInstructionText.innerText;
+            // Đọc trực tiếp nội dung từ các phần tử con để đảm bảo lấy được nội dung mới nhất
+            const textPart = gptInstructionText.textContent || "";
+            const commandPart = gptInstructionCommand.textContent || "";
+            const promptText = textPart.trim() + "\n\n" + commandPart.trim();
             
             // Direct approach for better SketchUp compatibility
             const textArea = document.createElement("textarea");
