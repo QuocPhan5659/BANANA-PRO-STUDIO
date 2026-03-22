@@ -826,8 +826,8 @@ async function translateText(html: string): Promise<string> {
 async function translateTextGeneric(text: string, targetLang: 'VN' | 'EN'): Promise<string> {
     const ai = getGenAI();
     const systemPrompt = targetLang === 'VN' 
-        ? `You are a professional translator. Translate the provided text to Vietnamese. Keep technical terms if appropriate. Return ONLY the translated text.`
-        : `You are a professional translator. Translate the provided text to English. Optimize for AI image generation. Return ONLY the translated text.`;
+        ? `You are a professional translator. Translate the human-readable text content within the provided HTML string. You MUST strictly preserve all HTML tags, attributes, classes, and inline styles. Do not modify the structure, layout, or colors. Return ONLY the translated HTML string.`
+        : `You are a professional translator. Translate the human-readable text content within the provided HTML string. You MUST strictly preserve all HTML tags, attributes, classes, and inline styles. Do not modify the structure, layout, or colors. Return ONLY the translated HTML string.`;
 
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview', 
