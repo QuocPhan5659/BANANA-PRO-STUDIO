@@ -527,6 +527,9 @@ const gptBtn = document.querySelector('#gpt-info-btn') as HTMLButtonElement;
 const gptModal = document.querySelector('#gpt-modal') as HTMLDivElement;
 const closeGptBtn = document.querySelector('#close-gpt-btn') as HTMLButtonElement;
 const closeGptOkBtn = document.querySelector('#close-gpt-ok-btn') as HTMLButtonElement;
+const gptImgBtn = document.querySelector('#gpt-img-btn') as HTMLButtonElement;
+const gptVideoBtn = document.querySelector('#gpt-video-btn') as HTMLButtonElement;
+const gptInstructionText = document.querySelector('#gpt-instruction-text') as HTMLParagraphElement;
 
 // Add Listeners
 if (helpBtn && helpModal && closeHelpBtn) {
@@ -548,14 +551,31 @@ if (gptBtn && gptModal) {
         gptModal.classList.remove('hidden');
     });
     
-    const closeGpt = () => {
+    closeGptBtn.addEventListener('click', () => {
         gptModal.classList.add('hidden');
-    };
-    
-    if (closeGptBtn) closeGptBtn.addEventListener('click', closeGpt);
+    });
+
+    closeGptOkBtn.addEventListener('click', () => {
+        const textToCopy = gptInstructionText.innerText;
+        navigator.clipboard.writeText(textToCopy);
+        gptModal.classList.add('hidden');
+    });
+
+    gptImgBtn.addEventListener('click', () => {
+        gptImgBtn.className = 'flex-1 bg-[#262380] text-white font-black py-2 rounded-xl text-xs uppercase tracking-widest transition-all';
+        gptVideoBtn.className = 'flex-1 bg-white/5 hover:bg-white/10 text-gray-400 font-black py-2 rounded-xl text-xs uppercase tracking-widest transition-all';
+        gptInstructionText.innerText = 'Hãy phân tích thật chi tiết bức ảnh tôi vừa gửi và viết ngược lại thành 1 câu Prompt tiếng Anh (Image-to-Prompt) để tôi dùng cho các AI tạo ảnh siêu thực cho hình ảnh ngành Kiến Trúc - Nội Thất. Bao gồm mô tả: Chủ thể chính, Phong cách Kiến Trúc / Không Gian Nội Thất, Ánh sáng (Lighting), Bố cục (Composition), Góc Chụp và Môi trường, Tỷ Lệ Khung Ảnh.';
+    });
+
+    gptVideoBtn.addEventListener('click', () => {
+        gptVideoBtn.className = 'flex-1 bg-[#262380] text-white font-black py-2 rounded-xl text-xs uppercase tracking-widest transition-all';
+        gptImgBtn.className = 'flex-1 bg-white/5 hover:bg-white/10 text-gray-400 font-black py-2 rounded-xl text-xs uppercase tracking-widest transition-all';
+        gptInstructionText.innerText = 'Hãy phân tích thật chi tiết bức ảnh tôi vừa gửi và viết ngược lại thành Prompt tiếng Anh (Image-to-Prompt) để tôi dùng cho các AI tạo VIDEO.';
+    });
+
     if (closeGptOkBtn) {
         closeGptOkBtn.addEventListener('click', () => {
-            const promptText = `Hãy phân tích thật chi tiết bức ảnh tôi vừa gửi và viết ngược lại thành 1 câu Prompt tiếng Anh (Image-to-Prompt) để tôi dùng cho các AI tạo ảnh siêu thực cho hình ảnh ngành Kiến Trúc - Nội Thất. Bao gồm mô tả: Chủ thể chính, Phong cách Kiến Trúc / Không Gian Nội Thất, Ánh sáng (Lighting), Bố cục (Composition), Góc Chụp và Môi trường, Tỷ Lệ Khung Ảnh. LỆNH BẮT BUỘC: CHỈ TRẢ VỀ ĐÚNG 1 CÂU PROMPT TIẾNG ANH LIÊN TỤC NẰM TRONG 1 ĐOẠN VĂN, KHÔNG XUỐNG DÒNG, KHÔNG GIẢI THÍCH, KHÔNG CHÀO HỎI. Chỉ nhả ra Text để tôi copy.`;
+            const promptText = gptInstructionText.innerText;
             
             // Direct approach for better SketchUp compatibility
             const textArea = document.createElement("textarea");
@@ -570,7 +590,7 @@ if (gptBtn && gptModal) {
             try {
                 const successful = document.execCommand('copy');
                 if (successful) {
-                    closeGpt();
+                    gptModal.classList.add('hidden');
                 } else {
                     console.error('Copy command failed');
                 }
@@ -581,7 +601,7 @@ if (gptBtn && gptModal) {
         });
     }
     gptModal.addEventListener('click', (e) => {
-        if (e.target === gptModal) closeGpt();
+        if (e.target === gptModal) gptModal.classList.add('hidden');
     });
 }
 
@@ -798,30 +818,6 @@ if (langBtnVn) langBtnVn.addEventListener('click', () => translatePrompt('VN'));
 if (langBtnEn) langBtnEn.addEventListener('click', () => translatePrompt('EN'));
 
 // --- Icon Button Logic ---
-
-async function translateText(html: string): Promise<string> {
-    isEnglish = !isEnglish;
-    let newHtml = html;
-    
-    if (isEnglish) {
-        newHtml = newHtml.replace(/MÔ TẢ/g, 'DESCRIPTION')
-                         .replace(/ÁNH SÁNG/g, 'LIGHTING')
-                         .replace(/BỐI CẢNH/g, 'SCENE')
-                         .replace(/GÓC CHỤP/g, 'VIEW')
-                         .replace(/Tạo ảnh siêu thực từ hình ảnh tải lên./g, 'Create photorealistic image from uploaded image.')
-                         .replace(/Giữ nguyên chi tiết và thiết kế từ hình ảnh sketch tham chiếu/g, 'Keep details and design from the reference sketch image')
-                         .replace(/Chi tiết:/g, 'Details:');
-    } else {
-        newHtml = newHtml.replace(/DESCRIPTION/g, 'MÔ TẢ')
-                         .replace(/LIGHTING/g, 'ÁNH SÁNG')
-                         .replace(/SCENE/g, 'BỐI CẢNH')
-                         .replace(/VIEW/g, 'GÓC CHỤP')
-                         .replace(/Create photorealistic image from uploaded image./g, 'Tạo ảnh siêu thực từ hình ảnh tải lên.')
-                         .replace(/Keep details and design from the reference sketch image/g, 'Giữ nguyên chi tiết và thiết kế từ hình ảnh sketch tham chiếu')
-                         .replace(/Details:/g, 'Chi tiết:');
-    }
-    return newHtml;
-}
 
 async function translateTextGeneric(text: string, targetLang: 'VN' | 'EN'): Promise<string> {
     const ai = getGenAI();
@@ -2092,7 +2088,42 @@ Chi tiết: <br>
             // Replace content with template
             content.innerHTML = template;
         });
+
+        // Add Color Buttons
+        const yellowBtn = document.createElement('button');
+        yellowBtn.innerHTML = '<div class="w-4 h-4 bg-yellow-400 rounded-full"></div>';
+        yellowBtn.className = 'p-1 hover:bg-amber-900/40 rounded';
+        yellowBtn.title = 'Set Yellow';
+        yellowBtn.addEventListener('click', () => {
+            document.execCommand('styleWithCSS', false, 'true');
+            document.execCommand('foreColor', false, '#fbbf24'); // yellow-400
+            yellowBtn.classList.add('ring-2', 'ring-white');
+            whiteBtn.classList.remove('ring-2', 'ring-white');
+        });
+        templateBtn.parentElement!.insertBefore(yellowBtn, templateBtn.nextSibling);
+
+        const whiteBtn = document.createElement('button');
+        whiteBtn.innerHTML = '<div class="w-4 h-4 bg-white rounded-full"></div>';
+        whiteBtn.className = 'p-1 hover:bg-amber-900/40 rounded';
+        whiteBtn.title = 'Set White';
+        whiteBtn.addEventListener('click', () => {
+            document.execCommand('styleWithCSS', false, 'true');
+            document.execCommand('foreColor', false, '#ffffff'); // white
+            whiteBtn.classList.add('ring-2', 'ring-white');
+            yellowBtn.classList.remove('ring-2', 'ring-white');
+        });
+        templateBtn.parentElement!.insertBefore(whiteBtn, yellowBtn.nextSibling);
     }
+
+    // Delete Button
+    const deleteBtn = document.createElement('button');
+    deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>';
+    deleteBtn.className = 'text-red-400 p-1 border border-red-500/20 rounded hover:bg-red-900/40';
+    deleteBtn.title = 'Delete Selected';
+    deleteBtn.addEventListener('click', () => {
+        document.execCommand('delete', false, null);
+    });
+    copyBtn.parentElement!.insertBefore(deleteBtn, copyBtn.nextSibling);
 
     // Translate Button
     const translateBtn = document.createElement('button');
