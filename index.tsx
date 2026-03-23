@@ -690,6 +690,65 @@ const cameraProjToggle = document.querySelector('#camera-projection-toggle') as 
 // History Label for Clear
 const historyLabelContainer = document.querySelector('#history-label-container') as HTMLDivElement;
 
+// --- Undo/Redo for contenteditable ---
+const undoStacks = new Map<HTMLElement, string[]>();
+const undoIndex = new Map<HTMLElement, number>();
+
+function setupUndo(el: HTMLElement) {
+    undoStacks.set(el, [el.innerHTML]);
+    undoIndex.set(el, 0);
+
+    el.addEventListener('input', () => {
+        const stack = undoStacks.get(el)!;
+        let index = undoIndex.get(el)!;
+        
+        // If we are in the middle of the stack, remove future states
+        if (index < stack.length - 1) {
+            stack.splice(index + 1);
+        }
+        
+        stack.push(el.innerHTML);
+        undoIndex.set(el, stack.length - 1);
+        
+        if (stack.length > 50) { // Limit history
+            stack.shift();
+            undoIndex.set(el, stack.length - 1);
+        }
+    });
+
+    el.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+            e.preventDefault();
+            const stack = undoStacks.get(el)!;
+            let index = undoIndex.get(el)!;
+            
+            if (index > 0) {
+                index--;
+                undoIndex.set(el, index);
+                el.innerHTML = stack[index];
+            }
+        }
+    });
+}
+
+// Initialize Undo for PNG Info
+if (pngInfoContentTop) {
+    setupUndo(pngInfoContentTop);
+    pngInfoContentTop.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const text = e.clipboardData?.getData('text/plain') || '';
+        document.execCommand('insertText', false, text);
+    });
+}
+if (pngInfoContentBottom) {
+    setupUndo(pngInfoContentBottom);
+    pngInfoContentBottom.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const text = e.clipboardData?.getData('text/plain') || '';
+        document.execCommand('insertText', false, text);
+    });
+}
+
 function autoResize(el: HTMLTextAreaElement) {
     if (!el) return;
     el.style.height = 'auto'; 
@@ -1709,11 +1768,15 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
 document.addEventListener('keydown', (e) => {
     // Undo/Redo Shortcuts
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        const target = e.target as HTMLElement;
+        if (target.isContentEditable || target.tagName === 'TEXTAREA' || target.tagName === 'INPUT') return;
         e.preventDefault();
         performUndo();
         return;
     }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        const target = e.target as HTMLElement;
+        if (target.isContentEditable || target.tagName === 'TEXTAREA' || target.tagName === 'INPUT') return;
         e.preventDefault();
         performRedo();
         return;
@@ -2144,6 +2207,9 @@ Chi tiết: <br>
     // Ensure content is editable by default
     content.setAttribute('contenteditable', 'true');
     content.classList.add('border-amber-500/50');
+    
+    // Add Undo/Redo support
+    setupUndo(content);
     
     // Drag and drop
     viewport.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); });
