@@ -35,6 +35,28 @@ document.addEventListener("DOMContentLoaded", function () {
       }
   };
   applyPulseEffect();
+
+  // Language Toggle
+  const mainTranslateBtn = document.getElementById('main-translate-btn') as HTMLButtonElement;
+  if (mainTranslateBtn) {
+      let currentLang: 'VN' | 'EN' = 'VN';
+      mainTranslateBtn.addEventListener('click', async () => {
+          mainTranslateBtn.innerText = '...';
+          const elements = document.querySelectorAll('[data-i18n]');
+          const targetLang = currentLang === 'VN' ? 'EN' : 'VN';
+          
+          for (const el of elements) {
+              if (!el.hasAttribute('data-original-text')) {
+                  el.setAttribute('data-original-text', el.innerHTML);
+              }
+              const originalText = el.getAttribute('data-original-text')!;
+              el.innerHTML = await translateTextGeneric(originalText, targetLang);
+          }
+          
+          currentLang = targetLang;
+          mainTranslateBtn.innerText = currentLang === 'VN' ? 'VN-EN' : 'EN-VN';
+      });
+  }
 });
 
 interface PromptData {
