@@ -606,10 +606,6 @@ if (gptBtn && gptModal) {
     });
 }
 
-// Translation Buttons
-const langBtnVn = document.querySelector('#lang-btn-vn') as HTMLButtonElement;
-const langBtnEn = document.querySelector('#lang-btn-en') as HTMLButtonElement;
-
 // Inpainting UI
 const inpaintingPromptToggle = document.querySelector('#inpainting-prompt-toggle') as HTMLInputElement;
 const inpaintingPromptText = document.querySelector('#inpainting-prompt-text') as HTMLTextAreaElement;
@@ -765,117 +761,9 @@ if (promptEl) setupAutoResize(promptEl);
 if (inpaintingPromptText) setupAutoResize(inpaintingPromptText);
 manualCtxEntries.forEach(el => setupAutoResize(el));
 
-// --- Translation Logic ---
-function updateLangButtonStyles(active: 'VN' | 'EN') {
-    if (active === 'VN') {
-        langBtnVn?.classList.remove('text-gray-500');
-        langBtnVn?.classList.add('bg-[#262380]', 'text-white');
-        
-        langBtnEn?.classList.remove('bg-[#262380]', 'text-white');
-        langBtnEn?.classList.add('text-gray-500');
-    } else {
-        langBtnEn?.classList.remove('text-gray-500');
-        langBtnEn?.classList.add('bg-[#262380]', 'text-white');
-        
-        langBtnVn?.classList.remove('bg-[#262380]', 'text-white');
-        langBtnVn?.classList.add('text-gray-500');
-    }
-}
 
-async function translatePrompt(targetLang: 'VN' | 'EN') {
-    // 1. UI Update
-    updateLangButtonStyles(targetLang);
 
-    // 2. Gather inputs
-    const megaEl = promptEl;
-    const lightEl = document.getElementById('lighting-manual') as HTMLTextAreaElement;
-    const sceneEl = document.getElementById('scene-manual') as HTMLTextAreaElement;
-    const viewEl = document.getElementById('view-manual') as HTMLTextAreaElement;
 
-    const dataToTranslate = {
-        mega: megaEl?.value || "",
-        lighting: lightEl?.value || "",
-        scene: sceneEl?.value || "",
-        view: viewEl?.value || ""
-    };
-
-    const hasContent = Object.values(dataToTranslate).some(v => v.trim() !== "");
-    if (!hasContent) return;
-
-    // 3. Prepare Translation
-    const loadingText = targetLang === 'VN' ? "Đang dịch..." : "Translating...";
-    if(statusEl) statusEl.innerText = loadingText;
-    
-    // Disable inputs
-    if(megaEl) megaEl.disabled = true;
-    if(lightEl) lightEl.disabled = true;
-    if(sceneEl) sceneEl.disabled = true;
-    if(viewEl) viewEl.disabled = true;
-
-    try {
-        const jsonStr = JSON.stringify(dataToTranslate);
-        const systemPrompt = targetLang === 'VN' 
-            ? `You are a professional translator. Translate the values in the provided JSON object to Vietnamese. Keep technical terms if appropriate. Return ONLY valid JSON.`
-            : `You are a professional translator. Translate the values in the provided JSON object to English. Optimize for AI image generation. Return ONLY valid JSON.`;
-
-        // Use local Helper to get Key
-        const ai = getGenAI();
-
-        // Using gemini-3-flash-preview for text tasks as requested
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview', 
-            contents: { parts: [{ text: `Translate this JSON: ${jsonStr}` }] },
-            config: { 
-                systemInstruction: systemPrompt,
-                responseMimeType: 'application/json'
-            }
-        });
-
-        if (response.text) {
-            // Clean up Markdown code blocks if present
-            let cleanText = response.text.trim();
-            if (cleanText.startsWith('```json')) {
-                cleanText = cleanText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-            } else if (cleanText.startsWith('```')) {
-                 cleanText = cleanText.replace(/^```\s*/, '').replace(/\s*```$/, '');
-            }
-
-            const result = JSON.parse(cleanText);
-            if(megaEl && result.mega) { megaEl.value = result.mega; autoResize(megaEl); }
-            if(lightEl && result.lighting) { lightEl.value = result.lighting; autoResize(lightEl); }
-            if(sceneEl && result.scene) { sceneEl.value = result.scene; autoResize(sceneEl); }
-            if(viewEl && result.view) { viewEl.value = result.view; autoResize(viewEl); }
-
-            // AUTO COPY TO CLIPBOARD
-            const combined = [
-                result.mega || '', 
-                result.lighting ? `Lighting: ${result.lighting}` : '', 
-                result.scene ? `Scene: ${result.scene}` : '', 
-                result.view ? `View: ${result.view}` : ''
-            ].filter(Boolean).join('\n');
-            
-            try {
-                await navigator.clipboard.writeText(combined);
-                if(statusEl) statusEl.innerText = "Translated & Copied to Clipboard!";
-            } catch (err) {
-                console.error("Auto copy failed", err);
-                if(statusEl) statusEl.innerText = "Translation Complete (Copy Failed)";
-            }
-
-        }
-    } catch (e: any) {
-        console.error("Translation failed", e);
-        if (statusEl) statusEl.innerText = "Translation Error";
-    } finally {
-        if(megaEl) megaEl.disabled = false;
-        if(lightEl) lightEl.disabled = false;
-        if(sceneEl) sceneEl.disabled = false;
-        if(viewEl) viewEl.disabled = false;
-    }
-}
-
-if (langBtnVn) langBtnVn.addEventListener('click', () => translatePrompt('VN'));
-if (langBtnEn) langBtnEn.addEventListener('click', () => translatePrompt('EN'));
 
 // --- Icon Button Logic ---
 

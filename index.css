@@ -1,4 +1,24 @@
 
+/* Custom Scrollbar */
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #3f3f46 transparent;
+}
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #0D0D0E;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #3f3f46;
+    border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #52525b;
+}
+
 :root {
   --font-body: 'Plus Jakarta Sans', sans-serif;
   --primary-color: #262380; /* rgb(38, 35, 128) */
