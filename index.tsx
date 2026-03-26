@@ -1981,8 +1981,9 @@ if (pngInfoDownloadPngBtn) {
             if (width > maxWidth) maxWidth = width;
         });
         
-        canvas.width = maxWidth + 40;
-        canvas.height = lines.length * (fontSize + 10) + 40;
+        // Enforce 4:3 aspect ratio and 1080p height (1440x1080)
+        canvas.width = 1440;
+        canvas.height = 1080;
         
         // Draw
         ctx.fillStyle = '#121214';
@@ -1990,8 +1991,10 @@ if (pngInfoDownloadPngBtn) {
         ctx.fillStyle = '#d1d5db';
         ctx.font = `${fontSize}px ${fontFamily}`;
         
+        // Draw text with some padding
+        const padding = 60;
         lines.forEach((line, i) => {
-            ctx.fillText(line, 20, 30 + i * (fontSize + 10));
+            ctx.fillText(line, padding, padding + i * (fontSize + 10));
         });
         
         // In a real app, we would use a library to embed metadata into the PNG blob.
