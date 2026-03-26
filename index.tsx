@@ -3865,3 +3865,63 @@ if (zoomBrushSizeSlider) {
         brushSlider.dispatchEvent(new Event('input'));
     });
 }
+
+// --- Custom Scrollbar Logic ---
+function setupCustomScrollbar(wrapperId: string, contentId: string) {
+    const wrapper = document.getElementById(wrapperId);
+    const content = document.getElementById(contentId);
+    if (!wrapper || !content) return;
+
+    const upBtn = wrapper.querySelector('.scrollbar-up') as HTMLElement;
+    const downBtn = wrapper.querySelector('.scrollbar-down') as HTMLElement;
+    const track = wrapper.querySelector('.scrollbar-track') as HTMLElement;
+    const thumb = wrapper.querySelector('.scrollbar-thumb') as HTMLElement;
+
+    if (!upBtn || !downBtn || !track || !thumb) return;
+
+    const updateThumb = () => {
+        const ratio = content.clientHeight / content.scrollHeight;
+        thumb.style.height = `${Math.max(ratio * track.clientHeight, 20)}px`;
+        const scrollRatio = content.scrollTop / (content.scrollHeight - content.clientHeight);
+        thumb.style.top = `${scrollRatio * (track.clientHeight - thumb.clientHeight)}px`;
+    };
+
+    content.addEventListener('scroll', updateThumb);
+    window.addEventListener('resize', updateThumb);
+    updateThumb();
+
+    upBtn.addEventListener('click', () => {
+        content.scrollTop -= 50;
+    });
+
+    downBtn.addEventListener('click', () => {
+        content.scrollTop += 50;
+    });
+
+    let isDragging = false;
+    let startY = 0;
+    let startScrollTop = 0;
+
+    thumb.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        startY = e.clientY;
+        startScrollTop = content.scrollTop;
+        document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const deltaY = e.clientY - startY;
+        const scrollRatio = (content.scrollHeight - content.clientHeight) / (track.clientHeight - thumb.clientHeight);
+        content.scrollTop = startScrollTop + deltaY * scrollRatio;
+    });
+
+    document.addEventListener('mouseup', () => {
+        isDragging = false;
+        document.body.style.userSelect = '';
+    });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    setupCustomScrollbar('png-info-viewport', 'png-info-scroll-wrapper');
+});
