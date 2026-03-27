@@ -241,6 +241,14 @@ const pngInfoDownloadTxtBtn = document.querySelector('#png-info-download-txt-btn
 const pngInfoDropZoneTop = document.querySelector('#png-info-drop-zone-top') as HTMLDivElement;
 const pngInfoFileInputTop = document.querySelector('#png-info-file-input-top') as HTMLInputElement;
 
+// --- Collage Extract Elements ---
+const collageExtractToggle = document.querySelector('#collage-extract-toggle') as HTMLInputElement;
+const collageExtractControls = document.querySelector('#collage-extract-controls') as HTMLDivElement;
+const collagePositionSelect = document.querySelector('#collage-position-select') as HTMLSelectElement;
+const extractViewBtn = document.querySelector('#extract-view-btn') as HTMLButtonElement;
+
+const COLLAGE_EXTRACT_PROMPT_TEMPLATE = `This image is a multi-frame collage. First detect the full collage layout and identify the exact rectangular boundary of every frame, whether the frames are separated by visible borders, thin gaps, or no visible dividing lines at all. Determine boundaries only from the overall collage structure, panel alignment, and layout geometry, not from the visual content inside the images. Then extract only the [ TARGET POSITION ] frame as one complete rectangular image. Strictly exclude all neighboring frames and do not include any pixels, objects, edges, or partial areas from adjacent images. Do not merge across frame boundaries even if colors, lines, or objects visually continue. Preserve the extracted frame exactly at its original internal resolution and original quality, with no resizing, no recompression, no denoise, no blur, no sharpening, no enhancement, and no content alteration.`;
+
 function showCustomAlert(message: string, title: string = "SUCCESS") {
     if (!customAlertModal) return;
     
@@ -3864,6 +3872,149 @@ if (zoomBrushSizeSlider) {
         brushSlider.value = zoomBrushSizeSlider.value;
         brushSlider.dispatchEvent(new Event('input'));
     });
+}
+
+// --- Collage Extract Logic ---
+if (collageExtractToggle && collageExtractControls) {
+    collageExtractToggle.addEventListener('change', () => {
+        if (collageExtractToggle.checked) {
+            collageExtractControls.classList.remove('hidden');
+        } else {
+            collageExtractControls.classList.add('hidden');
+        }
+    });
+}
+
+if (collagePositionSelect) {
+    collagePositionSelect.addEventListener('change', () => {
+        const targetPosition = collagePositionSelect.value;
+        const finalPrompt = COLLAGE_EXTRACT_PROMPT_TEMPLATE.replace('[ TARGET POSITION ]', targetPosition);
+        const viewManual = document.getElementById('view-manual') as HTMLTextAreaElement;
+        if (viewManual) {
+            viewManual.value = finalPrompt;
+            // Trigger auto-resize if the function exists
+            // @ts-ignore
+            if (typeof autoResize === 'function') autoResize(viewManual);
+        }
+    });
+}
+
+if (extractViewBtn) {
+    extractViewBtn.addEventListener('click', runCollageExtraction);
+}
+
+async function runCollageExtraction() {
+    if (!uploadedImageData) {
+        showCustomAlert("Vui lòng tải lên ảnh ghép (collage) trước.", "Image Required");
+        return;
+    }
+
+    if (isGenerating) return;
+
+    try {
+        // Refresh API Key
+        manualApiKey = localStorage.getItem('manualApiKey') || '';
+        let hasSelected = false;
+        if (typeof window.aistudio !== 'undefined' && window.aistudio.hasSelectedApiKey) {
+            hasSelected = await window.aistudio.hasSelectedApiKey();
+        }
+        let finalApiKey = manualApiKey || process.env.API_KEY || process.env.GEMINI_API_KEY;
+        if (hasSelected && process.env.API_KEY) finalApiKey = process.env.API_KEY;
+
+        if (!finalApiKey) {
+            showCustomAlert("Không tìm thấy API Key. Vui lòng nhập API Key trong phần Account.", "API Key Missing");
+            return;
+        }
+
+        const targetPosition = collagePositionSelect.value;
+        const finalPrompt = COLLAGE_EXTRACT_PROMPT_TEMPLATE.replace('[ TARGET POSITION ]', targetPosition);
+
+        isGenerating = true;
+        extractViewBtn.disabled = true;
+        extractViewBtn.innerText = "EXTRACTING...";
+        if(statusEl) statusEl.innerText = `Đang trích xuất khung hình ${targetPosition}...`;
+
+        // Start progress bar
+        generateProgress.style.width = '0%';
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            progress += 2;
+            if (progress > 90) progress = 90;
+            generateProgress.style.width = `${progress}%`;
+        }, 100);
+
+        const ai = new GoogleGenAI({ apiKey: finalApiKey });
+        // Use gemini-3.1-flash-image-preview for extraction as it's fast and supports image output
+        const modelId = 'gemini-3.1-flash-image-preview';
+
+        const result = await ai.models.generateContent({
+            model: modelId,
+            contents: {
+                parts: [
+                    { inlineData: { mimeType: uploadedImageData.mimeType, data: uploadedImageData.data } },
+                    { text: finalPrompt }
+                ]
+            },
+            config: {
+                imageConfig: {
+                    imageSize: selectedResolution || '1K',
+                    aspectRatio: '1:1'
+                }
+            }
+        });
+
+        clearInterval(progressInterval);
+        generateProgress.style.width = '100%';
+
+        const cand = result.candidates?.[0];
+        if (cand) {
+            let foundImage = false;
+            for (const part of cand.content.parts) {
+                if (part.inlineData) {
+                    const pngBase64 = await convertToPngBase64(part.inlineData.data, part.inlineData.mimeType);
+                    const promptData: PromptData = { 
+                        mega: `Collage Extract: ${targetPosition}`, 
+                        lighting: '', 
+                        scene: '', 
+                        view: '', 
+                        inpaint: '', 
+                        inpaintEnabled: false, 
+                        cameraProjection: false 
+                    };
+                    const finalBase64 = await embedMetadata(pngBase64, promptData);
+                    const src = `data:image/png;base64,${finalBase64}`;
+                    
+                    generatedImages = [src]; // Replace with extracted image
+                    currentImageIndex = 0;
+                    addToHistory(src, promptData);
+                    
+                    outputContainer.classList.remove('hidden');
+                    showImage(0);
+                    foundImage = true;
+                    break;
+                }
+            }
+            if (!foundImage) {
+                showCustomAlert("AI không trả về hình ảnh trích xuất. Vui lòng thử lại.", "Extraction Failed");
+            }
+        }
+
+        if(statusEl) statusEl.innerText = "Trích xuất hoàn tất.";
+        
+        // Track cost
+        if (!!(manualApiKey && manualApiKey.length > 10) || hasSelected) {
+            updateCostDisplay(0.003); // Banana Pro pricing for Flash
+        }
+
+    } catch (error: any) {
+        console.error("Collage Extraction Error", error);
+        showCustomAlert(`Lỗi trích xuất: ${error.message || "Unknown error"}`, "Error");
+    } finally {
+        isGenerating = false;
+        extractViewBtn.disabled = false;
+        extractViewBtn.innerText = "Extract Now";
+        generateProgress.style.width = '0%';
+    }
 }
 
 // --- Custom Scrollbar Logic ---

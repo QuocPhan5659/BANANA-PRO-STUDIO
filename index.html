@@ -322,7 +322,7 @@ window.IS_SKETCHUP = true;
       <div class="flex items-center gap-6">
         <div>
           <h1 class="text-lg md:text-xl font-extrabold text-white tracking-tight uppercase italic">
-            Banana <span class="text-[#262380]">Pro</span> Studio <span class="text-[10px] text-gray-600 not-italic ml-1">v1.9</span>
+            Banana <span class="text-[#262380]">Pro</span> Studio <span class="text-[10px] text-gray-600 not-italic ml-1">v2.0</span>
           </h1>
         </div>
         
@@ -484,6 +484,42 @@ window.IS_SKETCHUP = true;
                         </div>
                         <!-- Removed h-full, added min-h, changed text size -->
                         <textarea id="view-manual" class="manual-ctx-entry prompt-textarea w-full h-full min-h-[140px] rounded-lg p-2 text-sm font-medium placeholder-gray-600 resize-none border border-[#27272a] bg-black/40 mt-1" placeholder="Manual entry..."></textarea>
+
+                        <!-- Collage Extract Section (Moved here) -->
+                        <div class="space-y-2 pt-2 border-t border-white/5 flex-none z-10 relative">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="collage-extract-toggle" class="w-3.5 h-3.5 rounded border-gray-600 bg-[#121214] text-emerald-500 focus:ring-emerald-500/50 cursor-pointer accent-emerald-500">
+                                    <label for="collage-extract-toggle" class="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400 cursor-pointer select-none">Trích Xuất View (Collage)</label>
+                                </div>
+                            </div>
+                            
+                            <div id="collage-extract-controls" class="hidden space-y-2 mt-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                <div class="relative">
+                                    <select id="collage-position-select" class="w-full bg-[#121214] border border-emerald-900/30 text-emerald-100 text-[10px] font-bold uppercase tracking-wider rounded-xl p-2.5 focus:border-emerald-500 appearance-none outline-none transition-all cursor-pointer hover:border-emerald-700/50">
+                                        <option value="Top-Left">1. Top-Left (Trên-Trái)</option>
+                                        <option value="Top-Center">2. Top-Center (Trên-Giữa)</option>
+                                        <option value="Top-Right">3. Top-Right (Trên-Phải)</option>
+                                        <option value="Middle-Left">4. Middle-Left (Giữa-Trái)</option>
+                                        <option value="Center" selected>5. Center (Trung tâm)</option>
+                                        <option value="Middle-Right">6. Middle-Right (Giữa-Phải)</option>
+                                        <option value="Bottom-Left">7. Bottom-Left (Dưới-Trái)</option>
+                                        <option value="Bottom-Center">8. Bottom-Center (Dưới-Giữa)</option>
+                                        <option value="Bottom-Right">9. Bottom-Right (Dưới-Phải)</option>
+                                        <option value="Left">10. Left (Trái)</option>
+                                        <option value="Right">11. Right (Phải)</option>
+                                        <option value="Top">12. Top (Trên)</option>
+                                        <option value="Bottom">13. Bottom (Dưới)</option>
+                                    </select>
+                                    <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-emerald-600">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                    </div>
+                                </div>
+                                <button id="extract-view-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2 rounded-xl text-[9px] tracking-[0.2em] uppercase transition-all shadow-lg shadow-emerald-900/20 active:scale-[0.98]">
+                                    Extract Now
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -553,7 +589,7 @@ window.IS_SKETCHUP = true;
               </div>
               <textarea id="inpainting-prompt-text" rows="2" class="hidden prompt-textarea w-full rounded-xl p-3 text-sm font-medium placeholder-gray-600 transition-all resize-none border border-[#27272a] bg-[#09090A]" placeholder="Nhập hướng dẫn tô vẽ..."></textarea>
           </div>
-          
+
           <!-- SETTINGS SECTION: Ratio & Resolution -->
           <div class="space-y-4 pt-4 border-t border-white/5 flex-none z-10 relative">
               <!-- Image Count -->
@@ -619,7 +655,7 @@ window.IS_SKETCHUP = true;
               <div class="grid grid-cols-2 gap-2">
                  <button id="global-reset-btn" class="w-full bg-white/5 border border-[#27272a] hover:bg-white/10 text-orange-500 hover:text-orange-400 font-black py-2.5 rounded-2xl transition-all duration-300 text-[9px] tracking-[0.2em] uppercase">RESET ALL</button>
                  <div class="w-full bg-transparent border border-white/5 rounded-2xl flex items-center justify-center">
-                    <span class="text-[8px] font-black uppercase tracking-widest text-gray-600">BANANA PRO v1.9</span>
+                    <span class="text-[8px] font-black uppercase tracking-widest text-gray-600">BANANA PRO v2.0</span>
                  </div>
               </div>
           </div>
