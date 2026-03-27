@@ -3892,9 +3892,45 @@ if (collagePositionSelect) {
         const viewManual = document.getElementById('view-manual') as HTMLTextAreaElement;
         if (viewManual) {
             viewManual.value = finalPrompt;
-            // Trigger auto-resize if the function exists
+            
+            // Maintain current state: only auto-resize if NOT collapsed
+            const isCollapsed = viewManual.classList.contains('h-[40px]');
+            if (!isCollapsed) {
+                // Trigger auto-resize if the function exists
+                // @ts-ignore
+                if (typeof autoResize === 'function') autoResize(viewManual);
+            }
+        }
+    });
+}
+
+// --- Viewport Toggle Logic ---
+const toggleViewManualBtn = document.getElementById('toggle-view-manual');
+const expandIcon = document.getElementById('expand-icon');
+const collapseIcon = document.getElementById('collapse-icon');
+const viewManualArea = document.getElementById('view-manual') as HTMLTextAreaElement;
+
+if (toggleViewManualBtn && viewManualArea && expandIcon && collapseIcon) {
+    toggleViewManualBtn.addEventListener('click', () => {
+        // Check if it's currently collapsed (either by class or by explicit height)
+        const isCollapsed = viewManualArea.classList.contains('h-[40px]') || viewManualArea.style.height === '40px';
+        
+        if (isCollapsed) {
+            // Expand
+            viewManualArea.classList.remove('h-[40px]', 'overflow-hidden');
+            viewManualArea.classList.add('h-full', 'min-h-[140px]');
+            viewManualArea.style.height = ''; // Clear inline height to allow auto-resize
+            expandIcon.classList.add('hidden');
+            collapseIcon.classList.remove('hidden');
             // @ts-ignore
-            if (typeof autoResize === 'function') autoResize(viewManual);
+            if (typeof autoResize === 'function') autoResize(viewManualArea);
+        } else {
+            // Collapse
+            viewManualArea.classList.add('h-[40px]', 'overflow-hidden');
+            viewManualArea.classList.remove('h-full', 'min-h-[140px]');
+            viewManualArea.style.height = '40px'; // Force collapsed height
+            expandIcon.classList.remove('hidden');
+            collapseIcon.classList.add('hidden');
         }
     });
 }
@@ -3932,6 +3968,17 @@ async function runCollageExtraction() {
         isGenerating = true;
         extractViewBtn.disabled = true;
         extractViewBtn.innerText = "EXTRACTING...";
+        
+        // Sync with main Generate button UI
+        generateButton.classList.remove('bg-[#262380]');
+        generateButton.classList.add('bg-red-600');
+        generateLabel.innerText = "EXTRACTING (0%)";
+        if (miniGenerateBtn) {
+            miniGenerateBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" /></svg>`;
+            miniGenerateBtn.classList.remove('bg-[#262380]');
+            miniGenerateBtn.classList.add('bg-red-600');
+        }
+
         if(statusEl) statusEl.innerText = `Đang trích xuất khung hình ${targetPosition}...`;
 
         // Start progress bar
@@ -3941,6 +3988,7 @@ async function runCollageExtraction() {
             progress += 2;
             if (progress > 90) progress = 90;
             generateProgress.style.width = `${progress}%`;
+            generateLabel.innerText = `EXTRACTING (${progress}%)`;
         }, 100);
 
         const ai = new GoogleGenAI({ apiKey: finalApiKey });
@@ -4013,6 +4061,17 @@ async function runCollageExtraction() {
         isGenerating = false;
         extractViewBtn.disabled = false;
         extractViewBtn.innerText = "Extract Now";
+        
+        // Reset main Generate button UI
+        generateButton.classList.add('bg-[#262380]');
+        generateButton.classList.remove('bg-red-600');
+        generateLabel.innerText = "GENERATE (PROCESS)";
+        if (miniGenerateBtn) {
+            miniGenerateBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>`;
+            miniGenerateBtn.classList.add('bg-[#262380]');
+            miniGenerateBtn.classList.remove('bg-red-600');
+        }
+
         generateProgress.style.width = '0%';
     }
 }
