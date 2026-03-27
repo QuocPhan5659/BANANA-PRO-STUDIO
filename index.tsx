@@ -86,6 +86,9 @@ let startY = 0;
 let currentBrushSize = 30; // Reduced default size to 30
 let activeTool = 'brush';
 let lassoPoints: Array<{ x: number; y: number }> = [];
+let polygonPoints: Array<{ x: number; y: number }> = [];
+let isDrawingPolygon = false;
+let drawRequest: number | null = null;
 
 // --- Screenshot State ---
 let snapshotImage: ImageBitmap | null = null;
@@ -2499,7 +2502,7 @@ function updateBrushCursor(e: MouseEvent) {
     if (activeTool === 'brush' || activeTool === 'eraser') {
         // Keeps the default CSS styling for circle, remove SVG
          brushCursor.innerHTML = '';
-    } else if (activeTool === 'rect' || activeTool === 'ellipse' || activeTool === 'lasso') {
+    } else if (activeTool === 'rect' || activeTool === 'ellipse' || activeTool === 'lasso' || activeTool === 'polygon') {
          brushCursor.innerHTML = pencilIcon;
     } else if (activeTool === 'arrow') {
          brushCursor.innerHTML = dotIcon;
@@ -2551,76 +2554,183 @@ function getTransformedCanvasCoords(e: MouseEvent, canvas: HTMLCanvasElement) {
 
 // Unified Draw Logic
 function startDrawing(e: MouseEvent, targetCanvas: HTMLCanvasElement) {
-    const contextToUse = (targetCanvas.id === 'zoom-mask-canvas') ? ctx : ctx; // Always draw to main ctx
-    if (!contextToUse) return;
+    if (!ctx) return;
 
     isDrawing = true;
     const { x, y } = getTransformedCanvasCoords(e, targetCanvas);
     startX = x; startY = y;
 
     if (activeTool === 'brush' || activeTool === 'eraser') {
-        contextToUse.beginPath();
-        contextToUse.globalCompositeOperation = activeTool === 'eraser' ? 'destination-out' : 'source-over';
-        contextToUse.strokeStyle = 'rgba(255, 0, 0, 0.8)';
-        contextToUse.fillStyle = 'rgba(255, 0, 0, 0.8)';
-        contextToUse.moveTo(x, y); contextToUse.lineTo(x, y); contextToUse.stroke();
+        const op = activeTool === 'eraser' ? 'destination-out' : 'source-over';
+        const color = 'rgba(255, 0, 0, 0.8)';
+        
+        ctx.beginPath();
+        ctx.globalCompositeOperation = op;
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = currentBrushSize;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.moveTo(x, y); ctx.lineTo(x, y); ctx.stroke();
+        
+        if (zoomCtx) {
+            zoomCtx.beginPath();
+            zoomCtx.globalCompositeOperation = op;
+            zoomCtx.strokeStyle = color;
+            zoomCtx.fillStyle = color;
+            zoomCtx.lineWidth = currentBrushSize;
+            zoomCtx.lineCap = 'round';
+            zoomCtx.lineJoin = 'round';
+            zoomCtx.moveTo(x, y); zoomCtx.lineTo(x, y); zoomCtx.stroke();
+        }
     } else if (activeTool === 'lasso') {
         lassoPoints = [{x, y}];
+        maskPreviewCanvas.classList.remove('hidden');
+        if (zoomPreviewCanvas) zoomPreviewCanvas.classList.remove('hidden');
+    } else if (activeTool === 'rect' || activeTool === 'ellipse' || activeTool === 'arrow') {
+        maskPreviewCanvas.classList.remove('hidden');
+        if (zoomPreviewCanvas) zoomPreviewCanvas.classList.remove('hidden');
+    } else if (activeTool === 'polygon') {
+        // Point-to-Point Polygon logic
+        if (!isDrawingPolygon) {
+            isDrawingPolygon = true;
+            polygonPoints = [{x, y}];
+            maskPreviewCanvas.classList.remove('hidden');
+            if (zoomPreviewCanvas) zoomPreviewCanvas.classList.remove('hidden');
+        } else {
+            // Check if clicking near the first point to close
+            const dist = Math.sqrt(Math.pow(x - polygonPoints[0].x, 2) + Math.pow(y - polygonPoints[0].y, 2));
+            if (dist < 15 && polygonPoints.length > 2) {
+                finishPolygon();
+            } else {
+                polygonPoints.push({x, y});
+            }
+        }
     }
 }
 
-function draw(e: MouseEvent, targetCanvas: HTMLCanvasElement) {
-    if (!isDrawing) return;
-    const { x, y } = getTransformedCanvasCoords(e, targetCanvas);
-    const contextToUse = ctx; // Main ctx
+function finishPolygon() {
+    if (polygonPoints.length < 3) {
+        isDrawingPolygon = false;
+        polygonPoints = [];
+        maskPreviewCanvas.classList.add('hidden');
+        return;
+    }
+    
+    if (ctx) {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+        ctx.beginPath();
+        ctx.moveTo(polygonPoints[0].x, polygonPoints[0].y);
+        for (let i = 1; i < polygonPoints.length; i++) {
+            ctx.lineTo(polygonPoints[i].x, polygonPoints[i].y);
+        }
+        ctx.closePath();
+        ctx.fill();
+        
+        // Sync zoom canvas
+        if (zoomCtx) {
+            zoomCtx.clearRect(0, 0, zoomMaskCanvas.width, zoomMaskCanvas.height);
+            zoomCtx.drawImage(maskCanvas, 0, 0);
+        }
+        
+        saveMaskHistory();
+    }
+    
+    isDrawingPolygon = false;
+    polygonPoints = [];
+    if (drawRequest) cancelAnimationFrame(drawRequest);
+    drawRequest = null;
+    maskPreviewCanvas.classList.add('hidden');
+    zoomPreviewCanvas.classList.add('hidden');
+}
 
-    // For preview, decide which canvas to use
-    const pCtx = (targetCanvas.id === 'zoom-mask-canvas') ? zoomPreviewCtx : previewCtx;
-    const pCanvas = (targetCanvas.id === 'zoom-mask-canvas') ? zoomPreviewCanvas : maskPreviewCanvas;
+function draw(e: MouseEvent, targetCanvas: HTMLCanvasElement) {
+    if (!isDrawing && !isDrawingPolygon) return;
+    const { x, y } = getTransformedCanvasCoords(e, targetCanvas);
 
     if (activeTool === 'brush' || activeTool === 'eraser') {
-        if(contextToUse) { contextToUse.lineTo(x, y); contextToUse.stroke(); }
-        // If zooming, update zoom canvas visualization too (simple sync)
-        if(targetCanvas.id === 'zoom-mask-canvas' && zoomCtx) {
-             zoomCtx.clearRect(0,0,zoomCtx.canvas.width, zoomCtx.canvas.height);
-             zoomCtx.drawImage(maskCanvas, 0, 0);
+        if (ctx) {
+            ctx.lineTo(x, y);
+            ctx.stroke();
         }
-    } else {
+        if (zoomCtx) {
+            zoomCtx.lineTo(x, y);
+            zoomCtx.stroke();
+        }
+    } else if (activeTool === 'polygon' || activeTool === 'lasso') {
+        // Immediate preview for polygon and lasso for better responsiveness
+        const pCtx = (targetCanvas.id === 'zoom-mask-canvas') ? zoomPreviewCtx : previewCtx;
+        const pCanvas = (targetCanvas.id === 'zoom-mask-canvas') ? zoomPreviewCanvas : maskPreviewCanvas;
         if (!pCtx || !pCanvas) return;
+
         pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
-        pCanvas.classList.remove('hidden');
-
         pCtx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
-        pCtx.fillStyle = 'rgba(255, 0, 0, 0.3)';
-        pCtx.lineWidth = activeTool === 'arrow' ? 5 : 2;
+        pCtx.lineWidth = 2;
 
-        if (activeTool === 'rect') {
-            pCtx.fillRect(startX, startY, x - startX, y - startY);
-            pCtx.strokeRect(startX, startY, x - startX, y - startY);
-        } else if (activeTool === 'ellipse') {
+        if (activeTool === 'polygon') {
+            if (!isDrawingPolygon || polygonPoints.length === 0) return;
+            pCtx.fillStyle = 'rgba(255, 0, 0, 0.2)';
             pCtx.beginPath();
-            const radiusX = Math.abs(x - startX) / 2;
-            const radiusY = Math.abs(y - startY) / 2;
-            const centerX = startX + (x - startX) / 2;
-            const centerY = startY + (y - startY) / 2;
-            pCtx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
-            pCtx.fill(); pCtx.stroke();
+            pCtx.moveTo(polygonPoints[0].x, polygonPoints[0].y);
+            for (let i = 1; i < polygonPoints.length; i++) {
+                pCtx.lineTo(polygonPoints[i].x, polygonPoints[i].y);
+            }
+            pCtx.lineTo(x, y);
+            pCtx.stroke();
+
+            const dist = Math.sqrt(Math.pow(x - polygonPoints[0].x, 2) + Math.pow(y - polygonPoints[0].y, 2));
+            if (dist < 15 && polygonPoints.length > 2) {
+                pCtx.beginPath();
+                pCtx.arc(polygonPoints[0].x, polygonPoints[0].y, 8, 0, Math.PI * 2);
+                pCtx.fillStyle = 'rgba(0, 255, 0, 0.5)';
+                pCtx.fill();
+            }
         } else if (activeTool === 'lasso') {
             lassoPoints.push({x, y});
+            pCtx.fillStyle = 'rgba(255, 0, 0, 0.1)';
             pCtx.beginPath();
             pCtx.moveTo(lassoPoints[0].x, lassoPoints[0].y);
             for (let i = 1; i < lassoPoints.length; i++) pCtx.lineTo(lassoPoints[i].x, lassoPoints[i].y);
-            pCtx.stroke(); pCtx.fillStyle = 'rgba(255, 0, 0, 0.1)'; pCtx.fill();
-        } else if (activeTool === 'arrow') {
-            const headlen = 30; // Increased size
-            const angle = Math.atan2(y - startY, x - startX);
-            pCtx.strokeStyle = 'cyan'; pCtx.lineWidth = 8; // Increased width
-            pCtx.beginPath(); pCtx.moveTo(startX, startY); pCtx.lineTo(x, y); pCtx.stroke();
-            pCtx.beginPath(); pCtx.moveTo(x, y);
-            pCtx.lineTo(x - headlen * Math.cos(angle - Math.PI / 6), y - headlen * Math.sin(angle - Math.PI / 6));
-            pCtx.lineTo(x - headlen * Math.cos(angle + Math.PI / 6), y - headlen * Math.sin(angle + Math.PI / 6));
-            pCtx.lineTo(x, y); pCtx.fillStyle = 'cyan'; pCtx.fill();
+            pCtx.stroke();
+            pCtx.fill();
         }
+    } else {
+        if (drawRequest) cancelAnimationFrame(drawRequest);
+        drawRequest = requestAnimationFrame(() => {
+            // For preview, decide which canvas to use
+            const pCtx = (targetCanvas.id === 'zoom-mask-canvas') ? zoomPreviewCtx : previewCtx;
+            const pCanvas = (targetCanvas.id === 'zoom-mask-canvas') ? zoomPreviewCanvas : maskPreviewCanvas;
+
+            if (!pCtx || !pCanvas) return;
+            pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+
+            pCtx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+            pCtx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+            pCtx.lineWidth = activeTool === 'arrow' ? 5 : 2;
+
+            if (activeTool === 'rect') {
+                pCtx.fillRect(startX, startY, x - startX, y - startY);
+                pCtx.strokeRect(startX, startY, x - startX, y - startY);
+            } else if (activeTool === 'ellipse') {
+                pCtx.beginPath();
+                const radiusX = Math.abs(x - startX) / 2;
+                const radiusY = Math.abs(y - startY) / 2;
+                const centerX = startX + (x - startX) / 2;
+                const centerY = startY + (y - startY) / 2;
+                pCtx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
+                pCtx.fill(); pCtx.stroke();
+            } else if (activeTool === 'arrow') {
+                const headlen = 30; // Increased size
+                const angle = Math.atan2(y - startY, x - startX);
+                pCtx.strokeStyle = 'cyan'; pCtx.lineWidth = 8; // Increased width
+                pCtx.beginPath(); pCtx.moveTo(startX, startY); pCtx.lineTo(x, y); pCtx.stroke();
+                pCtx.beginPath(); pCtx.moveTo(x, y);
+                pCtx.lineTo(x - headlen * Math.cos(angle - Math.PI / 6), y - headlen * Math.sin(angle - Math.PI / 6));
+                pCtx.lineTo(x - headlen * Math.cos(angle + Math.PI / 6), y - headlen * Math.sin(angle + Math.PI / 6));
+                pCtx.lineTo(x, y); pCtx.fillStyle = 'cyan'; pCtx.fill();
+            }
+        });
     }
 }
 
@@ -2635,6 +2745,9 @@ function stopDrawing(e: MouseEvent, targetCanvas: HTMLCanvasElement) {
 
     if (activeTool === 'brush' || activeTool === 'eraser') {
         if (contextToUse) contextToUse.closePath();
+    } else if (activeTool === 'polygon') {
+        // Polygon is click-based, so stopDrawing (on mouseup) doesn't finish it
+        return;
     } else {
         if (!contextToUse || !pCtx || !pCanvas) return;
         pCanvas.classList.add('hidden');
@@ -2692,6 +2805,9 @@ function stopDrawing(e: MouseEvent, targetCanvas: HTMLCanvasElement) {
         }
     }
     
+    if (drawRequest) cancelAnimationFrame(drawRequest);
+    drawRequest = null;
+    
     // Save history after any drawing operation
     saveMaskHistory();
 }
@@ -2704,20 +2820,27 @@ function attachCanvasListeners(canvas: HTMLCanvasElement) {
     });
     canvas.addEventListener('mousemove', (e) => draw(e, canvas));
     canvas.addEventListener('mouseup', (e) => stopDrawing(e, canvas));
-    canvas.addEventListener('mouseout', (e) => stopDrawing(e, canvas));
-    canvas.addEventListener('contextmenu', (e) => e.preventDefault()); // Disable right-click menu
+    canvas.addEventListener('mouseout', (e) => {
+        if (activeTool !== 'polygon') stopDrawing(e, canvas);
+    });
+    canvas.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        if (activeTool === 'polygon' && isDrawingPolygon) {
+            finishPolygon();
+        }
+    }); // Disable right-click menu
 }
 
 if (maskCanvas) attachCanvasListeners(maskCanvas);
 if (zoomMaskCanvas) {
-    zoomMaskCanvas.addEventListener('mousedown', (e) => {
-        if (e.button !== 0) return; // Only left click for inpainting
-        startDrawing(e, zoomMaskCanvas);
-    });
-    zoomMaskCanvas.addEventListener('contextmenu', (e) => e.preventDefault()); // Disable right-click menu
-    // Global handlers for drag out
+    attachCanvasListeners(zoomMaskCanvas);
+    
+    // Global handlers for drag out (for drag-based tools)
     window.addEventListener('mousemove', (e) => {
         if(isDrawing && !zoomOverlay.classList.contains('hidden')) {
+             draw(e, zoomMaskCanvas);
+        }
+        if(isDrawingPolygon && !zoomOverlay.classList.contains('hidden') && activeTool === 'polygon') {
              draw(e, zoomMaskCanvas);
         }
     });
@@ -3743,6 +3866,11 @@ toolBtns.forEach(btn => {
         else if (btn.id.includes('rect')) activeTool = 'rect';
         else if (btn.id.includes('ellipse')) activeTool = 'ellipse';
         else if (btn.id.includes('lasso')) activeTool = 'lasso';
+        else if (btn.id.includes('polygon')) {
+            activeTool = 'polygon';
+            polygonPoints = [];
+            isDrawingPolygon = false;
+        }
         else if (btn.id.includes('arrow')) activeTool = 'arrow';
         else if (btn.id.includes('eraser')) activeTool = 'eraser';
         
