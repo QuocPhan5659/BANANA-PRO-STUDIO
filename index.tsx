@@ -3958,7 +3958,7 @@ async function runCollageExtraction() {
             config: {
                 imageConfig: {
                     imageSize: selectedResolution || '1K',
-                    aspectRatio: '1:1'
+                    aspectRatio: sizeSelect.value || '1:1'
                 }
             }
         });
