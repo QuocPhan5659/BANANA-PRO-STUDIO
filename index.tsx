@@ -158,30 +158,39 @@ const prevZoomBtn = document.querySelector('#prev-zoom-btn') as HTMLButtonElemen
 const nextZoomBtn = document.querySelector('#next-zoom-btn') as HTMLButtonElement;
 const imageCounterBadge = document.querySelector('#image-counter-badge') as HTMLDivElement;
 
-// Cost Tracking
+// Image Count Tracking
 const costDisplayEl = document.querySelector('#cost-display') as HTMLDivElement;
-const totalCostValEl = document.querySelector('#total-cost-val') as HTMLSpanElement;
-let totalUsageCost = parseFloat(localStorage.getItem('banana_usage_cost') || '0');
+const totalImagesValEl = document.querySelector('#total-images-val') as HTMLSpanElement;
+const todayImagesValEl = document.querySelector('#today-images-val') as HTMLSpanElement;
 
-const updateCostDisplay = (addedCost: number = 0) => {
-    totalUsageCost += addedCost;
-    localStorage.setItem('banana_usage_cost', totalUsageCost.toFixed(6));
+let totalImagesGenerated = parseInt(localStorage.getItem('total_images_generated') || '0');
+let imagesGeneratedToday = parseInt(localStorage.getItem(`images_generated_${new Date().toISOString().split('T')[0]}`) || '0');
+
+const updateImageCountDisplay = (addedCount: number = 0) => {
+    totalImagesGenerated += addedCount;
+    imagesGeneratedToday += addedCount;
     
-    if (totalCostValEl) {
-        totalCostValEl.innerText = `$${totalUsageCost.toFixed(3)}`;
-        // Always emerald for accumulation
-        totalCostValEl.classList.remove('text-red-400');
-        totalCostValEl.classList.add('text-emerald-400');
+    localStorage.setItem('total_images_generated', totalImagesGenerated.toString());
+    localStorage.setItem(`images_generated_${new Date().toISOString().split('T')[0]}`, imagesGeneratedToday.toString());
+    
+    if (totalImagesValEl) {
+        totalImagesValEl.innerText = `Total: ${totalImagesGenerated}`;
+    }
+    if (todayImagesValEl) {
+        todayImagesValEl.innerText = `Today: ${imagesGeneratedToday}`;
     }
 };
 
-const resetCost = () => {
-    totalUsageCost = 0;
-    updateCostDisplay(0);
+const resetImageCount = () => {
+    totalImagesGenerated = 0;
+    imagesGeneratedToday = 0;
+    localStorage.setItem('total_images_generated', '0');
+    localStorage.setItem(`images_generated_${new Date().toISOString().split('T')[0]}`, '0');
+    updateImageCountDisplay(0);
 };
 
-// Initialize Cost Display
-updateCostDisplay(0);
+// Initialize Image Count Display
+updateImageCountDisplay(0);
 
 // API Key UI Elements
 let manualApiKey = localStorage.getItem('manualApiKey') || '';
@@ -479,7 +488,7 @@ if (saveApiKeyBtn && manualApiKeyInput) {
                 localStorage.setItem('manualApiKey', key);
                 
                 // Reset Cost on Key Change
-                resetCost();
+                resetImageCount();
                 
                 // Immediately update Badge UI
                 updateAccountStatusUI();
@@ -3561,7 +3570,7 @@ async function runGeneration() {
                         else if (modelId.includes('3.1-flash')) costPerImg = 0.003;
                         
                         // Only track cost if using a Pro/Ultra tier (Tier 1 Billing)
-                        if (isPro) updateCostDisplay(costPerImg);
+                        if (isPro) updateImageCountDisplay(1);
 
                         // Nếu tạo thành công 1 ảnh, cập nhật thanh tiến trình thật
                         const realProgress = Math.floor(((k + 1) / imageCount) * 95);
@@ -3666,7 +3675,7 @@ async function runGeneration() {
                             }));
                             
                             // Update Cost for Fallback (Flash)
-                            updateCostDisplay(0.0007);
+                            updateImageCountDisplay(1);
                          }
                          
                          if (!abortController || abortController.signal.aborted) return;
@@ -4179,7 +4188,7 @@ async function runCollageExtraction() {
         
         // Track cost
         if (!!(manualApiKey && manualApiKey.length > 10) || hasSelected) {
-            updateCostDisplay(0.003); // Banana Pro pricing for Flash
+            updateImageCountDisplay(1); // Banana Pro pricing for Flash
         }
 
     } catch (error: any) {
