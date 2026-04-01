@@ -629,6 +629,54 @@ if (gptBtn && gptModal) {
 // Translation Buttons
 const langBtnVn = document.querySelector('#lang-btn-vn') as HTMLButtonElement;
 const langBtnEn = document.querySelector('#lang-btn-en') as HTMLButtonElement;
+const togglePromptModifiersBtn = document.querySelector('#toggle-prompt-modifiers') as HTMLButtonElement;
+const promptManual = document.querySelector('#prompt-manual') as HTMLTextAreaElement;
+const pngInfoToggleModifiersTop = document.querySelector('#png-info-toggle-modifiers-top') as HTMLButtonElement;
+const promptModifiers = "photorealistic, ultra detailed, sharp focus, 8k, crisp details, realistic materials, clean edges, precise geometry, global illumination, natural lighting, high detail textures, professional photography --no blurry, low quality, noise, soft focus, distorted, bad texture, artifacts";
+
+if (togglePromptModifiersBtn && promptManual) {
+    togglePromptModifiersBtn.addEventListener('click', () => {
+        const currentVal = promptManual.value;
+        if (currentVal.includes(promptModifiers)) {
+            // Remove
+            promptManual.value = currentVal.replace(promptModifiers, '').replace(/,\s*$/, '').trim();
+        } else {
+            // Append
+            promptManual.value = (currentVal + (currentVal.trim().length > 0 ? ', ' : '') + promptModifiers).trim();
+        }
+        // Trigger auto-resize if the function exists
+        // @ts-ignore
+        if (typeof autoResize === 'function') autoResize(promptManual);
+    });
+}
+
+if (pngInfoToggleModifiersTop && pngInfoContentTop) {
+    pngInfoToggleModifiersTop.addEventListener('click', () => {
+        const currentVal = pngInfoContentTop.innerText;
+        if (currentVal.includes(promptModifiers)) {
+            // Remove
+            pngInfoContentTop.innerText = currentVal.replace(promptModifiers, '').replace(/,\s*$/, '').trim();
+        } else {
+            // Append
+            pngInfoContentTop.innerText = (currentVal + (currentVal.trim().length > 0 ? ', ' : '') + promptModifiers).trim();
+        }
+    });
+}
+
+const pngInfoToggleModifiersBottom = document.querySelector('#png-info-toggle-modifiers-bottom') as HTMLButtonElement;
+
+if (pngInfoToggleModifiersBottom && pngInfoContentBottom) {
+    pngInfoToggleModifiersBottom.addEventListener('click', () => {
+        const currentVal = pngInfoContentBottom.innerText;
+        if (currentVal.includes(promptModifiers)) {
+            // Remove
+            pngInfoContentBottom.innerText = currentVal.replace(promptModifiers, '').replace(/,\s*$/, '').trim();
+        } else {
+            // Append
+            pngInfoContentBottom.innerText = (currentVal + (currentVal.trim().length > 0 ? ', ' : '') + promptModifiers).trim();
+        }
+    });
+}
 
 // Inpainting UI
 const inpaintingPromptToggle = document.querySelector('#inpainting-prompt-toggle') as HTMLInputElement;
