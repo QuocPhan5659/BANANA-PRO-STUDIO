@@ -2049,8 +2049,30 @@ if (pngInfoDownloadPngBtn) {
             if (width > maxWidth) maxWidth = width;
         });
         
-        canvas.width = maxWidth + 40;
-        canvas.height = lines.length * (fontSize + 10) + 40;
+        let contentWidth = maxWidth + 40;
+        let contentHeight = lines.length * (fontSize + 10) + 40;
+        
+        // Find aspect ratio
+        const arMatch = text.match(/AR:\s*--ar:(\d+):(\d+)/);
+        if (arMatch) {
+            const arWidth = parseInt(arMatch[1]);
+            const arHeight = parseInt(arMatch[2]);
+            const ratio = arWidth / arHeight;
+            
+            // Ensure canvas fits content and matches ratio
+            if (contentWidth / contentHeight > ratio) {
+                // Content is wider than ratio, increase height
+                canvas.width = contentWidth;
+                canvas.height = contentWidth / ratio;
+            } else {
+                // Content is taller than ratio, increase width
+                canvas.height = contentHeight;
+                canvas.width = contentHeight * ratio;
+            }
+        } else {
+            canvas.width = contentWidth;
+            canvas.height = contentHeight;
+        }
         
         // Draw
         ctx.fillStyle = '#121214';
