@@ -1057,9 +1057,22 @@ clearTextBtns.forEach(btn => {
 exportBtns.forEach(btn => {
     btn.addEventListener('click', () => {
         const targetId = btn.getAttribute('data-target');
-        const el = document.getElementById(targetId!) as HTMLTextAreaElement;
-        if (el && el.value) {
-            const blob = new Blob([el.value], { type: 'text/plain' });
+        let textToExport = '';
+        
+        if (targetId === 'all-prompts') {
+            const prompt = (document.getElementById('prompt-manual') as HTMLTextAreaElement)?.value || '';
+            const lighting = (document.getElementById('lighting-manual') as HTMLTextAreaElement)?.value || '';
+            const scene = (document.getElementById('scene-manual') as HTMLTextAreaElement)?.value || '';
+            const view = (document.getElementById('view-manual') as HTMLTextAreaElement)?.value || '';
+            
+            textToExport = `PROMPT: ${prompt}\n\nLIGHTING: ${lighting}\n\nSCENE: ${scene}\n\nVIEW: ${view}`;
+        } else {
+            const el = document.getElementById(targetId!) as HTMLTextAreaElement;
+            if (el) textToExport = el.value;
+        }
+        
+        if (textToExport) {
+            const blob = new Blob([textToExport], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -2052,26 +2065,18 @@ if (pngInfoDownloadPngBtn) {
         let contentWidth = maxWidth + 40;
         let contentHeight = lines.length * (fontSize + 10) + 40;
         
-        // Find aspect ratio
-        const arMatch = text.match(/AR:\s*--ar:(\d+):(\d+)/);
-        if (arMatch) {
-            const arWidth = parseInt(arMatch[1]);
-            const arHeight = parseInt(arMatch[2]);
-            const ratio = arWidth / arHeight;
-            
-            // Ensure canvas fits content and matches ratio
-            if (contentWidth / contentHeight > ratio) {
-                // Content is wider than ratio, increase height
-                canvas.width = contentWidth;
-                canvas.height = contentWidth / ratio;
-            } else {
-                // Content is taller than ratio, increase width
-                canvas.height = contentHeight;
-                canvas.width = contentHeight * ratio;
-            }
-        } else {
+        // Force 4:3 aspect ratio
+        const ratio = 4 / 3;
+        
+        // Ensure canvas fits content and matches 4:3 ratio
+        if (contentWidth / contentHeight > ratio) {
+            // Content is wider than 4:3, increase height to fit ratio
             canvas.width = contentWidth;
+            canvas.height = contentWidth / ratio;
+        } else {
+            // Content is taller than 4:3, increase width to fit ratio
             canvas.height = contentHeight;
+            canvas.width = contentHeight * ratio;
         }
         
         // Draw
@@ -2233,8 +2238,9 @@ if (sizeInput) setupScrollAdjust(sizeInput, 'number');
     if (templateBtn) {
         templateBtn.addEventListener('click', () => {
             const template = `<span class="text-amber-500">PROMPT (MÔ TẢ):</span>
-Tạo ảnh siêu thực từ hình ảnh tải lên. Giữ nguyên chi tiết và thiết kế từ hình ảnh sketch tham chiếu<br><br>
-Chi tiết: <br>
+Tạo ảnh siêu thực từ hình ảnh tải lên. Giữ nguyên chi tiết và thiết kế từ hình ảnh sketch tham chiếu.
+Photorealistic, ultra detailed, sharp focus, 8k, crisp details, realistic materials, clean edges, precise geometry, global illumination, natural lighting, high detail textures, professional photography --no blurry, low quality, noise, soft focus, distorted, bad texture, artifacts.<br>
+CHI TIẾT: <br>
 <span class="text-amber-500">LIGHTING (ÁNH SÁNG):</span><br>
 <span class="text-amber-500">SCENE (BỐI CẢNH):</span><br>
 <span class="text-amber-500">VIEW (GÓC CHỤP):</span>`;
