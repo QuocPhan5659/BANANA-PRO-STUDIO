@@ -695,18 +695,33 @@ if (gptBtn && gptModal) {
     });
 
     if (closeGptOkBtn) {
-        closeGptOkBtn.addEventListener('click', async () => {
+        closeGptOkBtn.addEventListener('click', () => {
             // Đọc trực tiếp nội dung từ các phần tử con để đảm bảo lấy được nội dung mới nhất
             const textPart = gptInstructionText.textContent || "";
             const commandPart = gptInstructionCommand.textContent || "";
             const promptText = textPart.trim() + "\n\n" + commandPart.trim();
             
-            const success = await copyToClipboard(promptText);
-            if (success) {
-                gptModal.classList.add('hidden');
-            } else {
-                console.error('Copy failed');
+            // Direct approach for better SketchUp compatibility
+            const textArea = document.createElement("textarea");
+            textArea.value = promptText;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            textArea.style.top = "0";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    gptModal.classList.add('hidden');
+                } else {
+                    console.error('Copy command failed');
+                }
+            } catch (err) {
+                console.error('Failed to copy', err);
             }
+            document.body.removeChild(textArea);
         });
     }
     gptModal.addEventListener('click', (e) => {
@@ -2039,14 +2054,8 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
             }
             
             editingTextIndex = -1;
-            if (textOverlayInput) {
-                textOverlayInput.value = '';
-                textOverlayInput.blur();
-            }
-            if (mainTextOverlayInput) {
-                mainTextOverlayInput.value = '';
-                mainTextOverlayInput.blur();
-            }
+            if (textOverlayInput) textOverlayInput.value = '';
+            if (mainTextOverlayInput) mainTextOverlayInput.value = '';
             
             textOverlayInput?.classList.add('hidden');
             textColorInput?.classList.add('hidden');
@@ -4520,14 +4529,8 @@ copyUploadBtn?.addEventListener('click', async () => {
                     copyUploadBtn.style.color = '';
                 }, 2000);
             } catch (err) {
-                console.error('Failed to copy image to clipboard, falling back to download: ', err);
-                // Fallback: Download the image
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = `banana-copy-${Date.now()}.png`;
-                a.click();
-                URL.revokeObjectURL(a.href);
-                showCustomAlert("Clipboard copy failed. Image downloaded instead.", "INFO");
+                console.error('Failed to copy image: ', err);
+                showCustomAlert("Failed to copy image.", "ERROR");
             }
         }, 'image/png');
     } catch (err) {
