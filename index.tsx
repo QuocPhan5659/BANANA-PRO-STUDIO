@@ -695,33 +695,18 @@ if (gptBtn && gptModal) {
     });
 
     if (closeGptOkBtn) {
-        closeGptOkBtn.addEventListener('click', () => {
+        closeGptOkBtn.addEventListener('click', async () => {
             // Đọc trực tiếp nội dung từ các phần tử con để đảm bảo lấy được nội dung mới nhất
             const textPart = gptInstructionText.textContent || "";
             const commandPart = gptInstructionCommand.textContent || "";
             const promptText = textPart.trim() + "\n\n" + commandPart.trim();
             
-            // Direct approach for better SketchUp compatibility
-            const textArea = document.createElement("textarea");
-            textArea.value = promptText;
-            textArea.style.position = "fixed";
-            textArea.style.left = "-9999px";
-            textArea.style.top = "0";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            
-            try {
-                const successful = document.execCommand('copy');
-                if (successful) {
-                    gptModal.classList.add('hidden');
-                } else {
-                    console.error('Copy command failed');
-                }
-            } catch (err) {
-                console.error('Failed to copy', err);
+            const success = await copyToClipboard(promptText);
+            if (success) {
+                gptModal.classList.add('hidden');
+            } else {
+                console.error('Copy failed');
             }
-            document.body.removeChild(textArea);
         });
     }
     gptModal.addEventListener('click', (e) => {
@@ -2054,8 +2039,14 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
             }
             
             editingTextIndex = -1;
-            if (textOverlayInput) textOverlayInput.value = '';
-            if (mainTextOverlayInput) mainTextOverlayInput.value = '';
+            if (textOverlayInput) {
+                textOverlayInput.value = '';
+                textOverlayInput.blur();
+            }
+            if (mainTextOverlayInput) {
+                mainTextOverlayInput.value = '';
+                mainTextOverlayInput.blur();
+            }
             
             textOverlayInput?.classList.add('hidden');
             textColorInput?.classList.add('hidden');
