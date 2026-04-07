@@ -1535,21 +1535,21 @@ function handleMainImage(file: File) {
     if (!file.type.startsWith('image/')) return;
     
     // Extract metadata and populate textareas
-    if (file.type === 'image/png') {
-        extractMetadata(file).then(data => {
-            if (data) {
-                const promptEl = document.getElementById('prompt-manual') as HTMLTextAreaElement;
-                const lightingEl = document.getElementById('lighting-manual') as HTMLTextAreaElement;
-                const sceneEl = document.getElementById('scene-manual') as HTMLTextAreaElement;
-                const viewEl = document.getElementById('view-manual') as HTMLTextAreaElement;
-                
-                if (promptEl) { promptEl.value = data.mega || ''; autoResize(promptEl); }
-                if (lightingEl) { lightingEl.value = data.lighting || ''; autoResize(lightingEl); }
-                if (sceneEl) { sceneEl.value = data.scene || ''; autoResize(sceneEl); }
-                if (viewEl) { viewEl.value = data.view || ''; autoResize(viewEl); }
-            }
-        }).catch(err => console.error("Error extracting metadata on main image upload:", err));
-    }
+    // if (file.type === 'image/png') {
+    //     extractMetadata(file).then(data => {
+    //         if (data) {
+    //             const promptEl = document.getElementById('prompt-manual') as HTMLTextAreaElement;
+    //             const lightingEl = document.getElementById('lighting-manual') as HTMLTextAreaElement;
+    //             const sceneEl = document.getElementById('scene-manual') as HTMLTextAreaElement;
+    //             const viewEl = document.getElementById('view-manual') as HTMLTextAreaElement;
+    //             
+    //             if (promptEl) { promptEl.value = data.mega || ''; autoResize(promptEl); }
+    //             if (lightingEl) { lightingEl.value = data.lighting || ''; autoResize(lightingEl); }
+    //             if (sceneEl) { sceneEl.value = data.scene || ''; autoResize(sceneEl); }
+    //             if (viewEl) { viewEl.value = data.view || ''; autoResize(viewEl); }
+    //         }
+    //     }).catch(err => console.error("Error extracting metadata on main image upload:", err));
+    // }
 
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -4518,6 +4518,9 @@ copyUploadBtn?.addEventListener('click', async () => {
         canvas.toBlob(async (blob) => {
             if (!blob) return;
             try {
+                if (!navigator.clipboard || !navigator.clipboard.write) {
+                    throw new Error("Clipboard write not supported");
+                }
                 await navigator.clipboard.write([
                     new ClipboardItem({ 'image/png': blob })
                 ]);
