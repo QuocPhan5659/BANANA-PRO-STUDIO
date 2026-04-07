@@ -1096,6 +1096,50 @@ async function copyToClipboard(text: string): Promise<boolean> {
     }
 }
 
+async function copyImageToClipboard(blob: Blob): Promise<boolean> {
+    if (navigator.clipboard && typeof navigator.clipboard.write === 'function' && (window as any).ClipboardItem) {
+        try {
+            await navigator.clipboard.write([
+                new (window as any).ClipboardItem({ 'image/png': blob })
+            ]);
+            return true;
+        } catch (err) {
+            console.warn('navigator.clipboard.write failed, trying fallback', err);
+        }
+    }
+
+    // Fallback method: contenteditable trick for SketchUp/IE/Edge
+    try {
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(blob);
+        
+        const div = document.createElement('div');
+        div.contentEditable = 'true';
+        div.style.position = 'fixed';
+        div.style.left = '-9999px';
+        div.appendChild(img);
+        document.body.appendChild(div);
+        
+        const range = document.createRange();
+        range.selectNode(img);
+        const selection = window.getSelection();
+        if (selection) {
+            selection.removeAllRanges();
+            selection.addRange(range);
+            const successful = document.execCommand('copy');
+            selection.removeAllRanges();
+            document.body.removeChild(div);
+            URL.revokeObjectURL(img.src);
+            return successful;
+        }
+        document.body.removeChild(div);
+        URL.revokeObjectURL(img.src);
+    } catch (err) {
+        console.error('Fallback image copy failed', err);
+    }
+    return false;
+}
+
 copyBtns.forEach(btn => {
     btn.addEventListener('click', async () => {
         const targetId = btn.getAttribute('data-target');
@@ -2041,10 +2085,20 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
                 redrawText();
             }
         });
+        input?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                saveEditingText();
+            }
+        });
     });
 
     function saveEditingText() {
-        if (editingTextIndex !== -1 && zoomTextCtx) {
+        if (editingTextIndex !== -1) {
+            const ctxToUse = zoomTextCtx || mainTextCtx;
+            if (!ctxToUse) return;
+
             const isZoom = !textOverlayInput?.classList.contains('hidden');
             const input = isZoom ? textOverlayInput : mainTextOverlayInput;
             const colorInp = isZoom ? textColorInput : mainTextColorInput;
@@ -2055,8 +2109,8 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
                 textElements[editingTextIndex].color = colorInp.value;
                 textElements[editingTextIndex].size = parseInt(sizeInp.value) || 20;
                 
-                zoomTextCtx.font = `bold ${textElements[editingTextIndex].size}px Arial`;
-                const metrics = zoomTextCtx.measureText(input.value);
+                ctxToUse.font = `bold ${textElements[editingTextIndex].size}px Arial`;
+                const metrics = ctxToUse.measureText(input.value);
                 textElements[editingTextIndex].w = Math.max(20, metrics.width);
                 textElements[editingTextIndex].h = textElements[editingTextIndex].size;
             }
@@ -2094,6 +2148,18 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
                 x >= el.x && x <= el.x + el.w &&
                 y >= el.y && y <= el.y + el.h
             );
+
+            // If we are currently editing text, clicking outside the text (on empty space) should save it
+            // and NOT immediately start a new text.
+            const activeEl = document.activeElement;
+            const isEditing = activeEl === textOverlayInput || activeEl === mainTextOverlayInput || 
+                              activeEl === textColorInput || activeEl === mainTextColorInput ||
+                              activeEl === textSizeInput || activeEl === mainTextSizeInput;
+            
+            if (isEditing && editingTextIndex !== -1 && clickedIndex === -1) {
+                saveEditingText();
+                return;
+            }
 
             if (clickedIndex !== -1) {
                 if (isTextEraserMode) {
@@ -2259,6 +2325,26 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
             return;
         }
         saveEditingText();
+    });
+
+    [textColorInput, mainTextColorInput].forEach(input => {
+        input?.addEventListener('blur', (e) => {
+            const isZoom = input.id === 'text-color-input';
+            const textInp = isZoom ? textOverlayInput : mainTextOverlayInput;
+            const sizeInp = isZoom ? textSizeInput : mainTextSizeInput;
+            if (e.relatedTarget === textInp || e.relatedTarget === sizeInp) return;
+            saveEditingText();
+        });
+    });
+
+    [textSizeInput, mainTextSizeInput].forEach(input => {
+        input?.addEventListener('blur', (e) => {
+            const isZoom = input.id === 'text-size-input';
+            const textInp = isZoom ? textOverlayInput : mainTextOverlayInput;
+            const colorInp = isZoom ? textColorInput : mainTextColorInput;
+            if (e.relatedTarget === textInp || e.relatedTarget === colorInp) return;
+            saveEditingText();
+        });
     });
 
     deleteTextBtn = document.querySelector('#delete-text-btn') as HTMLButtonElement;
@@ -4482,14 +4568,19 @@ copyUploadBtn?.addEventListener('click', async () => {
         
         canvas.toBlob(async (blob) => {
             if (!blob) return;
-            try {
-                await navigator.clipboard.write([
-                    new ClipboardItem({ 'image/png': blob })
-                ]);
-                showCustomAlert("Image copied to clipboard!", "SUCCESS");
-            } catch (err) {
-                console.error('Failed to copy image: ', err);
-                showCustomAlert("Failed to copy image.", "ERROR");
+            
+            const success = await copyImageToClipboard(blob);
+
+            if (success) {
+                const originalContent = copyUploadBtn.innerHTML;
+                copyUploadBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+                copyUploadBtn.style.color = '#4ade80';
+                setTimeout(() => {
+                    copyUploadBtn.innerHTML = originalContent;
+                    copyUploadBtn.style.color = '';
+                }, 2000);
+            } else {
+                console.error('All copy methods failed. Clipboard access might be restricted in this environment.');
             }
         }, 'image/png');
     } catch (err) {
