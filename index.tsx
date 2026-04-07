@@ -4529,18 +4529,7 @@ copyUploadBtn?.addEventListener('click', async () => {
                     copyUploadBtn.style.color = '';
                 }, 2000);
             } catch (err) {
-                console.error('Failed to copy to clipboard, falling back to download: ', err);
-                // Fallback: Download the image
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'banana-gen-image.png';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                
-                showCustomAlert("Clipboard copy failed, image downloaded instead.", "INFO");
+                console.error('Failed to copy to clipboard: ', err);
             }
         }, 'image/png');
     } catch (err) {
