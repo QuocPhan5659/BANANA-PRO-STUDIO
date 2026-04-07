@@ -35,6 +35,35 @@ document.addEventListener("DOMContentLoaded", function () {
       }
   };
   applyPulseEffect();
+
+  // Global paste listener for PNG Info
+  window.addEventListener('paste', async (e) => {
+      const text = e.clipboardData?.getData('text/plain');
+      if (text) {
+          try {
+              const trimmedText = text.trim();
+              if (trimmedText.startsWith('{') || trimmedText.startsWith('[')) {
+                  const data = JSON.parse(text);
+                  // Check if it's actually our metadata structure
+                  const isPromptData = data && (
+                      'mega' in data || 
+                      'lighting' in data || 
+                      'scene' in data || 
+                      'view' in data ||
+                      'BananaProData' in data
+                  );
+                  
+                  if (isPromptData) {
+                      e.preventDefault();
+                      await applyMetadata(data);
+                      return;
+                  }
+              }
+          } catch (jsonErr) {
+              // Not JSON, ignore and let default paste happen
+          }
+      }
+  });
 });
 
 interface PromptData {
@@ -2991,6 +3020,7 @@ if (pngInfoInput) {
 
 // --- Paste PNG Info Button (UPDATED to Read JSON Text) ---
 async function applyMetadata(data: any) {
+    console.log("applyMetadata called with:", data);
     // Basic validation to check if it looks like our metadata structure
     const isPromptData = data && (
         'mega' in data || 
@@ -3022,9 +3052,9 @@ if (pastePngInfoBtn) {
             try {
                 text = await navigator.clipboard.readText();
             } catch (clipErr) {
-                console.warn("Clipboard API failed, falling back to custom paste modal", clipErr);
-                // Only use custom modal if Clipboard API fails
-                text = await showCustomPaste() || "";
+                console.warn("Clipboard API failed", clipErr);
+                showCustomAlert("Clipboard access failed. Please paste directly into the prompt fields.", "Paste Error");
+                return;
             }
 
             if (!text || !text.trim()) {
@@ -3034,11 +3064,15 @@ if (pastePngInfoBtn) {
 
             try {
                 // Attempt to parse text as JSON (Data PNG info format)
+                const trimmedText = text.trim();
+                if (!trimmedText.startsWith('{') && !trimmedText.startsWith('[')) {
+                    throw new Error("Not JSON");
+                }
                 const data = JSON.parse(text);
                 await applyMetadata(data);
             } catch (jsonErr) {
-                console.error("JSON Parse Error", jsonErr);
-                showCustomAlert("Clipboard text is not valid JSON Data.", "Parse Error");
+                console.warn("Clipboard text is not valid JSON Data.", jsonErr);
+                showCustomAlert("The pasted text is not valid JSON. Please ensure you are pasting the correct Data PNG Info.", "Invalid Format");
             }
         } catch (err) {
             console.error("Failed to read clipboard", err);
@@ -4427,7 +4461,7 @@ if (nextImageBtn) nextImageBtn.addEventListener('click', () => showImage(current
 closeOutputBtn?.addEventListener('click', () => { outputContainer.classList.add('hidden'); });
 downloadButtonMain?.addEventListener('click', () => { if (outputImage.src) { const a = document.createElement('a'); a.href = outputImage.src; a.download = `banana-pro-${Date.now()}.png`; a.click(); } });
 
-downloadUploadBtn?.addEventListener('click', () => {
+downloadUploadBtn?.addEventListener('click', async () => {
     if (!uploadPreview.src) return;
     
     const canvas = document.createElement('canvas');
@@ -4457,8 +4491,23 @@ downloadUploadBtn?.addEventListener('click', () => {
         exportCtx.drawImage(mainTextCanvas, 0, 0);
     }
 
+    const base64 = canvas.toDataURL('image/png').split(',')[1];
+    
+    // Get current prompt data
+    const promptData: PromptData = {
+        mega: (document.getElementById('prompt-manual') as HTMLTextAreaElement)?.value || "",
+        lighting: (document.getElementById('lighting-manual') as HTMLTextAreaElement)?.value || "",
+        scene: (document.getElementById('scene-manual') as HTMLTextAreaElement)?.value || "",
+        view: (document.getElementById('view-manual') as HTMLTextAreaElement)?.value || "",
+        inpaint: (document.getElementById('inpainting-prompt-text') as HTMLTextAreaElement)?.value || "",
+        inpaintEnabled: (document.getElementById('inpainting-prompt-toggle') as HTMLInputElement)?.checked || false,
+        cameraProjection: (document.getElementById('camera-projection-toggle') as HTMLInputElement)?.checked || false
+    };
+
+    const finalBase64 = await embedMetadata(base64, promptData);
+
     const a = document.createElement('a');
-    a.href = canvas.toDataURL('image/png');
+    a.href = `data:image/png;base64,${finalBase64}`;
     a.download = `banana-pro-upload-${Date.now()}.png`;
     a.click();
 });
