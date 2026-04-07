@@ -1,0 +1,214 @@
+[
+  {
+    "id": 0,
+    "author": "user",
+    "payload": {
+      "type": "text",
+      "text": "GENERATE BANANA",
+      "files": [],
+      "fileUploads": [],
+      "cMarkNode": {}
+    },
+    "createdTimestamp": {
+      "seconds": 1770771864,
+      "nanos": 921000000
+    }
+  },
+  {
+    "id": 1,
+    "author": "model",
+    "payload": {
+      "type": "thinking",
+      "text": "**Considering The React Request**\n\nI'm focusing on the user's \"BANANA\" request, which appears to be a fun, themed application generation request for React. My current hypothesis is that the user is interested in a banana-themed application or is referencing the `nano banana` model, which I know is an alias for `gemini-2.5`.\n\n\n**Refining The Vision**\n\nI've decided to pivot towards building a \"Banana Dream Generator\" app. The focus will be on allowing users to create images with banana themes. I plan to integrate the Gemini API for image generation, with options for style selection like realistic, cartoon, and cyberpunk. There will also be a gallery of generated images and a \"Banana Chat\" feature to help refine prompts. The tech stack will be React 18+, TypeScript, Tailwind CSS, Lucide React, and `@google/genai`.\n\n\n**Defining API & File Structure**\n\nI'm now zeroing in on the Gemini API calls. Image generation will leverage `gemini-2.5-flash-image` as specified in the instructions, and text prompts will use `gemini-3-flash-preview`. I'm starting to build out a file structure that includes `metadata.json`, `index.html`, and crucial React components like `BananaGenerator.tsx` and `Gallery.tsx`, all driven by environment variables. The UI will be banana-centric.\n\n\n**Implementing Image Generation Logic**\n\nI'm now fully immersed in the coding. My focus has shifted to the `Service` layer, specifically the functions for image and prompt generation. I'm building out the `generateBananaImage` function using the `gemini-2.5-flash-image` model, as requested. I've also added the `generateCreativePrompt` function to call the `gemini-3-flash-preview` model for prompt generation. Furthermore, I've defined the components, working towards integrating the image display and UI elements, including the \"Random Banana\" button, to enhance the app's interactive functionality.\n\n\n**Building The Application**\n\nI'm now diving into coding, starting with the file structure; I am defining core components and services. I'm focusing on crafting the `geminiService.ts` for the `gemini-2.5-flash-image` API interaction. I am integrating robust error handling to deal with potential API key issues or generation failures, as I write the `generateBananaImage` method, alongside the data structure for image display. I am drafting `metadata.json` and a basic `index.html`.\n\n\n",
+      "cMarkNode": {}
+    },
+    "createdTimestamp": {
+      "seconds": 1770771864,
+      "nanos": 921000000
+    },
+    "doneTimestamp": {
+      "seconds": 1770771880,
+      "nanos": 918000000
+    }
+  },
+  {
+    "id": 2,
+    "author": "model",
+    "payload": {
+      "type": "generationTable",
+      "entries": [
+        {
+          "path": "metadata.json",
+          "generationType": 0,
+          "isDone": true,
+          "description": "App metadata definition",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "{\n  \"name\": \"Infinite Banana Generator\",\n  \"description\": \"A fruity AI application dedicated to generating the most absurd and delightful banana-themed images using Gemini.\"\n}"
+            }
+          ]
+        },
+        {
+          "path": "index.html",
+          "generationType": 0,
+          "isDone": true,
+          "description": "Root HTML file with Tailwind CSS setup",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>Infinite Banana Generator</title>\n    <script src=\"https://cdn.tailwindcss.com\"></script>\n    <script>\n      tailwind.config = {\n        theme: {\n          extend: {\n            colors: {\n              banana: {\n                100: '#FFF9C4',\n                200: '#FFF59D',\n                300: '#FFF176',\n                400: '#FFEE58',\n                500: '#FFEB3B',\n                600: '#FDD835',\n                700: '#FBC02D',\n                800: '#F9A825',\n                900: '#F57F17',\n              },\n              brown: {\n                800: '#4E342E',\n                900: '#3E2723',\n              }\n            },\n            animation: {\n              'bounce-slow': 'bounce 3s infinite',\n              'wiggle': 'wiggle 1s ease-in-out infinite',\n            },\n            keyframes: {\n              wiggle: {\n                '0%, 100%': { transform: 'rotate(-3deg)' },\n                '50%': { transform: 'rotate(3deg)' },\n              }\n            }\n          }\n        }\n      }\n    </script>\n    <style>\n      body {\n        background-color: #FFF9C4;\n        color: #3E2723;\n      }\n    </style>\n  </head>\n  <body>\n    <div id=\"root\"></div>\n  </body>\n</html>"
+            }
+          ]
+        },
+        {
+          "path": "index.tsx",
+          "generationType": 0,
+          "isDone": true,
+          "description": "Application entry point",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport App from './App';\n\nconst rootElement = document.getElementById('root');\nif (!rootElement) {\n  throw new Error(\"Could not find root element to mount to\");\n}\n\nconst root = ReactDOM.createRoot(rootElement);\nroot.render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>\n);"
+            }
+          ]
+        },
+        {
+          "path": "App.tsx",
+          "generationType": 0,
+          "isDone": true,
+          "description": "Main application component containing state and layout",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "import React, { useState, useCallback } from 'react';\nimport { Banana, Loader2, Wand2, RefreshCw, Download, Trash2 } from 'lucide-react';\nimport { generateBananaImage, generateCreativePrompt } from './services/geminiService';\nimport { GeneratedImage } from './types';\n\nconst App: React.FC = () => {\n  const [prompt, setPrompt] = useState<string>('');\n  const [loading, setLoading] = useState<boolean>(false);\n  const [currentImage, setCurrentImage] = useState<GeneratedImage | null>(null);\n  const [history, setHistory] = useState<GeneratedImage[]>([]);\n  const [error, setError] = useState<string | null>(null);\n\n  const handleGenerate = useCallback(async () => {\n    if (!prompt.trim()) return;\n    \n    setLoading(true);\n    setError(null);\n    try {\n      // Enhance prompt to ensure it's banana-themed if not explicitly stated, \n      // but trust the user's creative direction mostly.\n      const finalPrompt = prompt.toLowerCase().includes('banana') \n        ? prompt \n        : `A banana ${prompt}`;\n\n      const imageBase64 = await generateBananaImage(finalPrompt);\n      \n      const newImage: GeneratedImage = {\n        id: Date.now().toString(),\n        data: imageBase64,\n        prompt: finalPrompt,\n        timestamp: Date.now(),\n      };\n\n      setCurrentImage(newImage);\n      setHistory(prev => [newImage, ...prev]);\n    } catch (err) {\n      setError(err instanceof Error ? err.message : 'Failed to generate banana. The peel was too slippery.');\n    } finally {\n      setLoading(false);\n    }\n  }, [prompt]);\n\n  const handleSurpriseMe = useCallback(async () => {\n    setLoading(true);\n    setError(null);\n    setPrompt(\"Thinking of a peeled idea...\");\n    try {\n      const creativePrompt = await generateCreativePrompt();\n      setPrompt(creativePrompt);\n      \n      // Auto-generate after getting the prompt\n      const imageBase64 = await generateBananaImage(creativePrompt);\n      const newImage: GeneratedImage = {\n        id: Date.now().toString(),\n        data: imageBase64,\n        prompt: creativePrompt,\n        timestamp: Date.now(),\n      };\n\n      setCurrentImage(newImage);\n      setHistory(prev => [newImage, ...prev]);\n    } catch (err) {\n      setError(err instanceof Error ? err.message : 'Failed to dream of bananas.');\n    } finally {\n      setLoading(false);\n    }\n  }, []);\n\n  const handleDownload = (dataUrl: string, filename: string) => {\n    const link = document.createElement('a');\n    link.href = dataUrl;\n    link.download = filename;\n    document.body.appendChild(link);\n    link.click();\n    document.body.removeChild(link);\n  };\n\n  const handleClearHistory = () => {\n    setHistory([]);\n    setCurrentImage(null);\n  };\n\n  return (\n    <div className=\"min-h-screen flex flex-col font-sans\">\n      {/* Header */}\n      <header className=\"bg-banana-500 text-brown-900 p-6 shadow-lg sticky top-0 z-50\">\n        <div className=\"max-w-4xl mx-auto flex items-center justify-between\">\n          <div className=\"flex items-center space-x-3\">\n            <Banana size={40} className=\"text-brown-900 animate-wiggle\" />\n            <h1 className=\"text-3xl font-black tracking-tight\">BANANA GEN</h1>\n          </div>\n          <div className=\"text-sm font-bold bg-banana-300 px-3 py-1 rounded-full border-2 border-brown-900 shadow-sm hidden sm:block\">\n            Powered by Gemini\n          </div>\n        </div>\n      </header>\n\n      {/* Main Content */}\n      <main className=\"flex-grow max-w-4xl mx-auto w-full p-4 sm:p-6 space-y-8\">\n        \n        {/* Controls Section */}\n        <section className=\"bg-white rounded-3xl p-6 shadow-xl border-4 border-banana-400\">\n          <div className=\"flex flex-col space-y-4\">\n            <label className=\"text-brown-900 font-bold text-lg\">\n              Describe your banana vision:\n            </label>\n            <div className=\"flex flex-col sm:flex-row gap-3\">\n              <input \n                type=\"text\" \n                value={prompt}\n                onChange={(e) => setPrompt(e.target.value)}\n                placeholder=\"e.g., A cyberpunk banana surfing on a data stream...\"\n                className=\"flex-grow p-4 rounded-xl border-2 border-banana-300 focus:border-banana-600 focus:ring-4 focus:ring-banana-200 transition-all outline-none text-lg text-brown-900 placeholder-banana-700/50\"\n                onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}\n              />\n              <button \n                onClick={handleGenerate}\n                disabled={loading || !prompt}\n                className=\"bg-banana-500 hover:bg-banana-400 disabled:opacity-50 disabled:cursor-not-allowed text-brown-900 font-bold py-4 px-8 rounded-xl shadow-[0_4px_0_rgb(249,168,37)] active:shadow-none active:translate-y-[4px] transition-all flex items-center justify-center gap-2 min-w-[160px]\"\n              >\n                {loading ? <Loader2 className=\"animate-spin\" /> : <Wand2 />}\n                GENERATE\n              </button>\n            </div>\n            \n            <div className=\"flex justify-between items-center\">\n               <button \n                onClick={handleSurpriseMe}\n                disabled={loading}\n                className=\"text-banana-800 hover:text-banana-900 font-bold text-sm flex items-center gap-2 hover:underline decoration-2 underline-offset-4\"\n              >\n                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />\n                Surprise me with a random banana\n              </button>\n            </div>\n\n            {error && (\n              <div className=\"bg-red-100 text-red-800 p-4 rounded-xl border border-red-200\">\n                <strong>Oops!</strong> {error}\n              </div>\n            )}\n          </div>\n        </section>\n\n        {/* Display Section */}\n        {currentImage && (\n          <section className=\"animate-in fade-in zoom-in duration-500\">\n            <div className=\"bg-white p-4 rounded-3xl shadow-2xl border-4 border-banana-500 rotate-1 hover:rotate-0 transition-transform duration-300\">\n              <div className=\"aspect-square w-full rounded-2xl overflow-hidden bg-banana-50 relative group\">\n                <img \n                  src={currentImage.data} \n                  alt={currentImage.prompt} \n                  className=\"w-full h-full object-cover\"\n                />\n                <div className=\"absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4\">\n                  <button \n                    onClick={() => handleDownload(currentImage.data, `banana-${currentImage.timestamp}.png`)}\n                    className=\"bg-white text-brown-900 p-3 rounded-full hover:bg-banana-100 transition-colors transform hover:scale-110\"\n                    title=\"Download Banana\"\n                  >\n                    <Download />\n                  </button>\n                </div>\n              </div>\n              <p className=\"mt-4 text-center text-brown-900 font-medium text-lg italic\">\n                \"{currentImage.prompt}\"\n              </p>\n            </div>\n          </section>\n        )}\n\n        {/* History Gallery */}\n        {history.length > 0 && (\n          <section className=\"pt-8 border-t-4 border-banana-200 border-dashed\">\n            <div className=\"flex justify-between items-center mb-6\">\n              <h2 className=\"text-2xl font-black text-brown-900 flex items-center gap-2\">\n                <Banana className=\"text-banana-600\" /> \n                The Bunch (History)\n              </h2>\n              <button \n                onClick={handleClearHistory}\n                className=\"text-red-500 hover:text-red-700 flex items-center gap-1 text-sm font-bold\"\n              >\n                <Trash2 size={16} /> Clear Bunch\n              </button>\n            </div>\n            \n            <div className=\"grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4\">\n              {history.map((img) => (\n                <div \n                  key={img.id} \n                  onClick={() => setCurrentImage(img)}\n                  className={`cursor-pointer rounded-xl overflow-hidden border-2 transition-all hover:scale-105 active:scale-95 ${currentImage?.id === img.id ? 'border-banana-600 ring-2 ring-banana-300 shadow-lg' : 'border-transparent hover:border-banana-300'}`}\n                >\n                  <img src={img.data} alt={img.prompt} className=\"w-full h-full object-cover aspect-square\" />\n                </div>\n              ))}\n            </div>\n          </section>\n        )}\n      </main>\n\n      <footer className=\"mt-auto py-8 text-center text-banana-900/60 font-medium\">\n        <p>Generated with Gemini 2.5 Flash Image & Gemini 3 Flash Preview</p>\n      </footer>\n    </div>\n  );\n};\n\nexport default App;"
+            }
+          ]
+        },
+        {
+          "path": "types.ts",
+          "generationType": 0,
+          "isDone": true,
+          "description": "Type definitions used across the application",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "export interface GeneratedImage {\n  id: string;\n  data: string; // Base64 data string\n  prompt: string;\n  timestamp: number;\n}"
+            }
+          ]
+        },
+        {
+          "path": "services/geminiService.ts",
+          "generationType": 0,
+          "isDone": true,
+          "description": "Service layer for interacting with Google Gemini API",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "import { GoogleGenAI } from \"@google/genai\";\n\nconst getClient = () => {\n  const apiKey = process.env.API_KEY;\n  if (!apiKey) {\n    throw new Error(\"API_KEY environment variable is not set.\");\n  }\n  return new GoogleGenAI({ apiKey });\n};\n\n/**\n * Generates an image based on a prompt using the Gemini 2.5 Flash Image model.\n * The system instruction mapping implies 'nano banana' -> 'gemini-2.5-flash-image'.\n */\nexport const generateBananaImage = async (prompt: string): Promise<string> => {\n  const ai = getClient();\n  \n  // Using gemini-2.5-flash-image as per the 'nano banana' guideline for image generation tasks\n  const model = 'gemini-2.5-flash-image';\n\n  try {\n    const response = await ai.models.generateContent({\n      model,\n      contents: {\n        parts: [{ text: prompt }]\n      },\n      config: {\n        // We do not set responseMimeType for image generation models\n      }\n    });\n\n    if (!response.candidates || response.candidates.length === 0) {\n      throw new Error(\"No candidates returned from Gemini.\");\n    }\n\n    const content = response.candidates[0].content;\n    if (!content || !content.parts) {\n      throw new Error(\"No content parts returned.\");\n    }\n\n    // Find the inlineData part which contains the image\n    const imagePart = content.parts.find(part => part.inlineData);\n\n    if (imagePart && imagePart.inlineData && imagePart.inlineData.data) {\n       // Convert raw base64 to data URL if not already present\n       const mimeType = imagePart.inlineData.mimeType || 'image/png';\n       return `data:${mimeType};base64,${imagePart.inlineData.data}`;\n    }\n\n    throw new Error(\"No image data found in response.\");\n\n  } catch (error) {\n    console.error(\"Error generating banana image:\", error);\n    throw error;\n  }\n};\n\n/**\n * Generates a creative banana-themed prompt using Gemini 3 Flash Preview.\n */\nexport const generateCreativePrompt = async (): Promise<string> => {\n  const ai = getClient();\n  const model = 'gemini-3-flash-preview';\n\n  try {\n    const response = await ai.models.generateContent({\n      model,\n      contents: \"Generate a short, creative, and visually interesting prompt for an AI image generator involving a banana. It could be surreal, funny, or artistic. Output ONLY the prompt text, nothing else. Keep it under 20 words.\",\n    });\n\n    return response.text ? response.text.trim() : \"A giant banana floating in space\";\n  } catch (error) {\n    console.error(\"Error generating creative prompt:\", error);\n    return \"A banana wearing sunglasses on a beach\"; // Fallback\n  }\n};"
+            }
+          ]
+        }
+      ]
+    },
+    "createdTimestamp": {
+      "seconds": 1770771880,
+      "nanos": 918000000
+    },
+    "doneTimestamp": {
+      "seconds": 1770771881,
+      "nanos": 533000000
+    }
+  },
+  {
+    "id": 5,
+    "author": "user",
+    "payload": {
+      "type": "text",
+      "text": "tôi muốn bạn tạo ra ô nhập prompt (văn bản), 1 ô upload image, 1 ô GENERATE hình ảnh hoàn chỉnh dựa theo prompt và hình ảnh upload image chạy hoàn thiện. tạo ra chức năng DOWNLOAD IMAGE",
+      "files": [],
+      "fileUploads": [],
+      "cssBlocks": [],
+      "cMarkNode": {}
+    },
+    "createdTimestamp": {
+      "seconds": 1770772201,
+      "nanos": 846000000
+    }
+  },
+  {
+    "id": 6,
+    "author": "model",
+    "payload": {
+      "type": "thinking",
+      "text": "**Expanding Image Generation**\n\nI'm currently focused on expanding the \"Infinite Banana Generator\" to incorporate image editing/image-to-image capabilities. The existing text prompt field will remain, but now I'm thinking through how to best integrate a new input for the image editing functionality. This will allow for more dynamic image manipulation possibilities.\n\n\n**Refining User Interface**\n\nI've been working on UI updates in `App.tsx` and have designed a new section in the \"Controls Section\" for image uploads. This includes an upload area with preview functionality and a \"Remove Image\" button. I'm updating the \"GENERATE\" logic to handle text prompts and uploaded images for an image editing flow. Text prompts are kept mandatory.\n\n\n**Considering Button Updates**\n\nI'm thinking about the \"Generate\" button's text, which might need to change to reflect the current state, maybe like \"Edit/Transform.\" The download button needs to remain available regardless. I've also updated `generateBananaImage` to accept optional image parameters like base64 and mime type. The service will use `gemini-2.5-flash-image` for multimodal inputs, text and images.\n\n\n**Implementing Image Handling**\n\nI'm now focusing on integrating the image data into the Gemini call. When an image is available, I'll construct the parts array to include an object containing the image data and MIME type, along with the text prompt. This ensures I can still use the image-enhanced Gemini model. I've started making updates in `services/geminiService.ts` to accommodate this. I'm also planning to use `gemini-2.5-flash-image`.\n\n\n**Integrating Image Data**\n\nI'm now integrating the image data with the Gemini API call using the code provided. I will extract the base64 data and MIME type from the file upload event and populate the `parts` array to include the image data and text prompt. This will enable me to send multimodal requests to the 'gemini-2.5-flash-image' model.\n\n\n**Adjusting Prompt Logic**\n\nI'm now refining the prompt logic to handle image uploads gracefully. I'm focusing on how the base prompt, like \"make it yellow,\" interacts with the \"banana\" theme. Should the system always append \"A banana\" or only under certain conditions? I've decided to keep the existing logic: the default prompt will be used for both text and images, and I will force banana themes. The current implementation appends \"A banana \" unless \"banana\" is already in the prompt.\n\n\n",
+      "cMarkNode": {}
+    },
+    "createdTimestamp": {
+      "seconds": 1770772201,
+      "nanos": 846000000
+    },
+    "doneTimestamp": {
+      "seconds": 1770772222,
+      "nanos": 567000000
+    }
+  },
+  {
+    "id": 7,
+    "author": "model",
+    "payload": {
+      "type": "text",
+      "text": "Based on your request, I will update the app to include an **Image Upload** feature. This will allow users to upload a reference image alongside their text prompt to generate or edit images (e.g., turning a sketch into a realistic banana, or editing a photo to include bananas).\n\nHere are the specific changes:\n\n1.  **`services/geminiService.ts`**: Update `generateBananaImage` to accept an optional Base64 image string and MIME type, sending both to the Gemini model if provided.\n2.  **`App.tsx`**:\n    *   Add an **Upload Area** where users can select an image.\n    *   Show a **Preview** of the uploaded image with a \"Remove\" button.\n    *   Update the **Generate** logic to send the uploaded image data to the service.\n    *   Ensure the **Download** button remains functional for the generated output.\n\n",
+      "cMarkNode": {}
+    },
+    "createdTimestamp": {
+      "seconds": 1770772222,
+      "nanos": 567000000
+    },
+    "doneTimestamp": {
+      "seconds": 1770772222,
+      "nanos": 792000000
+    }
+  },
+  {
+    "id": 8,
+    "author": "model",
+    "payload": {
+      "type": "generationTable",
+      "entries": [
+        {
+          "path": "services/geminiService.ts",
+          "generationType": 1,
+          "isDone": true,
+          "description": "Update generateBananaImage to support multimodal input (text + image)",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "import { GoogleGenAI } from \"@google/genai\";\n\nconst getClient = () => {\n  const apiKey = process.env.API_KEY;\n  if (!apiKey) {\n    throw new Error(\"API_KEY environment variable is not set.\");\n  }\n  return new GoogleGenAI({ apiKey });\n};\n\n/**\n * Generates an image based on a prompt (and optional reference image) using the Gemini 2.5 Flash Image model.\n * The system instruction mapping implies 'nano banana' -> 'gemini-2.5-flash-image'.\n */\nexport const generateBananaImage = async (\n  prompt: string, \n  referenceImage?: { data: string; mimeType: string }\n): Promise<string> => {\n  const ai = getClient();\n  \n  // Using gemini-2.5-flash-image as per the 'nano banana' guideline for image generation/editing tasks\n  const model = 'gemini-2.5-flash-image';\n\n  try {\n    const parts: any[] = [];\n    \n    // If a reference image is provided, add it to the parts\n    if (referenceImage) {\n      parts.push({\n        inlineData: {\n          data: referenceImage.data,\n          mimeType: referenceImage.mimeType\n        }\n      });\n    }\n\n    // Add the text prompt\n    parts.push({ text: prompt });\n\n    const response = await ai.models.generateContent({\n      model,\n      contents: {\n        parts: parts\n      },\n      config: {\n        // We do not set responseMimeType for image generation models\n      }\n    });\n\n    if (!response.candidates || response.candidates.length === 0) {\n      throw new Error(\"No candidates returned from Gemini.\");\n    }\n\n    const content = response.candidates[0].content;\n    if (!content || !content.parts) {\n      throw new Error(\"No content parts returned.\");\n    }\n\n    // Find the inlineData part which contains the image\n    const imagePart = content.parts.find(part => part.inlineData);\n\n    if (imagePart && imagePart.inlineData && imagePart.inlineData.data) {\n       // Convert raw base64 to data URL if not already present\n       const mimeType = imagePart.inlineData.mimeType || 'image/png';\n       return `data:${mimeType};base64,${imagePart.inlineData.data}`;\n    }\n\n    throw new Error(\"No image data found in response.\");\n\n  } catch (error) {\n    console.error(\"Error generating banana image:\", error);\n    throw error;\n  }\n};\n\n/**\n * Generates a creative banana-themed prompt using Gemini 3 Flash Preview.\n */\nexport const generateCreativePrompt = async (): Promise<string> => {\n  const ai = getClient();\n  const model = 'gemini-3-flash-preview';\n\n  try {\n    const response = await ai.models.generateContent({\n      model,\n      contents: \"Generate a short, creative, and visually interesting prompt for an AI image generator involving a banana. It could be surreal, funny, or artistic. Output ONLY the prompt text, nothing else. Keep it under 20 words.\",\n    });\n\n    return response.text ? response.text.trim() : \"A giant banana floating in space\";\n  } catch (error) {\n    console.error(\"Error generating creative prompt:\", error);\n    return \"A banana wearing sunglasses on a beach\"; // Fallback\n  }\n};"
+            }
+          ]
+        },
+        {
+          "path": "App.tsx",
+          "generationType": 1,
+          "isDone": true,
+          "description": "Add image upload UI, preview, and integrate with generation logic",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "import React, { useState, useCallback, useRef } from 'react';\nimport { Banana, Loader2, Wand2, RefreshCw, Download, Trash2, Upload, X, Image as ImageIcon } from 'lucide-react';\nimport { generateBananaImage, generateCreativePrompt } from './services/geminiService';\nimport { GeneratedImage } from './types';\n\ninterface UploadedImage {\n  preview: string; // Full data URL for display\n  data: string;    // Base64 string for API\n  mimeType: string;\n}\n\nconst App: React.FC = () => {\n  const [prompt, setPrompt] = useState<string>('');\n  const [loading, setLoading] = useState<boolean>(false);\n  const [currentImage, setCurrentImage] = useState<GeneratedImage | null>(null);\n  const [history, setHistory] = useState<GeneratedImage[]>([]);\n  const [error, setError] = useState<string | null>(null);\n  \n  const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);\n  const fileInputRef = useRef<HTMLInputElement>(null);\n\n  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {\n    const file = event.target.files?.[0];\n    if (file) {\n      // Check file type\n      if (!file.type.startsWith('image/')) {\n        setError(\"Please upload a valid image file (PNG, JPEG, etc).\");\n        return;\n      }\n      \n      const reader = new FileReader();\n      reader.onloadend = () => {\n        const result = reader.result as string;\n        // Regex to extract base64 data and mime type: data:image/png;base64,....\n        const matches = result.match(/^data:(.+);base64,(.+)$/);\n        if (matches) {\n          setUploadedImage({\n            preview: result,\n            mimeType: matches[1],\n            data: matches[2]\n          });\n          setError(null); // Clear previous errors\n        }\n      };\n      reader.readAsDataURL(file);\n    }\n  };\n\n  const clearUploadedImage = () => {\n    setUploadedImage(null);\n    if (fileInputRef.current) {\n      fileInputRef.current.value = '';\n    }\n  };\n\n  const handleGenerate = useCallback(async () => {\n    if (!prompt.trim()) return;\n    \n    setLoading(true);\n    setError(null);\n    try {\n      // Enhance prompt to ensure it's banana-themed if not explicitly stated, \n      // but trust the user's creative direction mostly.\n      const finalPrompt = prompt.toLowerCase().includes('banana') \n        ? prompt \n        : `A banana ${prompt}`;\n\n      const referenceImage = uploadedImage ? { \n        data: uploadedImage.data, \n        mimeType: uploadedImage.mimeType \n      } : undefined;\n\n      const imageBase64 = await generateBananaImage(finalPrompt, referenceImage);\n      \n      const newImage: GeneratedImage = {\n        id: Date.now().toString(),\n        data: imageBase64,\n        prompt: finalPrompt,\n        timestamp: Date.now(),\n      };\n\n      setCurrentImage(newImage);\n      setHistory(prev => [newImage, ...prev]);\n    } catch (err) {\n      setError(err instanceof Error ? err.message : 'Failed to generate banana. The peel was too slippery.');\n    } finally {\n      setLoading(false);\n    }\n  }, [prompt, uploadedImage]);\n\n  const handleSurpriseMe = useCallback(async () => {\n    setLoading(true);\n    setError(null);\n    setPrompt(\"Thinking of a peeled idea...\");\n    try {\n      const creativePrompt = await generateCreativePrompt();\n      setPrompt(creativePrompt);\n      \n      // Auto-generate after getting the prompt, ignoring uploaded image for pure surprise\n      const imageBase64 = await generateBananaImage(creativePrompt);\n      const newImage: GeneratedImage = {\n        id: Date.now().toString(),\n        data: imageBase64,\n        prompt: creativePrompt,\n        timestamp: Date.now(),\n      };\n\n      setCurrentImage(newImage);\n      setHistory(prev => [newImage, ...prev]);\n    } catch (err) {\n      setError(err instanceof Error ? err.message : 'Failed to dream of bananas.');\n    } finally {\n      setLoading(false);\n    }\n  }, []);\n\n  const handleDownload = (dataUrl: string, filename: string) => {\n    const link = document.createElement('a');\n    link.href = dataUrl;\n    link.download = filename;\n    document.body.appendChild(link);\n    link.click();\n    document.body.removeChild(link);\n  };\n\n  const handleClearHistory = () => {\n    setHistory([]);\n    setCurrentImage(null);\n  };\n\n  return (\n    <div className=\"min-h-screen flex flex-col font-sans\">\n      {/* Header */}\n      <header className=\"bg-banana-500 text-brown-900 p-6 shadow-lg sticky top-0 z-50\">\n        <div className=\"max-w-4xl mx-auto flex items-center justify-between\">\n          <div className=\"flex items-center space-x-3\">\n            <Banana size={40} className=\"text-brown-900 animate-wiggle\" />\n            <h1 className=\"text-3xl font-black tracking-tight\">BANANA GEN</h1>\n          </div>\n          <div className=\"text-sm font-bold bg-banana-300 px-3 py-1 rounded-full border-2 border-brown-900 shadow-sm hidden sm:block\">\n            Powered by Gemini\n          </div>\n        </div>\n      </header>\n\n      {/* Main Content */}\n      <main className=\"flex-grow max-w-4xl mx-auto w-full p-4 sm:p-6 space-y-8\">\n        \n        {/* Controls Section */}\n        <section className=\"bg-white rounded-3xl p-6 shadow-xl border-4 border-banana-400\">\n          <div className=\"flex flex-col space-y-4\">\n            \n            <label className=\"text-brown-900 font-bold text-lg\">\n              1. Upload Reference Image (Optional):\n            </label>\n            \n            {/* Image Upload Area */}\n            {!uploadedImage ? (\n              <div \n                onClick={() => fileInputRef.current?.click()}\n                className=\"border-2 border-dashed border-banana-600 rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-banana-50 transition-colors gap-2 text-banana-800\"\n              >\n                <ImageIcon size={32} />\n                <span className=\"font-semibold\">Click to upload an image to edit/transform</span>\n                <input \n                  type=\"file\" \n                  ref={fileInputRef} \n                  onChange={handleImageUpload} \n                  accept=\"image/*\" \n                  className=\"hidden\" \n                />\n              </div>\n            ) : (\n              <div className=\"relative inline-block w-fit rounded-xl overflow-hidden border-2 border-banana-600 shadow-sm\">\n                 <img \n                   src={uploadedImage.preview} \n                   alt=\"Uploaded reference\" \n                   className=\"h-32 w-auto object-cover\"\n                 />\n                 <button \n                   onClick={clearUploadedImage}\n                   className=\"absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors shadow-sm\"\n                   title=\"Remove image\"\n                 >\n                   <X size={16} />\n                 </button>\n              </div>\n            )}\n\n            <label className=\"text-brown-900 font-bold text-lg mt-2\">\n              2. Describe your banana vision:\n            </label>\n            <div className=\"flex flex-col sm:flex-row gap-3\">\n              <input \n                type=\"text\" \n                value={prompt}\n                onChange={(e) => setPrompt(e.target.value)}\n                placeholder=\"e.g., Make it look like a cartoon banana...\"\n                className=\"flex-grow p-4 rounded-xl border-2 border-banana-300 focus:border-banana-600 focus:ring-4 focus:ring-banana-200 transition-all outline-none text-lg text-brown-900 placeholder-banana-700/50\"\n                onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}\n              />\n              <button \n                onClick={handleGenerate}\n                disabled={loading || !prompt}\n                className=\"bg-banana-500 hover:bg-banana-400 disabled:opacity-50 disabled:cursor-not-allowed text-brown-900 font-bold py-4 px-8 rounded-xl shadow-[0_4px_0_rgb(249,168,37)] active:shadow-none active:translate-y-[4px] transition-all flex items-center justify-center gap-2 min-w-[160px]\"\n              >\n                {loading ? <Loader2 className=\"animate-spin\" /> : <Wand2 />}\n                GENERATE\n              </button>\n            </div>\n            \n            <div className=\"flex justify-between items-center\">\n               <button \n                onClick={handleSurpriseMe}\n                disabled={loading}\n                className=\"text-banana-800 hover:text-banana-900 font-bold text-sm flex items-center gap-2 hover:underline decoration-2 underline-offset-4\"\n              >\n                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />\n                Surprise me with a random banana\n              </button>\n            </div>\n\n            {error && (\n              <div className=\"bg-red-100 text-red-800 p-4 rounded-xl border border-red-200\">\n                <strong>Oops!</strong> {error}\n              </div>\n            )}\n          </div>\n        </section>\n\n        {/* Display Section */}\n        {currentImage && (\n          <section className=\"animate-in fade-in zoom-in duration-500\">\n            <div className=\"bg-white p-4 rounded-3xl shadow-2xl border-4 border-banana-500 rotate-1 hover:rotate-0 transition-transform duration-300\">\n              <div className=\"aspect-square w-full rounded-2xl overflow-hidden bg-banana-50 relative group\">\n                <img \n                  src={currentImage.data} \n                  alt={currentImage.prompt} \n                  className=\"w-full h-full object-cover\"\n                />\n                <div className=\"absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4\">\n                  <button \n                    onClick={() => handleDownload(currentImage.data, `banana-${currentImage.timestamp}.png`)}\n                    className=\"bg-white text-brown-900 px-6 py-3 rounded-full hover:bg-banana-100 transition-colors transform hover:scale-105 flex items-center gap-2 font-bold shadow-lg\"\n                    title=\"Download Banana Image\"\n                  >\n                    <Download size={20} />\n                    DOWNLOAD IMAGE\n                  </button>\n                </div>\n              </div>\n              <p className=\"mt-4 text-center text-brown-900 font-medium text-lg italic\">\n                \"{currentImage.prompt}\"\n              </p>\n            </div>\n          </section>\n        )}\n\n        {/* History Gallery */}\n        {history.length > 0 && (\n          <section className=\"pt-8 border-t-4 border-banana-200 border-dashed\">\n            <div className=\"flex justify-between items-center mb-6\">\n              <h2 className=\"text-2xl font-black text-brown-900 flex items-center gap-2\">\n                <Banana className=\"text-banana-600\" /> \n                The Bunch (History)\n              </h2>\n              <button \n                onClick={handleClearHistory}\n                className=\"text-red-500 hover:text-red-700 flex items-center gap-1 text-sm font-bold\"\n              >\n                <Trash2 size={16} /> Clear Bunch\n              </button>\n            </div>\n            \n            <div className=\"grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4\">\n              {history.map((img) => (\n                <div \n                  key={img.id} \n                  onClick={() => setCurrentImage(img)}\n                  className={`cursor-pointer rounded-xl overflow-hidden border-2 transition-all hover:scale-105 active:scale-95 ${currentImage?.id === img.id ? 'border-banana-600 ring-2 ring-banana-300 shadow-lg' : 'border-transparent hover:border-banana-300'}`}\n                >\n                  <img src={img.data} alt={img.prompt} className=\"w-full h-full object-cover aspect-square\" />\n                </div>\n              ))}\n            </div>\n          </section>\n        )}\n      </main>\n\n      <footer className=\"mt-auto py-8 text-center text-banana-900/60 font-medium\">\n        <p>Generated with Gemini 2.5 Flash Image & Gemini 3 Flash Preview</p>\n      </footer>\n    </div>\n  );\n};\n\nexport default App;"
+            }
+          ]
+        }
+      ]
+    },
+    "createdTimestamp": {
+      "seconds": 1770772224,
+      "nanos": 613000000
+    },
+    "doneTimestamp": {
+      "seconds": 1770772230,
+      "nanos": 922000000
+    }
+  }
+]
