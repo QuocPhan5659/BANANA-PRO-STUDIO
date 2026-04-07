@@ -246,7 +246,6 @@ const generateButton = document.querySelector('#generate-button') as HTMLButtonE
 const generateProgress = document.querySelector('#generate-progress') as HTMLDivElement;
 const generateLabel = document.querySelector('#generate-label') as HTMLSpanElement;
 const downloadButtonMain = document.querySelector('#download-button-main') as HTMLButtonElement;
-const downloadUploadBtn = document.querySelector('#download-upload-btn') as HTMLButtonElement;
 const copyUploadBtn = document.querySelector('#copy-upload-btn') as HTMLButtonElement;
 const useAsMasterBtn = document.querySelector('#use-as-master') as HTMLButtonElement;
 const closeOutputBtn = document.querySelector('#close-output-btn') as HTMLButtonElement;
@@ -259,6 +258,8 @@ const zoomGenerateBtn = document.querySelector('#zoom-generate-btn') as HTMLButt
 const countBtns = document.querySelectorAll('.count-btn') as NodeListOf<HTMLButtonElement>;
 const prevImageBtn = document.querySelector('#prev-image-btn') as HTMLButtonElement;
 const nextImageBtn = document.querySelector('#next-image-btn') as HTMLButtonElement;
+const prevZoomBtn = document.querySelector('#prev-zoom-btn') as HTMLButtonElement;
+const nextZoomBtn = document.querySelector('#next-zoom-btn') as HTMLButtonElement;
 const imageCounterBadge = document.querySelector('#image-counter-badge') as HTMLDivElement;
 
 // Image Count Tracking
@@ -807,8 +808,7 @@ const canvasContainer = document.querySelector('.group\\/canvas-container') as H
 const zoomOverlay = document.querySelector('#zoom-overlay') as HTMLDivElement;
 const zoomMasterBtn = document.querySelector('#zoom-master-btn') as HTMLButtonElement;
 const zoomOutputBtn = document.querySelector('#zoom-output-btn') as HTMLButtonElement;
-const closeZoom = document.querySelector('#close-zoom') as HTMLButtonElement;
-const helpZoomBtn = document.querySelector('#help-zoom-btn') as HTMLButtonElement;
+const closeZoomBtn = document.querySelector('#close-zoom') as HTMLButtonElement;
 const zoomedImage = document.querySelector('#zoomed-image') as HTMLImageElement;
 const zoomViewport = document.querySelector('#zoom-viewport') as HTMLDivElement;
 const zoomContentWrapper = document.querySelector('#zoom-content-wrapper') as HTMLDivElement;
@@ -1534,23 +1534,6 @@ function setupCanvas() {
 function handleMainImage(file: File) {
     if (!file.type.startsWith('image/')) return;
     
-    // Extract metadata and populate textareas
-    if (file.type === 'image/png') {
-        extractMetadata(file).then(data => {
-            if (data) {
-                const promptEl = document.getElementById('prompt-manual') as HTMLTextAreaElement;
-                const lightingEl = document.getElementById('lighting-manual') as HTMLTextAreaElement;
-                const sceneEl = document.getElementById('scene-manual') as HTMLTextAreaElement;
-                const viewEl = document.getElementById('view-manual') as HTMLTextAreaElement;
-                
-                if (promptEl) { promptEl.value = data.mega || ''; autoResize(promptEl); }
-                if (lightingEl) { lightingEl.value = data.lighting || ''; autoResize(lightingEl); }
-                if (sceneEl) { sceneEl.value = data.scene || ''; autoResize(sceneEl); }
-                if (viewEl) { viewEl.value = data.view || ''; autoResize(viewEl); }
-            }
-        }).catch(err => console.error("Error extracting metadata on main image upload:", err));
-    }
-
     const reader = new FileReader();
     reader.onload = async (e) => {
         const result = e.target?.result as string;
@@ -1855,7 +1838,6 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
             }
 
             zoomOverlay.classList.remove('hidden');
-            closeZoom?.classList.remove('hidden');
             setTimeout(() => { zoomOverlay.classList.remove('opacity-0'); }, 10);
             zoomBrushPanel?.classList.remove('hidden');
             redrawText();
@@ -1876,15 +1858,46 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
         }
     });
 
-    const closeZoomOverlay = () => {
+    closeZoomBtn?.addEventListener('click', () => {
         zoomOverlay.classList.add('opacity-0');
         setTimeout(() => { zoomOverlay.classList.add('hidden'); }, 300);
-    };
+    });
 
-    closeZoom?.addEventListener('click', closeZoomOverlay);
+    const downloadZoomedImage = document.querySelector('#download-zoomed-image') as HTMLButtonElement;
+    downloadZoomedImage?.addEventListener('click', () => {
+        if (!zoomedImage.src) return;
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = zoomedImage.naturalWidth;
+        canvas.height = zoomedImage.naturalHeight;
+        const exportCtx = canvas.getContext('2d');
+        if (!exportCtx) return;
 
-    helpZoomBtn?.addEventListener('click', () => {
-        helpModal?.classList.remove('hidden');
+        // 1. Draw original image
+        exportCtx.drawImage(zoomedImage, 0, 0);
+
+        // 2. Draw mask/drawing
+        if (zoomGuideCanvas && !zoomGuideCanvas.classList.contains('hidden')) {
+            exportCtx.drawImage(zoomGuideCanvas, 0, 0);
+        }
+        
+        if (zoomMaskCanvas && !zoomMaskCanvas.classList.contains('hidden')) {
+            exportCtx.globalAlpha = 0.9;
+            exportCtx.globalCompositeOperation = 'screen';
+            exportCtx.drawImage(zoomMaskCanvas, 0, 0);
+            exportCtx.globalAlpha = 1.0;
+            exportCtx.globalCompositeOperation = 'source-over';
+        }
+
+        // 3. Draw text
+        if (zoomTextCanvas && !zoomTextCanvas.classList.contains('hidden')) {
+            exportCtx.drawImage(zoomTextCanvas, 0, 0);
+        }
+
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/png');
+        link.download = `banana-pro-zoom-${Date.now()}.png`;
+        link.click();
     });
 
     zoomTextCanvas = document.querySelector('#zoom-text-canvas') as HTMLCanvasElement;
@@ -2028,11 +2041,6 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
                 redrawText();
             }
         });
-        input?.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                saveEditingText();
-            }
-        });
     });
 
     function saveEditingText() {
@@ -2080,7 +2088,6 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
     function attachTextListeners(canvas: HTMLCanvasElement) {
         if (!canvas) return;
         canvas.addEventListener('mousedown', (e) => {
-            if (e.button === 1) return;
             const { x, y } = getTransformedCanvasCoords(e, canvas);
 
             const clickedIndex = textElements.findIndex(el => 
@@ -2264,7 +2271,12 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
     });
     
     const updateZoomNavigation = () => {
-        // Navigation removed
+        if (!prevZoomBtn || !nextZoomBtn) return;
+        if (currentImageIndex > 0) prevZoomBtn.classList.remove('hidden');
+        else prevZoomBtn.classList.add('hidden');
+        
+        if (currentImageIndex < generatedImages.length - 1) nextZoomBtn.classList.remove('hidden');
+        else nextZoomBtn.classList.add('hidden');
     };
 
     // Zoom Output Button Logic
@@ -2283,7 +2295,10 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
 
             // Show/Hide Zoom Navigation
             if (generatedImages.length > 1) {
-                // updateZoomNavigation();
+                updateZoomNavigation();
+            } else {
+                prevZoomBtn?.classList.add('hidden');
+                nextZoomBtn?.classList.add('hidden');
             }
 
             // Calculate Fit Scale
@@ -2301,7 +2316,8 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
         }
     };
 
-    // Zoom Navigation Buttons removed
+    if (prevZoomBtn) prevZoomBtn.addEventListener('click', (e) => { e.stopPropagation(); showImage(currentImageIndex - 1); });
+    if (nextZoomBtn) nextZoomBtn.addEventListener('click', (e) => { e.stopPropagation(); showImage(currentImageIndex + 1); });
 
     // Keyboard Navigation
     window.addEventListener('keydown', (e) => {
@@ -2313,7 +2329,7 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
             showImage(currentImageIndex + 1);
         } else if (e.key === 'Escape') {
             if (!zoomOverlay.classList.contains('hidden')) {
-                closeZoomOverlay();
+                closeZoomBtn.click();
             } else {
                 closeOutputBtn.click();
             }
@@ -2335,7 +2351,7 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
     // Click outside to close zoom
     zoomOverlay.addEventListener('click', (e) => {
         if (e.target === zoomViewport || e.target === zoomOverlay) {
-             closeZoomOverlay();
+             closeZoomBtn.click();
         }
     });
 
@@ -2379,7 +2395,7 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !zoomOverlay.classList.contains('hidden')) {
-            closeZoomOverlay();
+            closeZoomBtn.click();
         }
         // ESC to close screenshot overlay if active
         if (e.key === 'Escape' && !screenshotOverlay.classList.contains('hidden')) {
@@ -2389,7 +2405,7 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
         // Space to Exit Zoom
         if (e.key === ' ' && !zoomOverlay.classList.contains('hidden')) {
              e.preventDefault();
-             closeZoomOverlay();
+             closeZoomBtn.click();
         }
     });
 }
@@ -4430,57 +4446,6 @@ if (nextImageBtn) nextImageBtn.addEventListener('click', () => showImage(current
 closeOutputBtn?.addEventListener('click', () => { outputContainer.classList.add('hidden'); });
 downloadButtonMain?.addEventListener('click', () => { if (outputImage.src) { const a = document.createElement('a'); a.href = outputImage.src; a.download = `banana-pro-${Date.now()}.png`; a.click(); } });
 
-downloadUploadBtn?.addEventListener('click', async () => {
-    if (!uploadPreview.src) return;
-    
-    const canvas = document.createElement('canvas');
-    canvas.width = uploadPreview.naturalWidth;
-    canvas.height = uploadPreview.naturalHeight;
-    const exportCtx = canvas.getContext('2d');
-    if (!exportCtx) return;
-
-    // 1. Draw original image
-    exportCtx.drawImage(uploadPreview, 0, 0);
-
-    // 2. Draw mask/drawing
-    if (guideCanvas) {
-        exportCtx.drawImage(guideCanvas, 0, 0);
-    }
-    
-    if (maskCanvas) {
-        exportCtx.globalAlpha = 0.9;
-        exportCtx.globalCompositeOperation = 'screen';
-        exportCtx.drawImage(maskCanvas, 0, 0);
-        exportCtx.globalAlpha = 1.0;
-        exportCtx.globalCompositeOperation = 'source-over';
-    }
-
-    // 3. Draw text
-    if (mainTextCanvas) {
-        exportCtx.drawImage(mainTextCanvas, 0, 0);
-    }
-
-    const base64 = canvas.toDataURL('image/png').split(',')[1];
-    
-    // Get current prompt data
-    const promptData: PromptData = {
-        mega: (document.getElementById('prompt-manual') as HTMLTextAreaElement)?.value || "",
-        lighting: (document.getElementById('lighting-manual') as HTMLTextAreaElement)?.value || "",
-        scene: (document.getElementById('scene-manual') as HTMLTextAreaElement)?.value || "",
-        view: (document.getElementById('view-manual') as HTMLTextAreaElement)?.value || "",
-        inpaint: (document.getElementById('inpainting-prompt-text') as HTMLTextAreaElement)?.value || "",
-        inpaintEnabled: (document.getElementById('inpainting-prompt-toggle') as HTMLInputElement)?.checked || false,
-        cameraProjection: (document.getElementById('camera-projection-toggle') as HTMLInputElement)?.checked || false
-    };
-
-    const finalBase64 = await embedMetadata(base64, promptData);
-
-    const a = document.createElement('a');
-    a.href = `data:image/png;base64,${finalBase64}`;
-    a.download = `banana-pro-upload-${Date.now()}.png`;
-    a.click();
-});
-
 copyUploadBtn?.addEventListener('click', async () => {
     if (!uploadPreview.src) return;
     
@@ -4521,13 +4486,7 @@ copyUploadBtn?.addEventListener('click', async () => {
                 await navigator.clipboard.write([
                     new ClipboardItem({ 'image/png': blob })
                 ]);
-                const originalContent = copyUploadBtn.innerHTML;
-                copyUploadBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
-                copyUploadBtn.style.color = '#4ade80';
-                setTimeout(() => {
-                    copyUploadBtn.innerHTML = originalContent;
-                    copyUploadBtn.style.color = '';
-                }, 2000);
+                showCustomAlert("Image copied to clipboard!", "SUCCESS");
             } catch (err) {
                 console.error('Failed to copy image: ', err);
                 showCustomAlert("Failed to copy image.", "ERROR");
