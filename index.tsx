@@ -4523,16 +4523,46 @@ copyUploadBtn?.addEventListener('click', async () => {
                 await navigator.clipboard.write([
                     new ClipboardItem({ 'image/png': blob })
                 ]);
-                const originalContent = copyUploadBtn.innerHTML;
-                copyUploadBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
-                copyUploadBtn.style.color = '#4ade80';
-                setTimeout(() => {
-                    copyUploadBtn.innerHTML = originalContent;
-                    copyUploadBtn.style.color = '';
-                }, 2000);
             } catch (err) {
-                console.error('Failed to copy to clipboard: ', err);
+                console.warn('Clipboard API failed, trying fallback', err);
+                // Fallback for environments where Clipboard API is restricted
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(blob);
+                img.style.position = 'fixed';
+                img.style.left = '-9999px';
+                document.body.appendChild(img);
+                
+                const range = document.createRange();
+                range.selectNode(img);
+                const selection = window.getSelection();
+                if (selection) {
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                    try {
+                        const successful = document.execCommand('copy');
+                        if (!successful) throw new Error('execCommand copy failed');
+                    } catch (fallbackErr) {
+                        console.error('Fallback copy failed', fallbackErr);
+                        throw fallbackErr;
+                    } finally {
+                        selection.removeAllRanges();
+                        document.body.removeChild(img);
+                        URL.revokeObjectURL(img.src);
+                    }
+                } else {
+                    document.body.removeChild(img);
+                    URL.revokeObjectURL(img.src);
+                    throw new Error('No selection available');
+                }
             }
+            
+            const originalContent = copyUploadBtn.innerHTML;
+            copyUploadBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+            copyUploadBtn.style.color = '#4ade80';
+            setTimeout(() => {
+                copyUploadBtn.innerHTML = originalContent;
+                copyUploadBtn.style.color = '';
+            }, 2000);
         }, 'image/png');
     } catch (err) {
         console.error('Failed to prepare image for copy: ', err);
