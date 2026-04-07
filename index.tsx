@@ -1535,21 +1535,21 @@ function handleMainImage(file: File) {
     if (!file.type.startsWith('image/')) return;
     
     // Extract metadata and populate textareas
-    // if (file.type === 'image/png') {
-    //     extractMetadata(file).then(data => {
-    //         if (data) {
-    //             const promptEl = document.getElementById('prompt-manual') as HTMLTextAreaElement;
-    //             const lightingEl = document.getElementById('lighting-manual') as HTMLTextAreaElement;
-    //             const sceneEl = document.getElementById('scene-manual') as HTMLTextAreaElement;
-    //             const viewEl = document.getElementById('view-manual') as HTMLTextAreaElement;
-    //             
-    //             if (promptEl) { promptEl.value = data.mega || ''; autoResize(promptEl); }
-    //             if (lightingEl) { lightingEl.value = data.lighting || ''; autoResize(lightingEl); }
-    //             if (sceneEl) { sceneEl.value = data.scene || ''; autoResize(sceneEl); }
-    //             if (viewEl) { viewEl.value = data.view || ''; autoResize(viewEl); }
-    //         }
-    //     }).catch(err => console.error("Error extracting metadata on main image upload:", err));
-    // }
+    if (file.type === 'image/png') {
+        extractMetadata(file).then(data => {
+            if (data) {
+                const promptEl = document.getElementById('prompt-manual') as HTMLTextAreaElement;
+                const lightingEl = document.getElementById('lighting-manual') as HTMLTextAreaElement;
+                const sceneEl = document.getElementById('scene-manual') as HTMLTextAreaElement;
+                const viewEl = document.getElementById('view-manual') as HTMLTextAreaElement;
+                
+                if (promptEl) { promptEl.value = data.mega || ''; autoResize(promptEl); }
+                if (lightingEl) { lightingEl.value = data.lighting || ''; autoResize(lightingEl); }
+                if (sceneEl) { sceneEl.value = data.scene || ''; autoResize(sceneEl); }
+                if (viewEl) { viewEl.value = data.view || ''; autoResize(viewEl); }
+            }
+        }).catch(err => console.error("Error extracting metadata on main image upload:", err));
+    }
 
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -2190,8 +2190,6 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
         });
 
         canvas.addEventListener('dblclick', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
             const { x, y } = getTransformedCanvasCoords(e, canvas);
 
             const clickedIndex = textElements.findIndex(el => 
@@ -4519,54 +4517,60 @@ copyUploadBtn?.addEventListener('click', async () => {
         
         canvas.toBlob(async (blob) => {
             if (!blob) return;
+            let success = false;
             try {
-                await navigator.clipboard.write([
-                    new ClipboardItem({ 'image/png': blob })
-                ]);
+                // Primary method: navigator.clipboard.write
+                if (navigator.clipboard && typeof navigator.clipboard.write === 'function' && (window as any).ClipboardItem) {
+                    await navigator.clipboard.write([
+                        new (window as any).ClipboardItem({ 'image/png': blob })
+                    ]);
+                    success = true;
+                }
             } catch (err) {
-                console.warn('Clipboard API failed, trying fallback', err);
-                // Fallback for environments where Clipboard API is restricted
-                const img = document.createElement('img');
-                img.src = URL.createObjectURL(blob);
-                img.style.position = 'fixed';
-                img.style.left = '-9999px';
-                document.body.appendChild(img);
-                
-                const range = document.createRange();
-                range.selectNode(img);
-                const selection = window.getSelection();
-                if (selection) {
-                    selection.removeAllRanges();
-                    selection.addRange(range);
-                    try {
-                        const successful = document.execCommand('copy');
-                        if (!successful) throw new Error('execCommand copy failed');
-                    } catch (fallbackErr) {
-                        console.error('Fallback copy failed', fallbackErr);
-                        throw fallbackErr;
-                    } finally {
+                console.warn('navigator.clipboard.write failed, trying fallback', err);
+            }
+
+            if (!success) {
+                // Fallback method: execCommand('copy') with hidden image
+                try {
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(blob);
+                    img.style.position = 'fixed';
+                    img.style.left = '-9999px';
+                    img.style.top = '0';
+                    document.body.appendChild(img);
+                    
+                    const range = document.createRange();
+                    range.selectNode(img);
+                    const selection = window.getSelection();
+                    if (selection) {
                         selection.removeAllRanges();
-                        document.body.removeChild(img);
-                        URL.revokeObjectURL(img.src);
+                        selection.addRange(range);
+                        success = document.execCommand('copy');
+                        selection.removeAllRanges();
                     }
-                } else {
                     document.body.removeChild(img);
                     URL.revokeObjectURL(img.src);
-                    throw new Error('No selection available');
+                } catch (err) {
+                    console.error('Fallback copy failed', err);
                 }
             }
-            
-            const originalContent = copyUploadBtn.innerHTML;
-            copyUploadBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
-            copyUploadBtn.style.color = '#4ade80';
-            setTimeout(() => {
-                copyUploadBtn.innerHTML = originalContent;
-                copyUploadBtn.style.color = '';
-            }, 2000);
+
+            if (success) {
+                const originalContent = copyUploadBtn.innerHTML;
+                copyUploadBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+                copyUploadBtn.style.color = '#4ade80';
+                setTimeout(() => {
+                    copyUploadBtn.innerHTML = originalContent;
+                    copyUploadBtn.style.color = '';
+                }, 2000);
+            } else {
+                console.error('All copy methods failed. Clipboard access might be restricted in this environment.');
+                // Note: No automatic download or alert as requested by user
+            }
         }, 'image/png');
     } catch (err) {
         console.error('Failed to prepare image for copy: ', err);
-        showCustomAlert("Failed to prepare image.", "ERROR");
     }
 });
 
