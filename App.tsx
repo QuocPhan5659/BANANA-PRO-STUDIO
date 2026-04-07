@@ -665,7 +665,7 @@ const App: React.FC = () => {
   }
 
   if (!user) {
-    const isConfigured = true;
+    const isConfigured = !!process.env.VITE_FIREBASE_API_KEY;
 
     return (
       <div className="min-h-screen bg-dark-900 flex flex-col items-center justify-center p-6">
@@ -677,6 +677,17 @@ const App: React.FC = () => {
           </div>
           
           <div className="space-y-4">
+            {!isConfigured && (
+              <div className="bg-amber-900/20 border-2 border-amber-500/30 p-4 rounded-2xl text-left mb-4">
+                <p className="text-amber-400 font-bold text-sm mb-1 flex items-center gap-2">
+                  <ShieldCheck size={16} /> Configuration Required
+                </p>
+                <p className="text-amber-200/60 text-[10px] leading-relaxed">
+                  Firebase keys are missing. Please add them in <strong>Settings</strong> to enable login.
+                </p>
+              </div>
+            )}
+
             <div className="space-y-6">
               <h2 className="text-xl font-black text-banana-500 uppercase tracking-widest">Login to Banana Gen</h2>
 
