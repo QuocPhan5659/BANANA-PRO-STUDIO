@@ -259,8 +259,6 @@ const zoomGenerateBtn = document.querySelector('#zoom-generate-btn') as HTMLButt
 const countBtns = document.querySelectorAll('.count-btn') as NodeListOf<HTMLButtonElement>;
 const prevImageBtn = document.querySelector('#prev-image-btn') as HTMLButtonElement;
 const nextImageBtn = document.querySelector('#next-image-btn') as HTMLButtonElement;
-const prevZoomBtn = document.querySelector('#prev-zoom-btn') as HTMLButtonElement;
-const nextZoomBtn = document.querySelector('#next-zoom-btn') as HTMLButtonElement;
 const imageCounterBadge = document.querySelector('#image-counter-badge') as HTMLDivElement;
 
 // Image Count Tracking
@@ -809,7 +807,8 @@ const canvasContainer = document.querySelector('.group\\/canvas-container') as H
 const zoomOverlay = document.querySelector('#zoom-overlay') as HTMLDivElement;
 const zoomMasterBtn = document.querySelector('#zoom-master-btn') as HTMLButtonElement;
 const zoomOutputBtn = document.querySelector('#zoom-output-btn') as HTMLButtonElement;
-const closeZoomBtn = document.querySelector('#close-zoom-btn') as HTMLButtonElement;
+const closeZoom = document.querySelector('#close-zoom') as HTMLButtonElement;
+const helpZoomBtn = document.querySelector('#help-zoom-btn') as HTMLButtonElement;
 const zoomedImage = document.querySelector('#zoomed-image') as HTMLImageElement;
 const zoomViewport = document.querySelector('#zoom-viewport') as HTMLDivElement;
 const zoomContentWrapper = document.querySelector('#zoom-content-wrapper') as HTMLDivElement;
@@ -1856,7 +1855,7 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
             }
 
             zoomOverlay.classList.remove('hidden');
-            closeZoomBtn?.classList.remove('hidden');
+            closeZoom?.classList.remove('hidden');
             setTimeout(() => { zoomOverlay.classList.remove('opacity-0'); }, 10);
             zoomBrushPanel?.classList.remove('hidden');
             redrawText();
@@ -1877,47 +1876,15 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
         }
     });
 
-    closeZoomBtn?.addEventListener('click', () => {
+    const closeZoomOverlay = () => {
         zoomOverlay.classList.add('opacity-0');
-        closeZoomBtn?.classList.add('hidden');
         setTimeout(() => { zoomOverlay.classList.add('hidden'); }, 300);
-    });
+    };
 
-    const downloadZoomedImage = document.querySelector('#download-zoomed-image') as HTMLButtonElement;
-    downloadZoomedImage?.addEventListener('click', () => {
-        if (!zoomedImage.src) return;
-        
-        const canvas = document.createElement('canvas');
-        canvas.width = zoomedImage.naturalWidth;
-        canvas.height = zoomedImage.naturalHeight;
-        const exportCtx = canvas.getContext('2d');
-        if (!exportCtx) return;
+    closeZoom?.addEventListener('click', closeZoomOverlay);
 
-        // 1. Draw original image
-        exportCtx.drawImage(zoomedImage, 0, 0);
-
-        // 2. Draw mask/drawing
-        if (zoomGuideCanvas && !zoomGuideCanvas.classList.contains('hidden')) {
-            exportCtx.drawImage(zoomGuideCanvas, 0, 0);
-        }
-        
-        if (zoomMaskCanvas && !zoomMaskCanvas.classList.contains('hidden')) {
-            exportCtx.globalAlpha = 0.9;
-            exportCtx.globalCompositeOperation = 'screen';
-            exportCtx.drawImage(zoomMaskCanvas, 0, 0);
-            exportCtx.globalAlpha = 1.0;
-            exportCtx.globalCompositeOperation = 'source-over';
-        }
-
-        // 3. Draw text
-        if (zoomTextCanvas && !zoomTextCanvas.classList.contains('hidden')) {
-            exportCtx.drawImage(zoomTextCanvas, 0, 0);
-        }
-
-        const link = document.createElement('a');
-        link.href = canvas.toDataURL('image/png');
-        link.download = `banana-pro-zoom-${Date.now()}.png`;
-        link.click();
+    helpZoomBtn?.addEventListener('click', () => {
+        helpModal?.classList.remove('hidden');
     });
 
     zoomTextCanvas = document.querySelector('#zoom-text-canvas') as HTMLCanvasElement;
@@ -2063,7 +2030,7 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
         });
         input?.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
-                toggleAddingTextMode(false);
+                saveEditingText();
             }
         });
     });
@@ -2113,6 +2080,7 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
     function attachTextListeners(canvas: HTMLCanvasElement) {
         if (!canvas) return;
         canvas.addEventListener('mousedown', (e) => {
+            if (e.button === 1) return;
             const { x, y } = getTransformedCanvasCoords(e, canvas);
 
             const clickedIndex = textElements.findIndex(el => 
@@ -2296,12 +2264,7 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
     });
     
     const updateZoomNavigation = () => {
-        if (!prevZoomBtn || !nextZoomBtn) return;
-        if (currentImageIndex > 0) prevZoomBtn.classList.remove('hidden');
-        else prevZoomBtn.classList.add('hidden');
-        
-        if (currentImageIndex < generatedImages.length - 1) nextZoomBtn.classList.remove('hidden');
-        else nextZoomBtn.classList.add('hidden');
+        // Navigation removed
     };
 
     // Zoom Output Button Logic
@@ -2320,10 +2283,7 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
 
             // Show/Hide Zoom Navigation
             if (generatedImages.length > 1) {
-                updateZoomNavigation();
-            } else {
-                prevZoomBtn?.classList.add('hidden');
-                nextZoomBtn?.classList.add('hidden');
+                // updateZoomNavigation();
             }
 
             // Calculate Fit Scale
@@ -2341,8 +2301,7 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
         }
     };
 
-    if (prevZoomBtn) prevZoomBtn.addEventListener('click', (e) => { e.stopPropagation(); showImage(currentImageIndex - 1); });
-    if (nextZoomBtn) nextZoomBtn.addEventListener('click', (e) => { e.stopPropagation(); showImage(currentImageIndex + 1); });
+    // Zoom Navigation Buttons removed
 
     // Keyboard Navigation
     window.addEventListener('keydown', (e) => {
@@ -2354,7 +2313,7 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
             showImage(currentImageIndex + 1);
         } else if (e.key === 'Escape') {
             if (!zoomOverlay.classList.contains('hidden')) {
-                closeZoomBtn.click();
+                closeZoomOverlay();
             } else {
                 closeOutputBtn.click();
             }
@@ -2376,7 +2335,7 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
     // Click outside to close zoom
     zoomOverlay.addEventListener('click', (e) => {
         if (e.target === zoomViewport || e.target === zoomOverlay) {
-             closeZoomBtn.click();
+             closeZoomOverlay();
         }
     });
 
@@ -2420,7 +2379,7 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !zoomOverlay.classList.contains('hidden')) {
-            closeZoomBtn.click();
+            closeZoomOverlay();
         }
         // ESC to close screenshot overlay if active
         if (e.key === 'Escape' && !screenshotOverlay.classList.contains('hidden')) {
@@ -2430,7 +2389,7 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
         // Space to Exit Zoom
         if (e.key === ' ' && !zoomOverlay.classList.contains('hidden')) {
              e.preventDefault();
-             closeZoomBtn.click();
+             closeZoomOverlay();
         }
     });
 }
