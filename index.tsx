@@ -2622,8 +2622,8 @@ document.addEventListener('keydown', (e) => {
         return;
     }
 
-    // Paste PNG Info Shortcut (Alt+V)
-    if (e.altKey && e.key.toLowerCase() === 'v') {
+    // Paste PNG Info Shortcut (V)
+    if (e.key.toLowerCase() === 'v' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         document.getElementById('paste-png-info-btn')?.click();
         return;
@@ -3239,8 +3239,10 @@ if (pastePngInfoBtn) {
             try {
                 text = await navigator.clipboard.readText();
             } catch (clipErr) {
-                console.warn("Clipboard API failed, trying prompt fallback", clipErr);
-                // Fallback for environments where Clipboard API is restricted
+                console.warn("Clipboard API failed, forcing prompt fallback", clipErr);
+            }
+            
+            if (!text || !text.trim()) {
                 text = prompt("Please paste your Data PNG Info here:") || '';
             }
 
