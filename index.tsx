@@ -3813,7 +3813,9 @@ async function compositeInpaint(originalBase64: string, generatedBase64: string,
                 if (!tempCtx) { reject('No tempCtx'); return; }
                 
                 // 3. Draw mask on temp canvas
+                tempCtx.filter = 'blur(2px)'; // Add a slight blur to the mask to improve blending
                 tempCtx.drawImage(maskImg, 0, 0, originalImg.width, originalImg.height);
+                tempCtx.filter = 'none'; // Reset filter
                 
                 // 4. Use 'source-in' to only keep generated pixels where mask is white
                 tempCtx.globalCompositeOperation = 'source-in';
