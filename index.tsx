@@ -3239,13 +3239,13 @@ if (pastePngInfoBtn) {
             try {
                 text = await navigator.clipboard.readText();
             } catch (clipErr) {
-                console.warn("Clipboard API failed", clipErr);
-                showCustomAlert("Clipboard access failed. Please paste directly into the prompt fields.", "Paste Error");
-                return;
+                console.warn("Clipboard API failed, trying prompt fallback", clipErr);
+                // Fallback for environments where Clipboard API is restricted
+                text = prompt("Please paste your Data PNG Info here:") || '';
             }
 
             if (!text || !text.trim()) {
-                if(statusEl) statusEl.innerText = "Clipboard is empty";
+                if(statusEl) statusEl.innerText = "Clipboard is empty or prompt cancelled";
                 return;
             }
 
