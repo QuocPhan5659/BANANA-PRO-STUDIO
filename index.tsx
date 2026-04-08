@@ -24,6 +24,12 @@ document.addEventListener("DOMContentLoaded", function () {
     window.sketchup.dialog_ready();
   }
   
+  // Set default tool to Select
+  setTimeout(() => {
+    const toolSelect = document.getElementById('tool-select');
+    if (toolSelect) toolSelect.click();
+  }, 500);
+
   // Add pulse effect to copy-all-btn on load
   const applyPulseEffect = () => {
       const copyAllBtn = document.getElementById('copy-all-btn');
@@ -82,6 +88,17 @@ interface ReferenceImage {
     mimeType: string;
 }
 
+function updateBrushSizeVisibility() {
+    const brushSizeContainer = document.getElementById('zoom-brush-size-container');
+    if (brushSizeContainer) {
+        if (activeTool === 'brush') {
+            brushSizeContainer.classList.remove('hidden');
+        } else {
+            brushSizeContainer.classList.add('hidden');
+        }
+    }
+}
+
 // --- Global State Variables ---
 let uploadedImageData: { data: string; mimeType: string } | null = null;
 let referenceImages: ReferenceImage[] = [];
@@ -117,7 +134,7 @@ let isDrawing = false;
 let startX = 0;
 let startY = 0;
 let currentBrushSize = 30; // Reduced default size to 30
-let activeTool = 'brush';
+let activeTool = 'select';
 let isAddingTextMode = false;
 let isTextEraserMode = false;
 let addTextBtn: HTMLButtonElement | null = null;
@@ -209,6 +226,37 @@ let panStartY = 0;
 // --- Mouse Tracking for Shortcuts ---
 let globalMouseX = 0;
 let globalMouseY = 0;
+
+function resetDraggable() {
+    if (uploadPreview) uploadPreview.draggable = false;
+    if (outputImage) outputImage.draggable = false;
+    if (zoomedImage) {
+        zoomedImage.draggable = false;
+        zoomedImage.style.pointerEvents = 'none';
+    }
+    if (canvasContainer) canvasContainer.classList.remove('select-mode');
+    if (zoomOverlay) zoomOverlay.classList.remove('select-mode');
+    if (maskCanvas) maskCanvas.style.pointerEvents = 'auto';
+    if (zoomMaskCanvas) zoomMaskCanvas.style.pointerEvents = 'auto';
+}
+
+// Initialize default tool state (Select)
+setTimeout(() => {
+    if (activeTool === 'select') {
+        if (brushCursor) brushCursor.classList.add('hidden');
+        if (uploadPreview) uploadPreview.draggable = true;
+        if (outputImage) outputImage.draggable = true;
+        if (zoomedImage) {
+            zoomedImage.draggable = true;
+            zoomedImage.style.pointerEvents = 'auto';
+        }
+        if (canvasContainer) canvasContainer.classList.add('select-mode');
+        if (zoomOverlay) zoomOverlay.classList.add('select-mode');
+        if (maskCanvas) maskCanvas.style.pointerEvents = 'none';
+        if (zoomMaskCanvas) zoomMaskCanvas.style.pointerEvents = 'none';
+    }
+}, 500);
+
 window.addEventListener('mousemove', (e) => {
     globalMouseX = e.clientX;
     globalMouseY = e.clientY;
@@ -240,13 +288,29 @@ const getGenAI = () => {
 const statusEl = document.querySelector('#status') as HTMLDivElement;
 const outputContainer = document.querySelector('#output-container') as HTMLDivElement;
 const outputImage = document.querySelector('#output-image') as HTMLImageElement;
+const zoomedImage = document.querySelector('#zoomed-image') as HTMLImageElement;
+
+outputImage.addEventListener('dragstart', (e) => {
+    if (activeTool !== 'select') {
+        // Allow dragging output image even if not in select mode? 
+        // Usually output images are for downloading/sharing.
+        // But let's follow the "select tool" logic for consistency.
+    }
+});
+
+zoomedImage.addEventListener('dragstart', (e) => {
+    if (activeTool !== 'select') {
+        e.preventDefault();
+        return;
+    }
+});
 const promptEl = document.querySelector('#prompt-manual') as HTMLTextAreaElement;
 const sizeSelect = document.querySelector('#size-select') as HTMLSelectElement;
 const generateButton = document.querySelector('#generate-button') as HTMLButtonElement;
 const generateProgress = document.querySelector('#generate-progress') as HTMLDivElement;
 const generateLabel = document.querySelector('#generate-label') as HTMLSpanElement;
 const downloadButtonMain = document.querySelector('#download-button-main') as HTMLButtonElement;
-const copyUploadBtn = document.querySelector('#copy-upload-btn') as HTMLButtonElement;
+const downloadUploadBtn = document.querySelector('#download-upload-btn') as HTMLButtonElement;
 const useAsMasterBtn = document.querySelector('#use-as-master') as HTMLButtonElement;
 const closeOutputBtn = document.querySelector('#close-output-btn') as HTMLButtonElement;
 const globalResetBtn = document.querySelector('#global-reset-btn') as HTMLButtonElement;
@@ -790,6 +854,12 @@ const imageInput = document.querySelector('#image-input') as HTMLInputElement;
 const uploadPlaceholder = document.querySelector('#upload-placeholder') as HTMLDivElement;
 const inpaintingContainer = document.querySelector('#inpainting-container') as HTMLDivElement;
 const uploadPreview = document.querySelector('#upload-preview') as HTMLImageElement;
+uploadPreview.addEventListener('dragstart', (e) => {
+    if (activeTool !== 'select') {
+        e.preventDefault();
+        return;
+    }
+});
 
 // Screenshot Overlay
 const screenshotOverlay = document.querySelector('#screenshot-overlay') as HTMLDivElement;
@@ -809,7 +879,6 @@ const zoomOverlay = document.querySelector('#zoom-overlay') as HTMLDivElement;
 const zoomMasterBtn = document.querySelector('#zoom-master-btn') as HTMLButtonElement;
 const zoomOutputBtn = document.querySelector('#zoom-output-btn') as HTMLButtonElement;
 const closeZoomBtn = document.querySelector('#close-zoom') as HTMLButtonElement;
-const zoomedImage = document.querySelector('#zoomed-image') as HTMLImageElement;
 const zoomViewport = document.querySelector('#zoom-viewport') as HTMLDivElement;
 const zoomContentWrapper = document.querySelector('#zoom-content-wrapper') as HTMLDivElement;
 // Zoom Canvases
@@ -1976,10 +2045,14 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
             isTextEraserMode = false;
             // Deselect drawing tools
             toolBtns.forEach(b => { b.classList.remove('active', 'bg-[#262380]', 'text-white'); b.classList.add('text-gray-400'); });
+            resetDraggable();
             const zoomBtns = document.querySelectorAll('#zoom-brush-panel .tool-btn');
             zoomBtns.forEach(zb => { zb.classList.remove('active', 'bg-[#262380]', 'text-white'); zb.classList.add('bg-white/5', 'text-gray-500'); });
             activeTool = '';
             if (brushCursor) brushCursor.classList.add('hidden');
+        } else {
+            // Switch to Select tool
+            document.getElementById('tool-select')?.click();
         }
         
         const buttons = [addTextBtn, mainAddTextBtn];
@@ -2025,6 +2098,7 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
             isAddingTextMode = false;
             // Deselect drawing tools
             toolBtns.forEach(b => { b.classList.remove('active', 'bg-[#262380]', 'text-white'); b.classList.add('text-gray-400'); });
+            resetDraggable();
             const zoomBtns = document.querySelectorAll('#zoom-brush-panel .tool-btn');
             zoomBtns.forEach(zb => { zb.classList.remove('active', 'bg-[#262380]', 'text-white'); zb.classList.add('bg-white/5', 'text-gray-500'); });
             activeTool = '';
@@ -2407,18 +2481,39 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
 
     // Keyboard Navigation
     window.addEventListener('keydown', (e) => {
-        if (outputContainer.classList.contains('hidden')) return;
-        
-        if (e.key === 'ArrowLeft') {
-            showImage(currentImageIndex - 1);
-        } else if (e.key === 'ArrowRight') {
-            showImage(currentImageIndex + 1);
-        } else if (e.key === 'Escape') {
-            if (!zoomOverlay.classList.contains('hidden')) {
-                closeZoomBtn.click();
-            } else {
-                closeOutputBtn.click();
+        // Navigation shortcuts (only if output is visible)
+        if (!outputContainer.classList.contains('hidden')) {
+            if (e.key === 'ArrowLeft') {
+                showImage(currentImageIndex - 1);
+            } else if (e.key === 'ArrowRight') {
+                showImage(currentImageIndex + 1);
+            } else if (e.key === 'Escape') {
+                if (!zoomOverlay.classList.contains('hidden')) {
+                    closeZoomBtn.click();
+                } else {
+                    closeOutputBtn.click();
+                }
             }
+        }
+
+        // Tool shortcuts (only if not typing in an input)
+        if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+        
+        const key = e.key.toLowerCase();
+        if (key === 'v') {
+            document.getElementById('tool-select')?.click();
+        } else if (key === 'b') {
+            document.getElementById('tool-brush')?.click();
+        } else if (key === 'e') {
+            document.getElementById('tool-eraser')?.click();
+        } else if (key === 'r') {
+            document.getElementById('tool-rect')?.click();
+        } else if (key === 'l') {
+            document.getElementById('tool-lasso')?.click();
+        } else if (key === 'p') {
+            document.getElementById('tool-polygon')?.click();
+        } else if (key === 'a') {
+            document.getElementById('tool-arrow')?.click();
         }
     });
 
@@ -2515,6 +2610,12 @@ document.addEventListener('keydown', (e) => {
     }
 
     // Priority check for Generate shortcut (Ctrl+Enter)
+    if (e.altKey && e.code === 'KeyC') {
+        e.preventDefault();
+        copyUploadedImageToClipboard();
+        return;
+    }
+
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
         document.getElementById('generate-button')?.click();
@@ -2536,6 +2637,22 @@ document.addEventListener('keydown', (e) => {
     if (e.altKey && e.key.toLowerCase() === 'v') {
         e.preventDefault();
         document.getElementById('paste-png-info-btn')?.click();
+        return;
+    }
+
+    // Copy Image Shortcut (C)
+    if (e.code === 'KeyC' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT') return;
+        e.preventDefault();
+        copyUploadedImageToClipboard();
+        return;
+    }
+
+    // Select Tool Shortcut (S)
+    if (e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        document.getElementById('tool-select')?.click();
         return;
     }
 
@@ -3259,6 +3376,10 @@ function updateBrushCursor(e: MouseEvent) {
 
 if (canvasContainer) {
     canvasContainer.addEventListener('mousemove', (e) => {
+        if (activeTool === 'select') {
+            brushCursor.classList.add('hidden');
+            return;
+        }
         brushCursor.classList.remove('hidden');
         updateBrushCursor(e as MouseEvent);
     });
@@ -3268,6 +3389,10 @@ if (canvasContainer) {
 // Ensure zoom cursor consistency
 if (zoomViewport) {
      zoomViewport.addEventListener('mousemove', (e) => {
+        if (activeTool === 'select') {
+            brushCursor.classList.add('hidden');
+            return;
+        }
         brushCursor.classList.remove('hidden');
         updateBrushCursor(e as MouseEvent);
     });
@@ -3903,8 +4028,6 @@ async function renderGalleryModal() {
         card.addEventListener('click', (e) => {
             if ((e.target as HTMLElement).closest('button')) return;
             // Clicking the image now opens the Zoom Overlay instead of loading into main preview
-            const zoomedImage = document.querySelector('#zoomed-image') as HTMLImageElement;
-            const zoomOverlay = document.querySelector('#zoom-overlay') as HTMLElement;
             if (zoomedImage && zoomOverlay) {
                 zoomedImage.src = item.src;
                 zoomOverlay.classList.remove('hidden');
@@ -4532,7 +4655,76 @@ if (nextImageBtn) nextImageBtn.addEventListener('click', () => showImage(current
 closeOutputBtn?.addEventListener('click', () => { outputContainer.classList.add('hidden'); });
 downloadButtonMain?.addEventListener('click', () => { if (outputImage.src) { const a = document.createElement('a'); a.href = outputImage.src; a.download = `banana-pro-${Date.now()}.png`; a.click(); } });
 
-copyUploadBtn?.addEventListener('click', async () => {
+downloadUploadBtn?.addEventListener('click', async () => {
+    if (!uploadPreview.src) return;
+    
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.width = uploadPreview.naturalWidth;
+        canvas.height = uploadPreview.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        
+        // Draw background (white if transparent)
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.drawImage(uploadPreview, 0, 0);
+        
+        // Draw mask/drawing
+        if (guideCanvas) {
+            ctx.drawImage(guideCanvas, 0, 0);
+        }
+        
+        if (maskCanvas) {
+            ctx.globalAlpha = 0.9;
+            ctx.globalCompositeOperation = 'screen';
+            ctx.drawImage(maskCanvas, 0, 0);
+            ctx.globalAlpha = 1.0;
+            ctx.globalCompositeOperation = 'source-over';
+        }
+        
+        // Draw text
+        if (mainTextCanvas) {
+            ctx.drawImage(mainTextCanvas, 0, 0);
+        }
+        
+        const dataUrl = canvas.toDataURL('image/png');
+        const base64 = dataUrl.split(',')[1];
+        
+        const promptData: PromptData = {
+            mega: (document.getElementById('prompt-manual') as HTMLTextAreaElement).value || '',
+            lighting: '',
+            scene: '',
+            view: '',
+            inpaint: '',
+            inpaintEnabled: false,
+            cameraProjection: false
+        };
+        
+        const finalBase64 = await embedMetadata(base64, promptData);
+        const finalDataUrl = 'data:image/png;base64,' + finalBase64;
+        
+        const a = document.createElement('a');
+        a.href = finalDataUrl;
+        a.download = `banana-edit-${Date.now()}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        const originalContent = downloadUploadBtn.innerHTML;
+        downloadUploadBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+        downloadUploadBtn.style.color = '#4ade80';
+        setTimeout(() => {
+            downloadUploadBtn.innerHTML = originalContent;
+            downloadUploadBtn.style.color = '';
+        }, 2000);
+    } catch (err) {
+        console.error('Failed to download image: ', err);
+    }
+});
+
+async function copyUploadedImageToClipboard() {
     if (!uploadPreview.src) return;
     
     try {
@@ -4567,27 +4759,31 @@ copyUploadBtn?.addEventListener('click', async () => {
         }
         
         canvas.toBlob(async (blob) => {
-            if (!blob) return;
-            
-            const success = await copyImageToClipboard(blob);
-
-            if (success) {
-                const originalContent = copyUploadBtn.innerHTML;
-                copyUploadBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
-                copyUploadBtn.style.color = '#4ade80';
-                setTimeout(() => {
-                    copyUploadBtn.innerHTML = originalContent;
-                    copyUploadBtn.style.color = '';
-                }, 2000);
-            } else {
-                console.error('All copy methods failed. Clipboard access might be restricted in this environment.');
+            if (blob) {
+                try {
+                    await navigator.clipboard.write([
+                        new ClipboardItem({ 'image/png': blob })
+                    ]);
+                    // Visual feedback
+                    if (statusEl) {
+                        const originalText = statusEl.innerText;
+                        statusEl.innerText = "Copied to Clipboard!";
+                        statusEl.style.color = "#4ade80";
+                        setTimeout(() => {
+                            statusEl.innerText = originalText;
+                            statusEl.style.color = "";
+                        }, 2000);
+                    }
+                } catch (err) {
+                    console.error('Failed to copy image: ', err);
+                    if (statusEl) statusEl.innerText = "Copy Failed";
+                }
             }
         }, 'image/png');
     } catch (err) {
-        console.error('Failed to prepare image for copy: ', err);
-        showCustomAlert("Failed to prepare image.", "ERROR");
+        console.error('Failed to capture image for copy: ', err);
     }
-});
+}
 
 globalResetBtn?.addEventListener('click', () => {
     // 1. Reset Text Inputs
@@ -4688,22 +4884,41 @@ toolBtns.forEach(btn => {
     btn.addEventListener('click', () => {
         toolBtns.forEach(b => { b.classList.remove('active', 'bg-[#262380]', 'text-white'); b.classList.add('text-gray-400'); });
         btn.classList.add('active', 'bg-[#262380]', 'text-white'); btn.classList.remove('text-gray-400');
-        if (btn.id.includes('brush')) activeTool = 'brush';
-        else if (btn.id.includes('rect')) activeTool = 'rect';
-        else if (btn.id.includes('ellipse')) activeTool = 'ellipse';
-        else if (btn.id.includes('lasso')) activeTool = 'lasso';
+        
+        resetDraggable();
+
+        if (btn.id.includes('select')) {
+            activeTool = 'select';
+            updateBrushSizeVisibility();
+            if (brushCursor) brushCursor.classList.add('hidden');
+            uploadPreview.draggable = true;
+            if (outputImage) outputImage.draggable = true;
+            if (zoomedImage) {
+                zoomedImage.draggable = true;
+                zoomedImage.style.pointerEvents = 'auto';
+            }
+            canvasContainer.classList.add('select-mode');
+            if (zoomOverlay) zoomOverlay.classList.add('select-mode');
+            if (maskCanvas) maskCanvas.style.pointerEvents = 'none';
+            if (zoomMaskCanvas) zoomMaskCanvas.style.pointerEvents = 'none';
+        }
+        else if (btn.id.includes('brush')) { activeTool = 'brush'; updateBrushSizeVisibility(); }
+        else if (btn.id.includes('rect')) { activeTool = 'rect'; updateBrushSizeVisibility(); }
+        else if (btn.id.includes('ellipse')) { activeTool = 'ellipse'; updateBrushSizeVisibility(); }
+        else if (btn.id.includes('lasso')) { activeTool = 'lasso'; updateBrushSizeVisibility(); }
         else if (btn.id.includes('polygon')) {
             activeTool = 'polygon';
+            updateBrushSizeVisibility();
             polygonPoints = [];
             isDrawingPolygon = false;
         }
-        else if (btn.id.includes('arrow')) activeTool = 'arrow';
-        else if (btn.id.includes('eraser')) activeTool = 'eraser';
+        else if (btn.id.includes('arrow')) { activeTool = 'arrow'; updateBrushSizeVisibility(); }
+        else if (btn.id.includes('eraser')) { activeTool = 'eraser'; updateBrushSizeVisibility(); }
         
         if (isAddingTextMode) toggleAddingTextMode(false);
         if (isTextEraserMode) toggleTextEraserMode(false);
         
-        if(brushCursor) {
+        if(brushCursor && activeTool !== 'select') {
              brushCursor.classList.remove('hidden');
              const left = parseInt(brushCursor.style.left);
              const top = parseInt(brushCursor.style.top);
