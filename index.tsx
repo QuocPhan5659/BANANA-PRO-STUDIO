@@ -495,7 +495,11 @@ function showCustomPaste(): Promise<string | null> {
     if (!customPasteModal) return Promise.resolve(null);
     customPasteTextarea.value = '';
     customPasteModal.classList.remove('hidden');
-    customPasteTextarea.focus();
+    
+    // Small delay to ensure focus works after modal transition
+    setTimeout(() => {
+        customPasteTextarea.focus();
+    }, 100);
     
     return new Promise<string | null>((resolve) => {
         const handleSubmit = () => {
@@ -512,20 +516,41 @@ function showCustomPaste(): Promise<string | null> {
         const handleModalPaste = async () => {
             try {
                 window.focus();
-                const text = await navigator.clipboard.readText();
-                customPasteTextarea.value = text;
+                if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
+                    const text = await navigator.clipboard.readText();
+                    customPasteTextarea.value = text;
+                } else {
+                    throw new Error("Clipboard API not available");
+                }
             } catch (err) {
                 console.error('Modal clipboard read failed', err);
+                showCustomAlert("Clipboard API blocked. Please use Ctrl+V (Cmd+V) to paste directly into the box.", "Paste Blocked");
             }
         };
+        
+        // Auto-submit on paste if it looks like valid JSON
+        const handleAutoPaste = (e: ClipboardEvent) => {
+            // We wait a bit for the value to be populated
+            setTimeout(() => {
+                const val = customPasteTextarea.value.trim();
+                if (val.startsWith('{') && val.endsWith('}')) {
+                    // It looks like JSON, auto-submit
+                    handleSubmit();
+                }
+            }, 50);
+        };
+
         const cleanup = () => {
             customPasteSubmit.removeEventListener('click', handleSubmit);
             closePasteModal.removeEventListener('click', handleClose);
             if (modalPasteBtn) modalPasteBtn.removeEventListener('click', handleModalPaste);
+            customPasteTextarea.removeEventListener('paste', handleAutoPaste);
         };
+        
         customPasteSubmit.addEventListener('click', handleSubmit);
         closePasteModal.addEventListener('click', handleClose);
         if (modalPasteBtn) modalPasteBtn.addEventListener('click', handleModalPaste);
+        customPasteTextarea.addEventListener('paste', handleAutoPaste);
     });
 }
 
@@ -3237,28 +3262,37 @@ if (pastePngInfoBtn) {
             
             // Try Clipboard API first (Modern SketchUp 2025+ supports this)
             try {
-                text = await navigator.clipboard.readText();
+                if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
+                    text = await navigator.clipboard.readText();
+                }
             } catch (clipErr) {
-                console.warn("Clipboard API failed, forcing prompt fallback", clipErr);
+                console.warn("Clipboard API failed, trying custom modal fallback", clipErr);
             }
             
+            // If clipboard API failed or returned empty, show custom paste modal
             if (!text || !text.trim()) {
-                text = prompt("Please paste your Data PNG Info here:") || '';
+                text = await showCustomPaste() || '';
             }
 
             if (!text || !text.trim()) {
-                if(statusEl) statusEl.innerText = "Clipboard is empty or prompt cancelled";
+                if(statusEl) statusEl.innerText = "Paste cancelled or empty";
                 return;
             }
 
             try {
                 // Attempt to parse text as JSON (Data PNG info format)
                 const trimmedText = text.trim();
+                
+                // If it doesn't look like JSON, maybe it's raw text? 
+                // But applyMetadata expects an object.
                 if (!trimmedText.startsWith('{') && !trimmedText.startsWith('[')) {
-                    throw new Error("Not JSON");
+                    // Try to see if it's a simple prompt string
+                    const data = { mega: trimmedText };
+                    await applyMetadata(data);
+                } else {
+                    const data = JSON.parse(trimmedText);
+                    await applyMetadata(data);
                 }
-                const data = JSON.parse(text);
-                await applyMetadata(data);
             } catch (jsonErr) {
                 console.warn("Clipboard text is not valid JSON Data.", jsonErr);
                 showCustomAlert("The pasted text is not valid JSON. Please ensure you are pasting the correct Data PNG Info.", "Invalid Format");
