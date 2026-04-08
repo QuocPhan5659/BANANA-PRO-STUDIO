@@ -2622,6 +2622,13 @@ document.addEventListener('keydown', (e) => {
         return;
     }
 
+    // Paste PNG Info Shortcut (Alt+V)
+    if (e.altKey && e.key.toLowerCase() === 'v') {
+        e.preventDefault();
+        document.getElementById('paste-png-info-btn')?.click();
+        return;
+    }
+
     const target = e.target as HTMLElement;
     // Block other shortcuts if editing text
     if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT' || target.isContentEditable) return;
@@ -2630,13 +2637,6 @@ document.addEventListener('keydown', (e) => {
     if (e.altKey && e.key.toLowerCase() === 'a') {
         e.preventDefault();
         document.getElementById('clear-arrows-btn')?.click();
-        return;
-    }
-
-    // Paste PNG Info Shortcut (Alt+V)
-    if (e.altKey && e.key.toLowerCase() === 'v') {
-        e.preventDefault();
-        document.getElementById('paste-png-info-btn')?.click();
         return;
     }
 
@@ -2938,7 +2938,8 @@ function setupPngInfoViewport(
     if (copyBtn) {
         copyBtn.addEventListener('click', async () => {
             const text = content.innerText;
-            if (text && text !== 'Drag a PNG image here to view its metadata...') {
+            console.log("Copying text:", text); // Debugging
+            if (text && text.trim() !== 'Drag a PNG image here to view its metadata...') {
                 const success = await copyToClipboard(text);
                 if (success) {
                     const originalClass = copyBtn.className;
