@@ -3283,19 +3283,23 @@ if (pastePngInfoBtn) {
                 // Attempt to parse text as JSON (Data PNG info format)
                 const trimmedText = text.trim();
                 
-                // If it doesn't look like JSON, maybe it's raw text? 
-                // But applyMetadata expects an object.
-                if (!trimmedText.startsWith('{') && !trimmedText.startsWith('[')) {
-                    // Try to see if it's a simple prompt string
-                    const data = { mega: trimmedText };
-                    await applyMetadata(data);
-                } else {
-                    const data = JSON.parse(trimmedText);
-                    await applyMetadata(data);
+                let data;
+                try {
+                    data = JSON.parse(trimmedText);
+                } catch (e) {
+                    // If it's not JSON, assume it's a raw prompt string
+                    data = { mega: trimmedText };
                 }
+                
+                // If the parsed JSON is just a string (e.g., from some formats), wrap it
+                if (typeof data === 'string') {
+                    data = { mega: data };
+                }
+                
+                await applyMetadata(data);
             } catch (jsonErr) {
-                console.warn("Clipboard text is not valid JSON Data.", jsonErr);
-                showCustomAlert("The pasted text is not valid JSON. Please ensure you are pasting the correct Data PNG Info.", "Invalid Format");
+                console.warn("Failed to process pasted text.", jsonErr);
+                showCustomAlert("Failed to process the pasted text. Please ensure it is valid.", "Format Error");
             }
         } catch (err) {
             console.error("Failed to read clipboard", err);
