@@ -496,10 +496,22 @@ function showCustomPaste(): Promise<string | null> {
     customPasteTextarea.value = '';
     customPasteModal.classList.remove('hidden');
     
+    // Try to pre-fill from clipboard if API is available and granted
+    // This is a "nice to have" but we don't block on it
+    if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
+        navigator.clipboard.readText().then(text => {
+            if (text && text.trim()) {
+                customPasteTextarea.value = text;
+            }
+        }).catch(() => {
+            // Ignore errors, user will paste manually
+        });
+    }
+
     // Small delay to ensure focus works after modal transition
     setTimeout(() => {
         customPasteTextarea.focus();
-    }, 100);
+    }, 150);
     
     return new Promise<string | null>((resolve) => {
         const handleSubmit = () => {
@@ -524,7 +536,7 @@ function showCustomPaste(): Promise<string | null> {
                 }
             } catch (err) {
                 console.error('Modal clipboard read failed', err);
-                showCustomAlert("Clipboard API blocked. Please use Ctrl+V (Cmd+V) to paste directly into the box.", "Paste Blocked");
+                showCustomAlert("Không thể đọc Clipboard tự động. Vui lòng sử dụng Ctrl+V để dán trực tiếp vào ô.", "Paste Blocked");
             }
         };
         
@@ -537,7 +549,7 @@ function showCustomPaste(): Promise<string | null> {
                     // It looks like JSON, auto-submit
                     handleSubmit();
                 }
-            }, 50);
+            }, 100);
         };
 
         const cleanup = () => {
@@ -3258,21 +3270,10 @@ if (pastePngInfoBtn) {
     pastePngInfoBtn.addEventListener('click', async () => {
         try {
             window.focus();
-            let text = '';
             
-            // Try Clipboard API first (Modern SketchUp 2025+ supports this)
-            try {
-                if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
-                    text = await navigator.clipboard.readText();
-                }
-            } catch (clipErr) {
-                console.warn("Clipboard API failed, trying custom modal fallback", clipErr);
-            }
-            
-            // If clipboard API failed or returned empty, show custom paste modal
-            if (!text || !text.trim()) {
-                text = await showCustomPaste() || '';
-            }
+            // Always show the custom paste modal as requested for SketchUp reliability
+            // This provides the "board" the user can paste into.
+            const text = await showCustomPaste();
 
             if (!text || !text.trim()) {
                 if(statusEl) statusEl.innerText = "Paste cancelled or empty";
@@ -3283,27 +3284,21 @@ if (pastePngInfoBtn) {
                 // Attempt to parse text as JSON (Data PNG info format)
                 const trimmedText = text.trim();
                 
-                let data;
-                try {
-                    data = JSON.parse(trimmedText);
-                } catch (e) {
-                    // If it's not JSON, assume it's a raw prompt string
-                    data = { mega: trimmedText };
+                // If it doesn't look like JSON, treat it as a raw prompt
+                if (!trimmedText.startsWith('{') && !trimmedText.startsWith('[')) {
+                    const data = { mega: trimmedText };
+                    await applyMetadata(data);
+                } else {
+                    const data = JSON.parse(trimmedText);
+                    await applyMetadata(data);
                 }
-                
-                // If the parsed JSON is just a string (e.g., from some formats), wrap it
-                if (typeof data === 'string') {
-                    data = { mega: data };
-                }
-                
-                await applyMetadata(data);
             } catch (jsonErr) {
-                console.warn("Failed to process pasted text.", jsonErr);
-                showCustomAlert("Failed to process the pasted text. Please ensure it is valid.", "Format Error");
+                console.warn("Pasted text is not valid JSON Data.", jsonErr);
+                showCustomAlert("Dữ liệu không hợp lệ. Vui lòng đảm bảo bạn dán đúng nội dung Data PNG Info (JSON).", "Invalid Format");
             }
         } catch (err) {
-            console.error("Failed to read clipboard", err);
-            showCustomAlert("Unable to read from clipboard. Please allow clipboard access.", "Access Error");
+            console.error("Failed to handle paste", err);
+            showCustomAlert("Có lỗi xảy ra khi xử lý dữ liệu dán.", "Error");
         }
     });
 }
