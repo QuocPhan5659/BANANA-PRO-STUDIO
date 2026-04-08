@@ -2624,7 +2624,7 @@ document.addEventListener('keydown', (e) => {
 
     const target = e.target as HTMLElement;
     // Block other shortcuts if editing text
-    if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT') return;
+    if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT' || target.isContentEditable) return;
 
     // Clear Arrows Shortcut
     if (e.altKey && e.key.toLowerCase() === 'a') {
@@ -2642,8 +2642,6 @@ document.addEventListener('keydown', (e) => {
 
     // Copy Image Shortcut (C)
     if (e.code === 'KeyC' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        const target = e.target as HTMLElement;
-        if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT') return;
         e.preventDefault();
         copyUploadedImageToClipboard();
         return;
