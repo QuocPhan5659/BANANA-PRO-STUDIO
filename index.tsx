@@ -2518,6 +2518,16 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
 
     // Keyboard Navigation
     window.addEventListener('keydown', (e) => {
+        const target = (e.target as HTMLElement) || (document.activeElement as HTMLElement);
+        const isTyping = target && (
+                         target.tagName === 'TEXTAREA' || 
+                         target.tagName === 'INPUT' || 
+                         target.tagName === 'SELECT' ||
+                         target.isContentEditable || 
+                         target.closest('[contenteditable="true"]')
+        );
+        if (isTyping) return;
+
         // Navigation shortcuts (only if output is visible)
         if (!outputContainer.classList.contains('hidden')) {
             if (e.key === 'ArrowLeft') {
@@ -2534,8 +2544,6 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
         }
 
         // Tool shortcuts (only if not typing in an input)
-        if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
-        
         const key = e.key.toLowerCase();
         if (key === 'v') {
             document.getElementById('tool-select')?.click();
@@ -2612,6 +2620,16 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
     });
 
     document.addEventListener('keydown', (e) => {
+        const target = (e.target as HTMLElement) || (document.activeElement as HTMLElement);
+        const isTyping = target && (
+                         target.tagName === 'TEXTAREA' || 
+                         target.tagName === 'INPUT' || 
+                         target.tagName === 'SELECT' ||
+                         target.isContentEditable || 
+                         target.closest('[contenteditable="true"]')
+        );
+        if (isTyping) return;
+
         if (e.key === 'Escape' && !zoomOverlay.classList.contains('hidden')) {
             closeZoomBtn.click();
         }
@@ -2630,23 +2648,38 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
 
 // --- Keyboard Shortcuts ---
 document.addEventListener('keydown', (e) => {
+    const target = (e.target as HTMLElement) || (document.activeElement as HTMLElement);
+    const isTyping = target && (
+                     target.tagName === 'TEXTAREA' || 
+                     target.tagName === 'INPUT' || 
+                     target.tagName === 'SELECT' ||
+                     target.isContentEditable || 
+                     target.closest('[contenteditable="true"]')
+    );
+
+    // CRITICAL: Block ALL shortcuts if editing text
+    if (isTyping) {
+        // Exception: Allow Ctrl+Enter to generate even when focused
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('generate-button')?.click();
+        }
+        return;
+    }
+
     // Undo/Redo Shortcuts
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-        const target = e.target as HTMLElement;
-        if (target.isContentEditable || target.tagName === 'TEXTAREA' || target.tagName === 'INPUT') return;
         e.preventDefault();
         performUndo();
         return;
     }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
-        const target = e.target as HTMLElement;
-        if (target.isContentEditable || target.tagName === 'TEXTAREA' || target.tagName === 'INPUT') return;
         e.preventDefault();
         performRedo();
         return;
     }
 
-    // Priority check for Generate shortcut (Ctrl+Enter)
+    // Priority check for Copy Image shortcut (Alt+C)
     if (e.altKey && e.code === 'KeyC') {
         e.preventDefault();
         copyUploadedImageToClipboard();
@@ -2665,10 +2698,6 @@ document.addEventListener('keydown', (e) => {
         document.getElementById('paste-png-info-btn')?.click();
         return;
     }
-
-    const target = e.target as HTMLElement;
-    // Block other shortcuts if editing text
-    if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT' || target.isContentEditable) return;
 
     // Clear Arrows Shortcut
     if (e.altKey && e.key.toLowerCase() === 'a') {
