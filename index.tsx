@@ -1,5 +1,5 @@
 /* tslint:disable */
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import exifr from 'exifr';
 
 // --- Global Types & Interfaces ---
@@ -306,7 +306,10 @@ Text: ${text}`;
         // @ts-ignore
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
-            contents: { parts: [{ text: prompt }] }
+            contents: { parts: [{ text: prompt }] },
+            config: {
+                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+            }
         });
         
         const result = response.text?.trim() || text;
@@ -349,7 +352,8 @@ async function translateMetadata(data: any, targetLang: string) {
             contents: { parts: [{ text: `Translate this JSON: ${jsonStr}` }] },
             config: { 
                 systemInstruction: systemPrompt,
-                responseMimeType: 'application/json'
+                responseMimeType: 'application/json',
+                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
             }
         });
 
@@ -1223,7 +1227,8 @@ async function translatePrompt(targetLang: 'VN' | 'EN') {
             contents: { parts: [{ text: `Translate this JSON: ${jsonStr}` }] },
             config: { 
                 systemInstruction: systemPrompt,
-                responseMimeType: 'application/json'
+                responseMimeType: 'application/json',
+                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
             }
         });
 
@@ -1288,6 +1293,7 @@ async function translateTextGeneric(text: string, targetLang: 'VN' | 'EN'): Prom
             contents: { parts: [{ text: text }] },
             config: { 
                 systemInstruction: systemPrompt,
+                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
             }
         });
         const result = response.text || text;
