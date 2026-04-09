@@ -234,7 +234,7 @@ window.IS_SKETCHUP = true;
                  <li class="flex justify-between items-center"><span class="text-gray-200">Zoom Canvas</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">Mouse Wheel</span></li>
                  <li class="flex justify-between items-center"><span class="text-gray-200">Pan Canvas (Zoomed)</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">Middle Click</span></li>
             </ul>
-            <p class="mt-6 text-[10px] text-gray-600 uppercase font-bold tracking-widest text-center">BANANA PRO Studio v1.3</p>
+            <p class="mt-6 text-[10px] text-gray-600 uppercase font-bold tracking-widest text-center">BANANA PRO Studio v2.1</p>
         </div>
     </div>
 
@@ -372,7 +372,7 @@ window.IS_SKETCHUP = true;
       <div class="flex items-center gap-6">
         <div>
           <h1 class="text-lg md:text-xl font-extrabold text-white tracking-tight uppercase italic">
-            Banana <span class="text-[#262380]">Pro</span> Studio <span class="text-[10px] text-gray-600 not-italic ml-1">v2.0</span>
+            Banana <span class="text-[#262380]">Pro</span> Studio <span class="text-[10px] text-gray-600 not-italic ml-1">v2.1</span>
           </h1>
         </div>
         
@@ -601,7 +601,7 @@ window.IS_SKETCHUP = true;
                           </div>
                       </div>
                       
-                      <div id="reference-drop-zone" class="relative w-full h-[160px] border border-dashed border-gray-800 rounded-xl bg-[#121214] flex flex-wrap gap-2 p-1 items-center justify-center group cursor-pointer hover:border-[#262380]/40 transition-all overflow-hidden">
+                      <div id="reference-drop-zone" class="relative w-full h-[130px] border border-dashed border-gray-800 rounded-xl bg-[#121214] flex flex-wrap gap-2 p-1 items-center justify-center group cursor-pointer hover:border-[#262380]/40 transition-all overflow-hidden">
                           <input type="file" id="reference-image-input" class="hidden" accept="image/*" multiple />
                           <div id="reference-placeholder" class="flex flex-col items-center pointer-events-none text-center">
                               <!-- Up Arrow Icon -->
@@ -617,10 +617,10 @@ window.IS_SKETCHUP = true;
                   <!-- Right Column: PNG Info & Tools -->
                   <div class="flex-none flex flex-col gap-1 w-[260px]">
                       <div class="h-5"></div> <!-- Spacer to align with left label -->
-                      <div class="flex gap-1 h-[160px]">
+                      <div class="flex gap-1 h-[130px]">
                           <!-- Column 1: Paste & PNG -->
                           <div class="flex flex-col gap-1 w-32">
-                              <button id="paste-png-info-btn" class="w-full h-12 flex items-center justify-center bg-[#121214] border border-dashed border-gray-700/50 hover:border-amber-500 rounded-lg text-amber-500 hover:text-amber-400 transition-all group" title="Paste Data PNG Info (Text/JSON)">
+                              <button id="paste-png-info-btn" class="w-full h-[42px] flex items-center justify-center bg-[#121214] border border-dashed border-gray-700/50 hover:border-amber-500 rounded-lg text-amber-500 hover:text-amber-400 transition-all group" title="Paste Data PNG Info (Text/JSON)">
                                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 5l7 14H5L12 5z" />
                                   </svg>
@@ -638,7 +638,7 @@ window.IS_SKETCHUP = true;
 
                           <!-- Column 2: Lang & Trans -->
                           <div class="flex flex-col gap-1 w-32">
-                              <div class="w-full h-12 flex items-center justify-center bg-[#121214] border border-dashed border-gray-700/50 hover:border-amber-500 rounded-lg overflow-hidden transition-all" title="Ngôn ngữ dịch">
+                              <div class="w-full h-[42px] flex items-center justify-center bg-[#121214] border border-dashed border-gray-700/50 hover:border-amber-500 rounded-lg overflow-hidden transition-all" title="Ngôn ngữ dịch">
                                   <button id="translation-lang-btn" class="bg-transparent text-[10px] text-amber-500 w-full h-full text-center font-black outline-none cursor-pointer px-2" data-lang="vi">
                                       VIỆT NAM
                                   </button>
@@ -738,7 +738,7 @@ window.IS_SKETCHUP = true;
               <div class="grid grid-cols-2 gap-2">
                  <button id="global-reset-btn" class="w-full bg-white/5 border border-[#27272a] hover:bg-white/10 text-orange-500 hover:text-orange-400 font-black py-2.5 rounded-2xl transition-all duration-300 text-[9px] tracking-[0.2em] uppercase">RESET ALL</button>
                  <div class="w-full bg-transparent border border-white/5 rounded-2xl flex items-center justify-center">
-                    <span class="text-[8px] font-black uppercase tracking-widest text-gray-600">BANANA PRO v1.3</span>
+                    <span class="text-[8px] font-black uppercase tracking-widest text-gray-600">BANANA PRO v2.1</span>
                  </div>
               </div>
           </div>
