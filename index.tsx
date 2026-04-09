@@ -1,5 +1,7 @@
 /* tslint:disable */
-import { GoogleGenAI, ThinkingLevel } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
+import * as genai from '@google/genai';
+const ThinkingLevel = (genai as any).ThinkingLevel || { LOW: 'LOW' };
 import exifr from 'exifr';
 
 // --- Global Types & Interfaces ---
@@ -20,12 +22,11 @@ declare global {
 
 // --- SketchUp Integration ---
 document.addEventListener("DOMContentLoaded", function () {
-  if (window.sketchup) {
-    window.sketchup.dialog_ready();
-  }
+  console.log("DOM Content Loaded");
   
   // Set default tool to Select
   setTimeout(() => {
+    console.log("Setting default tool to Select");
     const toolSelect = document.getElementById('tool-select');
     if (toolSelect) toolSelect.click();
   }, 500);
@@ -308,7 +309,8 @@ Text: ${text}`;
             model: 'gemini-3-flash-preview',
             contents: { parts: [{ text: prompt }] },
             config: {
-                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+                // @ts-ignore
+                thinkingConfig: { thinkingLevel: ThinkingLevel?.LOW || 'LOW' }
             }
         });
         
@@ -353,7 +355,8 @@ async function translateMetadata(data: any, targetLang: string) {
             config: { 
                 systemInstruction: systemPrompt,
                 responseMimeType: 'application/json',
-                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+                // @ts-ignore
+                thinkingConfig: { thinkingLevel: ThinkingLevel?.LOW || 'LOW' }
             }
         });
 
@@ -1228,7 +1231,8 @@ async function translatePrompt(targetLang: 'VN' | 'EN') {
             config: { 
                 systemInstruction: systemPrompt,
                 responseMimeType: 'application/json',
-                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+                // @ts-ignore
+                thinkingConfig: { thinkingLevel: ThinkingLevel?.LOW || 'LOW' }
             }
         });
 
@@ -1293,7 +1297,8 @@ async function translateTextGeneric(text: string, targetLang: 'VN' | 'EN'): Prom
             contents: { parts: [{ text: text }] },
             config: { 
                 systemInstruction: systemPrompt,
-                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+                // @ts-ignore
+                thinkingConfig: { thinkingLevel: ThinkingLevel?.LOW || 'LOW' }
             }
         });
         const result = response.text || text;
