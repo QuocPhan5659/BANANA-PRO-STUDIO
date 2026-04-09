@@ -292,11 +292,8 @@ async function translateText(text: string, targetLang: string): Promise<string> 
     if (targetLang === 'vi' && hasVietnamese) return text;
     if (targetLang === 'en' && !hasVietnamese && /^[a-z0-9\s.,!?-]+$/i.test(text)) return text;
 
-    const keyToUse = manualApiKey || process.env.API_KEY || process.env.GEMINI_API_KEY;
-    if (!keyToUse) return text;
-
     try {
-        const ai = new GoogleGenAI({ apiKey: keyToUse });
+        const ai = getGenAI();
         const targetName = targetLang === 'vi' ? 'Vietnamese' : 'English';
         const prompt = `Task: Translate to ${targetName}.
 If the text is already in ${targetName}, return it exactly as is.
@@ -305,12 +302,16 @@ Only return the result text, no explanations.
 
 Text: ${text}`;
         
+        console.log(`Translating to ${targetName}...`);
         // @ts-ignore
         const response = await ai.models.generateContent({
             model: 'gemini-2.0-flash',
             contents: { parts: [{ text: prompt }] }
         });
-        return response.text?.trim() || text;
+        
+        const result = response.text?.trim() || text;
+        console.log("Translation result:", result);
+        return result;
     } catch (err) {
         console.error("Translation failed:", err);
         return text;
@@ -1241,7 +1242,7 @@ if (langBtnEn) langBtnEn.addEventListener('click', () => translatePrompt('EN'));
 // --- Icon Button Logic ---
 
 async function translateTextGeneric(text: string, targetLang: 'VN' | 'EN'): Promise<string> {
-    console.log(`translateTextGeneric called for ${targetLang}. Text length: ${text.length}`);
+    console.log(`translateTextGeneric called for ${targetLang}`);
     const ai = getGenAI();
     const systemPrompt = targetLang === 'VN' 
         ? `You are a professional translator. Translate the human-readable text content within the provided HTML string. You MUST strictly preserve all HTML tags, attributes, classes, and inline styles. Do not modify the structure, layout, or colors. Return ONLY the translated HTML string.`
@@ -1249,17 +1250,17 @@ async function translateTextGeneric(text: string, targetLang: 'VN' | 'EN'): Prom
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash', 
+            model: 'gemini-3-flash-preview', 
             contents: { parts: [{ text: text }] },
             config: { 
                 systemInstruction: systemPrompt,
             }
         });
-        console.log("Translation response received");
-        return response.text || text;
+        const result = response.text || text;
+        console.log("translateTextGeneric result received");
+        return result;
     } catch (err) {
-        console.error("Translation error in SketchUp:", err);
-        showCustomAlert("Lỗi dịch thuật: " + (err instanceof Error ? err.message : String(err)), "Translation Error");
+        console.error("translateTextGeneric failed:", err);
         return text;
     }
 }
@@ -1516,7 +1517,23 @@ function crc32(buf: Uint8Array) {
     return (c ^ -1) >>> 0;
 }
 function stringToUint8(str: string) { return new TextEncoder().encode(str); }
-function uint8ToString(buf: Uint8Array) { return new TextDecoder().decode(buf); }
+function uint8ToString(buf: Uint8Array) { 
+    if (typeof TextDecoder !== 'undefined') {
+        try {
+            return new TextDecoder().decode(buf); 
+        } catch (e) {}
+    }
+    // Fallback for environments without TextDecoder or if it fails
+    let s = '';
+    for (let i = 0; i < buf.length; i++) {
+        s += String.fromCharCode(buf[i]);
+    }
+    try {
+        return decodeURIComponent(escape(s));
+    } catch (e) {
+        return s; 
+    }
+}
 
 function convertToPngBase64(base64Data: string, mimeType: string): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -1576,32 +1593,50 @@ async function embedMetadata(base64Image: string, data: PromptData): Promise<str
 }
 
 async function extractMetadata(file: File): Promise<PromptData | null> {
-    const buffer = await file.arrayBuffer();
-    const view = new DataView(buffer);
-    const uint8 = new Uint8Array(buffer);
-    if (view.getUint32(0) !== 0x89504E47) return null;
-
-    let offset = 8;
-    while (offset < buffer.byteLength) {
-        if (offset + 8 > buffer.byteLength) break;
-        const length = view.getUint32(offset);
-        const type = uint8ToString(uint8.subarray(offset + 4, offset + 8));
-        if (type === 'tEXt') {
-            const data = uint8.subarray(offset + 8, offset + 8 + length);
-            let nullIndex = -1;
-            for(let i=0; i<length; i++) if(data[i] === 0) { nullIndex = i; break; }
-            if (nullIndex > 0) {
-                const keyword = uint8ToString(data.subarray(0, nullIndex));
-                if (keyword === 'BananaProData') {
-                    try { return JSON.parse(uint8ToString(data.subarray(nullIndex + 1))); } 
-                    catch(e) { console.error("JSON parse failed", e); }
-                }
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const buffer = e.target?.result as ArrayBuffer;
+            if (!buffer) {
+                resolve(null);
+                return;
             }
-        }
-        offset += 12 + length;
-        if (type === 'IEND') break;
-    }
-    return null;
+            const view = new DataView(buffer);
+            const uint8 = new Uint8Array(buffer);
+            if (view.getUint32(0) !== 0x89504E47) {
+                resolve(null);
+                return;
+            }
+
+            let offset = 8;
+            while (offset < buffer.byteLength) {
+                if (offset + 8 > buffer.byteLength) break;
+                const length = view.getUint32(offset);
+                const type = uint8ToString(uint8.subarray(offset + 4, offset + 8));
+                
+                if (type === 'tEXt') {
+                    const data = uint8.subarray(offset + 8, offset + 8 + length);
+                    let nullIndex = -1;
+                    for(let i=0; i<length; i++) if(data[i] === 0) { nullIndex = i; break; }
+                    if (nullIndex > 0) {
+                        const keyword = uint8ToString(data.subarray(0, nullIndex));
+                        if (keyword === 'BananaProData') {
+                            try { 
+                                resolve(JSON.parse(uint8ToString(data.subarray(nullIndex + 1)))); 
+                                return;
+                            } 
+                            catch(e) { console.error("JSON parse failed", e); }
+                        }
+                    }
+                }
+                offset += 12 + length;
+                if (type === 'IEND') break;
+            }
+            resolve(null);
+        };
+        reader.onerror = () => resolve(null);
+        reader.readAsArrayBuffer(file);
+    });
 }
 
 function populateMetadata(data: PromptData) {
@@ -3379,7 +3414,12 @@ async function handleTranslationDrop(file: File) {
             data = await extractMetadata(file);
         } else if (file.name.endsWith('.txt')) {
             console.log("Reading metadata from TXT");
-            const text = await file.text();
+            const text = await new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target?.result as string || '');
+                reader.onerror = () => resolve('');
+                reader.readAsText(file);
+            });
             try {
                 // Try to see if it's JSON metadata
                 const trimmed = text.trim();
