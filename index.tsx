@@ -307,19 +307,10 @@ Text: ${text}`;
         
         // @ts-ignore
         const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            model: 'gemini-2.0-flash',
             contents: { parts: [{ text: prompt }] }
         });
-        
-        // Robust text extraction for @google/genai SDK
-        let textResult = '';
-        if (response.text) {
-            textResult = response.text;
-        } else if (response.candidates?.[0]?.content?.parts?.[0]?.text) {
-            textResult = response.candidates[0].content.parts[0].text;
-        }
-        
-        return textResult.trim() || text;
+        return response.text?.trim() || text;
     } catch (err) {
         console.error("Translation failed:", err);
         return text;
@@ -1020,8 +1011,10 @@ const translateInput = document.querySelector('#translate-input') as HTMLInputEl
 const translationLangBtn = document.querySelector('#translation-lang-btn') as HTMLButtonElement;
 const translateActiveIndicator = document.querySelector('#translate-active-indicator') as HTMLDivElement;
 
-// --- Resolution Buttons ---
+// Resolution Buttons
 const resBtns = document.querySelectorAll('.res-btn') as NodeListOf<HTMLButtonElement>;
+
+let currentDataFilter: 'ALL' | 'MEGA' | 'LIGHTING' | 'SCENE' | 'VIEW' = 'ALL';
 
 // --- Data Filter Buttons ---
 const filterBtns = document.querySelectorAll('.filter-btn') as NodeListOf<HTMLButtonElement>;
@@ -1042,7 +1035,6 @@ filterBtns.forEach(btn => {
         else if (id === 'filter-view') currentDataFilter = 'VIEW';
     });
 });
-
 // Icon Buttons
 const copyBtns = document.querySelectorAll('.copy-text-btn') as NodeListOf<HTMLButtonElement>;
 const pasteBtns = document.querySelectorAll('.paste-text-btn') as NodeListOf<HTMLButtonElement>;
@@ -1254,28 +1246,14 @@ async function translateTextGeneric(text: string, targetLang: 'VN' | 'EN'): Prom
         ? `You are a professional translator. Translate the human-readable text content within the provided HTML string. You MUST strictly preserve all HTML tags, attributes, classes, and inline styles. Do not modify the structure, layout, or colors. Return ONLY the translated HTML string.`
         : `You are a professional translator. Translate the human-readable text content within the provided HTML string. You MUST strictly preserve all HTML tags, attributes, classes, and inline styles. Do not modify the structure, layout, or colors. Return ONLY the translated HTML string.`;
 
-    try {
-        // @ts-ignore
-        const response = await ai.models.generateContent({ 
-            model: 'gemini-3-flash-preview',
-            contents: { parts: [{ text: text }] },
-            config: { 
-                systemInstruction: systemPrompt,
-            }
-        });
-        
-        let textResult = '';
-        if (response.text) {
-            textResult = response.text;
-        } else if (response.candidates?.[0]?.content?.parts?.[0]?.text) {
-            textResult = response.candidates[0].content.parts[0].text;
+    const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview', 
+        contents: { parts: [{ text: text }] },
+        config: { 
+            systemInstruction: systemPrompt,
         }
-        
-        return textResult.trim() || text;
-    } catch (err) {
-        console.error("Generic translation failed:", err);
-        return text;
-    }
+    });
+    return response.text || text;
 }
 
 async function copyToClipboard(text: string): Promise<boolean> {
@@ -1530,23 +1508,7 @@ function crc32(buf: Uint8Array) {
     return (c ^ -1) >>> 0;
 }
 function stringToUint8(str: string) { return new TextEncoder().encode(str); }
-function uint8ToString(buf: Uint8Array) { 
-    if (typeof TextDecoder !== 'undefined') {
-        try {
-            return new TextDecoder().decode(buf); 
-        } catch (e) {}
-    }
-    // Fallback for environments without TextDecoder or if it fails
-    let s = '';
-    for (let i = 0; i < buf.length; i++) {
-        s += String.fromCharCode(buf[i]);
-    }
-    try {
-        return decodeURIComponent(escape(s));
-    } catch (e) {
-        return s; 
-    }
-}
+function uint8ToString(buf: Uint8Array) { return new TextDecoder().decode(buf); }
 
 function convertToPngBase64(base64Data: string, mimeType: string): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -1606,54 +1568,33 @@ async function embedMetadata(base64Image: string, data: PromptData): Promise<str
 }
 
 async function extractMetadata(file: File): Promise<PromptData | null> {
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const buffer = e.target?.result as ArrayBuffer;
-            if (!buffer) {
-                resolve(null);
-                return;
-            }
-            const view = new DataView(buffer);
-            const uint8 = new Uint8Array(buffer);
-            if (view.getUint32(0) !== 0x89504E47) {
-                resolve(null);
-                return;
-            }
+    const buffer = await file.arrayBuffer();
+    const view = new DataView(buffer);
+    const uint8 = new Uint8Array(buffer);
+    if (view.getUint32(0) !== 0x89504E47) return null;
 
-            let offset = 8;
-            while (offset < buffer.byteLength) {
-                if (offset + 8 > buffer.byteLength) break;
-                const length = view.getUint32(offset);
-                // Direct ASCII check for chunk type
-                const type = String.fromCharCode(uint8[offset + 4], uint8[offset + 5], uint8[offset + 6], uint8[offset + 7]);
-                
-                if (type === 'tEXt') {
-                    const data = uint8.subarray(offset + 8, offset + 8 + length);
-                    let nullIndex = -1;
-                    for(let i=0; i<length; i++) if(data[i] === 0) { nullIndex = i; break; }
-                    if (nullIndex > 0) {
-                        const keyword = uint8ToString(data.subarray(0, nullIndex));
-                        if (keyword === 'BananaProData') {
-                            try { 
-                                resolve(JSON.parse(uint8ToString(data.subarray(nullIndex + 1)))); 
-                                return;
-                            } 
-                            catch(e) { console.error("JSON parse failed", e); }
-                        }
-                    }
+    let offset = 8;
+    while (offset < buffer.byteLength) {
+        if (offset + 8 > buffer.byteLength) break;
+        const length = view.getUint32(offset);
+        const type = uint8ToString(uint8.subarray(offset + 4, offset + 8));
+        if (type === 'tEXt') {
+            const data = uint8.subarray(offset + 8, offset + 8 + length);
+            let nullIndex = -1;
+            for(let i=0; i<length; i++) if(data[i] === 0) { nullIndex = i; break; }
+            if (nullIndex > 0) {
+                const keyword = uint8ToString(data.subarray(0, nullIndex));
+                if (keyword === 'BananaProData') {
+                    try { return JSON.parse(uint8ToString(data.subarray(nullIndex + 1))); } 
+                    catch(e) { console.error("JSON parse failed", e); }
                 }
-                offset += 12 + length;
-                if (type === 'IEND') break;
             }
-            resolve(null);
-        };
-        reader.onerror = () => resolve(null);
-        reader.readAsArrayBuffer(file);
-    });
+        }
+        offset += 12 + length;
+        if (type === 'IEND') break;
+    }
+    return null;
 }
-
-let currentDataFilter: 'ALL' | 'MEGA' | 'LIGHTING' | 'SCENE' | 'VIEW' = 'ALL';
 
 function populateMetadata(data: PromptData) {
     const filter = currentDataFilter;
@@ -3414,7 +3355,9 @@ if (pngInfoDropZone) {
 }
 
 async function handleTranslationDrop(file: File) {
+    console.log("handleTranslationDrop called with file:", file.name);
     const targetLang = translationLangBtn.getAttribute('data-lang') || 'vi';
+    console.log("Target language:", targetLang);
     if (statusEl) statusEl.innerText = "Đang xử lý và dịch...";
     
     // Add visual effect
@@ -3424,14 +3367,11 @@ async function handleTranslationDrop(file: File) {
     try {
         let data: any = null;
         if (file.name.endsWith('.png')) {
+            console.log("Extracting metadata from PNG");
             data = await extractMetadata(file);
         } else if (file.name.endsWith('.txt')) {
-            const text = await new Promise<string>((resolve) => {
-                const reader = new FileReader();
-                reader.onload = (e) => resolve(e.target?.result as string || '');
-                reader.onerror = () => resolve('');
-                reader.readAsText(file);
-            });
+            console.log("Reading metadata from TXT");
+            const text = await file.text();
             try {
                 // Try to see if it's JSON metadata
                 const trimmed = text.trim();
@@ -3445,8 +3385,10 @@ async function handleTranslationDrop(file: File) {
             }
         }
 
+        console.log("Data extracted:", data);
         if (data) {
             const translatedData = await translateMetadata(data, targetLang);
+            console.log("Translated data:", translatedData);
             populateMetadata(translatedData);
             if (statusEl) statusEl.innerText = "Dịch và điền dữ liệu thành công";
         } else {
