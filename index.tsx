@@ -307,10 +307,19 @@ Text: ${text}`;
         
         // @ts-ignore
         const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash',
+            model: 'gemini-3-flash-preview',
             contents: { parts: [{ text: prompt }] }
         });
-        return response.text?.trim() || text;
+        
+        // Robust text extraction for @google/genai SDK
+        let textResult = '';
+        if (response.text) {
+            textResult = response.text;
+        } else if (response.candidates?.[0]?.content?.parts?.[0]?.text) {
+            textResult = response.candidates[0].content.parts[0].text;
+        }
+        
+        return textResult.trim() || text;
     } catch (err) {
         console.error("Translation failed:", err);
         return text;
@@ -1011,8 +1020,28 @@ const translateInput = document.querySelector('#translate-input') as HTMLInputEl
 const translationLangBtn = document.querySelector('#translation-lang-btn') as HTMLButtonElement;
 const translateActiveIndicator = document.querySelector('#translate-active-indicator') as HTMLDivElement;
 
-// Resolution Buttons
+// --- Resolution Buttons ---
 const resBtns = document.querySelectorAll('.res-btn') as NodeListOf<HTMLButtonElement>;
+
+// --- Data Filter Buttons ---
+const filterBtns = document.querySelectorAll('.filter-btn') as NodeListOf<HTMLButtonElement>;
+filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        filterBtns.forEach(b => {
+            b.classList.remove('active', 'bg-amber-500/20', 'text-amber-500', 'border-amber-500/50');
+            b.classList.add('text-gray-400');
+        });
+        btn.classList.add('active', 'bg-amber-500/20', 'text-amber-500', 'border-amber-500/50');
+        btn.classList.remove('text-gray-400');
+        
+        const id = btn.id;
+        if (id === 'filter-all') currentDataFilter = 'ALL';
+        else if (id === 'filter-mega') currentDataFilter = 'MEGA';
+        else if (id === 'filter-lighting') currentDataFilter = 'LIGHTING';
+        else if (id === 'filter-scene') currentDataFilter = 'SCENE';
+        else if (id === 'filter-view') currentDataFilter = 'VIEW';
+    });
+});
 
 // Icon Buttons
 const copyBtns = document.querySelectorAll('.copy-text-btn') as NodeListOf<HTMLButtonElement>;
@@ -1225,14 +1254,28 @@ async function translateTextGeneric(text: string, targetLang: 'VN' | 'EN'): Prom
         ? `You are a professional translator. Translate the human-readable text content within the provided HTML string. You MUST strictly preserve all HTML tags, attributes, classes, and inline styles. Do not modify the structure, layout, or colors. Return ONLY the translated HTML string.`
         : `You are a professional translator. Translate the human-readable text content within the provided HTML string. You MUST strictly preserve all HTML tags, attributes, classes, and inline styles. Do not modify the structure, layout, or colors. Return ONLY the translated HTML string.`;
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview', 
-        contents: { parts: [{ text: text }] },
-        config: { 
-            systemInstruction: systemPrompt,
+    try {
+        // @ts-ignore
+        const response = await ai.models.generateContent({ 
+            model: 'gemini-3-flash-preview',
+            contents: { parts: [{ text: text }] },
+            config: { 
+                systemInstruction: systemPrompt,
+            }
+        });
+        
+        let textResult = '';
+        if (response.text) {
+            textResult = response.text;
+        } else if (response.candidates?.[0]?.content?.parts?.[0]?.text) {
+            textResult = response.candidates[0].content.parts[0].text;
         }
-    });
-    return response.text || text;
+        
+        return textResult.trim() || text;
+    } catch (err) {
+        console.error("Generic translation failed:", err);
+        return text;
+    }
 }
 
 async function copyToClipboard(text: string): Promise<boolean> {
@@ -1487,7 +1530,23 @@ function crc32(buf: Uint8Array) {
     return (c ^ -1) >>> 0;
 }
 function stringToUint8(str: string) { return new TextEncoder().encode(str); }
-function uint8ToString(buf: Uint8Array) { return new TextDecoder().decode(buf); }
+function uint8ToString(buf: Uint8Array) { 
+    if (typeof TextDecoder !== 'undefined') {
+        try {
+            return new TextDecoder().decode(buf); 
+        } catch (e) {}
+    }
+    // Fallback for environments without TextDecoder or if it fails
+    let s = '';
+    for (let i = 0; i < buf.length; i++) {
+        s += String.fromCharCode(buf[i]);
+    }
+    try {
+        return decodeURIComponent(escape(s));
+    } catch (e) {
+        return s; 
+    }
+}
 
 function convertToPngBase64(base64Data: string, mimeType: string): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -1547,53 +1606,87 @@ async function embedMetadata(base64Image: string, data: PromptData): Promise<str
 }
 
 async function extractMetadata(file: File): Promise<PromptData | null> {
-    const buffer = await file.arrayBuffer();
-    const view = new DataView(buffer);
-    const uint8 = new Uint8Array(buffer);
-    if (view.getUint32(0) !== 0x89504E47) return null;
-
-    let offset = 8;
-    while (offset < buffer.byteLength) {
-        if (offset + 8 > buffer.byteLength) break;
-        const length = view.getUint32(offset);
-        const type = uint8ToString(uint8.subarray(offset + 4, offset + 8));
-        if (type === 'tEXt') {
-            const data = uint8.subarray(offset + 8, offset + 8 + length);
-            let nullIndex = -1;
-            for(let i=0; i<length; i++) if(data[i] === 0) { nullIndex = i; break; }
-            if (nullIndex > 0) {
-                const keyword = uint8ToString(data.subarray(0, nullIndex));
-                if (keyword === 'BananaProData') {
-                    try { return JSON.parse(uint8ToString(data.subarray(nullIndex + 1))); } 
-                    catch(e) { console.error("JSON parse failed", e); }
-                }
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const buffer = e.target?.result as ArrayBuffer;
+            if (!buffer) {
+                resolve(null);
+                return;
             }
-        }
-        offset += 12 + length;
-        if (type === 'IEND') break;
-    }
-    return null;
+            const view = new DataView(buffer);
+            const uint8 = new Uint8Array(buffer);
+            if (view.getUint32(0) !== 0x89504E47) {
+                resolve(null);
+                return;
+            }
+
+            let offset = 8;
+            while (offset < buffer.byteLength) {
+                if (offset + 8 > buffer.byteLength) break;
+                const length = view.getUint32(offset);
+                // Direct ASCII check for chunk type
+                const type = String.fromCharCode(uint8[offset + 4], uint8[offset + 5], uint8[offset + 6], uint8[offset + 7]);
+                
+                if (type === 'tEXt') {
+                    const data = uint8.subarray(offset + 8, offset + 8 + length);
+                    let nullIndex = -1;
+                    for(let i=0; i<length; i++) if(data[i] === 0) { nullIndex = i; break; }
+                    if (nullIndex > 0) {
+                        const keyword = uint8ToString(data.subarray(0, nullIndex));
+                        if (keyword === 'BananaProData') {
+                            try { 
+                                resolve(JSON.parse(uint8ToString(data.subarray(nullIndex + 1)))); 
+                                return;
+                            } 
+                            catch(e) { console.error("JSON parse failed", e); }
+                        }
+                    }
+                }
+                offset += 12 + length;
+                if (type === 'IEND') break;
+            }
+            resolve(null);
+        };
+        reader.onerror = () => resolve(null);
+        reader.readAsArrayBuffer(file);
+    });
 }
 
-function populateMetadata(data: PromptData) {
-    if (promptEl) { promptEl.value = data.mega || ''; autoResize(promptEl); }
-    const l = document.getElementById('lighting-manual') as HTMLTextAreaElement;
-    if (l) { l.value = data.lighting || ''; autoResize(l); }
-    const s = document.getElementById('scene-manual') as HTMLTextAreaElement;
-    if (s) { s.value = data.scene || ''; autoResize(s); }
-    const v = document.getElementById('view-manual') as HTMLTextAreaElement;
-    if (v) { v.value = data.view || ''; autoResize(v); }
-    
-    if (cameraProjToggle) cameraProjToggle.checked = !!data.cameraProjection;
-    cameraProjectionEnabled = !!data.cameraProjection;
+let currentDataFilter: 'ALL' | 'MEGA' | 'LIGHTING' | 'SCENE' | 'VIEW' = 'ALL';
 
-    if (inpaintingPromptToggle && inpaintingPromptText) {
-        inpaintingPromptToggle.checked = !!data.inpaintEnabled;
-        inpaintingPromptText.value = data.inpaint || '';
-        if (data.inpaintEnabled) inpaintingPromptText.classList.remove('hidden');
-        else inpaintingPromptText.classList.add('hidden');
-        autoResize(inpaintingPromptText);
+function populateMetadata(data: PromptData) {
+    const filter = currentDataFilter;
+    
+    if (filter === 'ALL' || filter === 'MEGA') {
+        if (promptEl) { promptEl.value = data.mega || ''; autoResize(promptEl); }
     }
+    if (filter === 'ALL' || filter === 'LIGHTING') {
+        const l = document.getElementById('lighting-manual') as HTMLTextAreaElement;
+        if (l) { l.value = data.lighting || ''; autoResize(l); }
+    }
+    if (filter === 'ALL' || filter === 'SCENE') {
+        const s = document.getElementById('scene-manual') as HTMLTextAreaElement;
+        if (s) { s.value = data.scene || ''; autoResize(s); }
+    }
+    if (filter === 'ALL' || filter === 'VIEW') {
+        const v = document.getElementById('view-manual') as HTMLTextAreaElement;
+        if (v) { v.value = data.view || ''; autoResize(v); }
+    }
+    
+    if (filter === 'ALL') {
+        if (cameraProjToggle) cameraProjToggle.checked = !!data.cameraProjection;
+        cameraProjectionEnabled = !!data.cameraProjection;
+
+        if (inpaintingPromptToggle && inpaintingPromptText) {
+            inpaintingPromptToggle.checked = !!data.inpaintEnabled;
+            inpaintingPromptText.value = data.inpaint || '';
+            if (data.inpaintEnabled) inpaintingPromptText.classList.remove('hidden');
+            else inpaintingPromptText.classList.add('hidden');
+            autoResize(inpaintingPromptText);
+        }
+    }
+    
     if (statusEl) { statusEl.innerText = "Data Paste Success"; setTimeout(() => statusEl.innerText = "System Standby", 2000); }
 }
 
@@ -3333,7 +3426,12 @@ async function handleTranslationDrop(file: File) {
         if (file.name.endsWith('.png')) {
             data = await extractMetadata(file);
         } else if (file.name.endsWith('.txt')) {
-            const text = await file.text();
+            const text = await new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target?.result as string || '');
+                reader.onerror = () => resolve('');
+                reader.readAsText(file);
+            });
             try {
                 // Try to see if it's JSON metadata
                 const trimmed = text.trim();

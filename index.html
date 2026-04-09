@@ -450,7 +450,7 @@ window.IS_SKETCHUP = true;
             <div class="file-display-slot border border-dashed border-gray-800 rounded-xl p-1 bg-[#121214] flex flex-col items-center justify-center gap-1 group cursor-pointer hover:border-[#262380]/40 transition-all flex-none min-h-[36px]" data-target="prompt-file">
                 <span class="file-status text-[8px] font-bold text-gray-400 group-hover:text-gray-200 uppercase" data-i18n="dragMega">Drag .txt/.png for Mega Prompt</span>
                 <div class="loaded-file-info hidden flex items-center gap-1">
-                    <span class="file-name text-[9px] font-bold text-[#818cf8] truncate max-w-[150px]">file</span>
+                    <span class="file-name text-[9px] font-bold text-[#818cf8] truncate max-w-[180px]">file</span>
                     <button class="delete-file-btn text-orange-500 hover:text-orange-400 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                 </div>
                 <input type="file" class="hidden txt-file-input" data-target="prompt-manual" accept=".txt,.png" />
@@ -588,10 +588,10 @@ window.IS_SKETCHUP = true;
           
           <!-- REFERENCE IMAGE UPLOAD SECTION -->
           <div class="space-y-2 pt-2 border-t border-white/5 flex-none z-10 relative">
-              <div class="flex gap-2">
+              <div class="flex gap-2 h-[180px]">
                   <!-- Left Column: References -->
-                  <div class="flex-1 flex flex-col gap-1">
-                      <div class="flex items-center justify-between px-1 h-5">
+                  <div class="flex-1 flex flex-col gap-1 h-full">
+                      <div class="flex items-center justify-between px-1 h-5 flex-none">
                           <label class="text-[10px] font-black uppercase tracking-[0.3em] text-gray-300" data-i18n="refImages">Reference Images (Max 5)</label>
                           <div class="flex items-center gap-2">
                               <span id="ref-count" class="text-[9px] font-bold text-gray-500">0/5</span>
@@ -601,7 +601,7 @@ window.IS_SKETCHUP = true;
                           </div>
                       </div>
                       
-                      <div id="reference-drop-zone" class="relative w-full h-[130px] border border-dashed border-gray-800 rounded-xl bg-[#121214] flex flex-wrap gap-2 p-1 items-center justify-center group cursor-pointer hover:border-[#262380]/40 transition-all overflow-hidden">
+                      <div id="reference-drop-zone" class="relative w-full flex-1 border border-dashed border-gray-800 rounded-xl bg-[#121214] flex flex-wrap gap-2 p-1 items-center justify-center group cursor-pointer hover:border-[#262380]/40 transition-all overflow-hidden">
                           <input type="file" id="reference-image-input" class="hidden" accept="image/*" multiple />
                           <div id="reference-placeholder" class="flex flex-col items-center pointer-events-none text-center">
                               <!-- Up Arrow Icon -->
@@ -615,13 +615,25 @@ window.IS_SKETCHUP = true;
                   </div>
 
                   <!-- Right Column: PNG Info & Tools -->
-                  <div class="flex-none flex flex-col gap-1 w-[260px]">
-                      <div class="h-5"></div> <!-- Spacer to align with left label -->
-                      <div class="flex gap-1 h-[130px]">
+                  <div class="flex-none flex flex-col gap-1 w-[260px] h-full">
+                      <div class="h-5 flex-none"></div> <!-- Spacer to align with left label -->
+                  <div class="flex flex-col gap-1 flex-1">
+                      <!-- Data Filter Row -->
+                      <div class="flex mb-1 w-full flex-none">
+                          <div class="flex bg-[#121214] border border-gray-800 rounded-lg p-0.5 gap-0.5 w-full">
+                              <button id="filter-all" class="filter-btn active flex-1 h-7 flex items-center justify-center rounded text-[9px] font-bold transition-all border border-transparent hover:border-amber-500/30 text-amber-500 bg-amber-500/20 border-amber-500/50" title="ALL: Load toàn bộ nội dung Data">ALL</button>
+                              <button id="filter-mega" class="filter-btn flex-1 h-7 flex items-center justify-center rounded text-[9px] font-bold transition-all border border-transparent hover:border-amber-500/30 text-gray-400" title="MEGA: Chỉ load nội dung Mega Prompt">PROMPT</button>
+                              <button id="filter-lighting" class="filter-btn flex-1 h-7 flex items-center justify-center rounded text-[9px] font-bold transition-all border border-transparent hover:border-amber-500/30 text-gray-400" title="LIGHTING: Chỉ load nội dung Lighting">LIGHTING</button>
+                              <button id="filter-scene" class="filter-btn flex-1 h-7 flex items-center justify-center rounded text-[9px] font-bold transition-all border border-transparent hover:border-amber-500/30 text-gray-400" title="SCENE: Chỉ load nội dung Scene">SCENE</button>
+                              <button id="filter-view" class="filter-btn flex-1 h-7 flex items-center justify-center rounded text-[9px] font-bold transition-all border border-transparent hover:border-amber-500/30 text-gray-400" title="VIEW: Chỉ load nội dung SHOT VIEW">VIEW</button>
+                          </div>
+                      </div>
+
+                      <div class="flex gap-1 flex-1">
                           <!-- Column 1: Paste & PNG -->
-                          <div class="flex flex-col gap-1 w-32">
-                              <button id="paste-png-info-btn" class="w-full h-[42px] flex items-center justify-center bg-[#121214] border border-dashed border-gray-700/50 hover:border-amber-500 rounded-lg text-amber-500 hover:text-amber-400 transition-all group" title="Paste Data PNG Info (Text/JSON)">
-                                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                          <div class="flex flex-col gap-1 w-32 h-full">
+                              <button id="paste-png-info-btn" class="w-full h-[32px] flex-none flex items-center justify-center bg-[#121214] border border-dashed border-gray-700/50 hover:border-amber-500 rounded-lg text-amber-500 hover:text-amber-400 transition-all group" title="Paste Data PNG Info (Text/JSON)">
+                                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 5l7 14H5L12 5z" />
                                   </svg>
                                   <span class="text-[8px] font-bold uppercase">Paste Data</span>
@@ -637,9 +649,9 @@ window.IS_SKETCHUP = true;
                           </div>
 
                           <!-- Column 2: Lang & Trans -->
-                          <div class="flex flex-col gap-1 w-32">
-                              <div class="w-full h-[42px] flex items-center justify-center bg-[#121214] border border-dashed border-gray-700/50 hover:border-amber-500 rounded-lg overflow-hidden transition-all" title="Ngôn ngữ dịch">
-                                  <button id="translation-lang-btn" class="bg-transparent text-[10px] text-amber-500 w-full h-full text-center font-black outline-none cursor-pointer px-2" data-lang="vi">
+                          <div class="flex flex-col gap-1 w-32 h-full">
+                              <div class="w-full h-[32px] flex-none flex items-center justify-center bg-[#121214] border border-dashed border-gray-700/50 hover:border-amber-500 rounded-lg overflow-hidden transition-all" title="Ngôn ngữ dịch">
+                                  <button id="translation-lang-btn" class="bg-transparent text-[9px] text-amber-500 w-full h-full text-center font-black outline-none cursor-pointer px-2" data-lang="vi">
                                       VIỆT NAM
                                   </button>
                               </div>
