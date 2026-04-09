@@ -1241,19 +1241,27 @@ if (langBtnEn) langBtnEn.addEventListener('click', () => translatePrompt('EN'));
 // --- Icon Button Logic ---
 
 async function translateTextGeneric(text: string, targetLang: 'VN' | 'EN'): Promise<string> {
+    console.log(`translateTextGeneric called for ${targetLang}. Text length: ${text.length}`);
     const ai = getGenAI();
     const systemPrompt = targetLang === 'VN' 
         ? `You are a professional translator. Translate the human-readable text content within the provided HTML string. You MUST strictly preserve all HTML tags, attributes, classes, and inline styles. Do not modify the structure, layout, or colors. Return ONLY the translated HTML string.`
         : `You are a professional translator. Translate the human-readable text content within the provided HTML string. You MUST strictly preserve all HTML tags, attributes, classes, and inline styles. Do not modify the structure, layout, or colors. Return ONLY the translated HTML string.`;
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview', 
-        contents: { parts: [{ text: text }] },
-        config: { 
-            systemInstruction: systemPrompt,
-        }
-    });
-    return response.text || text;
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.0-flash', 
+            contents: { parts: [{ text: text }] },
+            config: { 
+                systemInstruction: systemPrompt,
+            }
+        });
+        console.log("Translation response received");
+        return response.text || text;
+    } catch (err) {
+        console.error("Translation error in SketchUp:", err);
+        showCustomAlert("Lỗi dịch thuật: " + (err instanceof Error ? err.message : String(err)), "Translation Error");
+        return text;
+    }
 }
 
 async function copyToClipboard(text: string): Promise<boolean> {
