@@ -305,7 +305,7 @@ Text: ${text}`;
         console.log(`Translating to ${targetName}...`);
         // @ts-ignore
         const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash',
+            model: 'gemini-3-flash-preview',
             contents: { parts: [{ text: prompt }] }
         });
         
@@ -321,22 +321,56 @@ Text: ${text}`;
 async function translateMetadata(data: any, targetLang: string) {
     if (!data) return data;
     
-    const translatedData = { ...data };
+    console.log(`translateMetadata called for ${targetLang}`);
+    const targetName = targetLang === 'vi' ? 'Vietnamese' : 'English';
     
-    if (translatedData.mega) {
-        translatedData.mega = await translateText(translatedData.mega, targetLang);
-    }
-    if (translatedData.lighting) {
-        translatedData.lighting = await translateText(translatedData.lighting, targetLang);
-    }
-    if (translatedData.scene) {
-        translatedData.scene = await translateText(translatedData.scene, targetLang);
-    }
-    if (translatedData.view) {
-        translatedData.view = await translateText(translatedData.view, targetLang);
+    // Prepare data for translation
+    const dataToTranslate = {
+        mega: data.mega || "",
+        lighting: data.lighting || "",
+        scene: data.scene || "",
+        view: data.view || ""
+    };
+
+    // Skip if no content
+    const hasContent = Object.values(dataToTranslate).some(v => v && v.trim() !== "");
+    if (!hasContent) return data;
+
+    try {
+        const ai = getGenAI();
+        const jsonStr = JSON.stringify(dataToTranslate);
+        const systemPrompt = targetLang === 'vi' 
+            ? `You are a professional translator. Translate the values in the provided JSON object to Vietnamese. Keep technical terms if appropriate. Return ONLY valid JSON.`
+            : `You are a professional translator. Translate the values in the provided JSON object to English. Optimize for AI image generation. Return ONLY valid JSON.`;
+
+        console.log("Sending metadata for translation...");
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview', 
+            contents: { parts: [{ text: `Translate this JSON: ${jsonStr}` }] },
+            config: { 
+                systemInstruction: systemPrompt,
+                responseMimeType: 'application/json'
+            }
+        });
+
+        if (response.text) {
+            let cleanText = response.text.trim();
+            if (cleanText.startsWith('```json')) {
+                cleanText = cleanText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+            } else if (cleanText.startsWith('```')) {
+                cleanText = cleanText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+            }
+
+            const result = JSON.parse(cleanText);
+            const translatedData = { ...data, ...result };
+            console.log("Metadata translation successful");
+            return translatedData;
+        }
+    } catch (err) {
+        console.error("Metadata translation failed:", err);
     }
     
-    return translatedData;
+    return data;
 }
 
 // --- DOM Elements ---
