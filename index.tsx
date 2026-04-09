@@ -284,6 +284,60 @@ const getGenAI = () => {
     return new GoogleGenAI({ apiKey: keyToUse });
 };
 
+async function translateText(text: string, targetLang: string): Promise<string> {
+    if (!text || !text.trim()) return text;
+    
+    // Simple local check to skip translation if already in target language
+    const hasVietnamese = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i.test(text);
+    if (targetLang === 'vi' && hasVietnamese) return text;
+    if (targetLang === 'en' && !hasVietnamese && /^[a-z0-9\s.,!?-]+$/i.test(text)) return text;
+
+    const keyToUse = manualApiKey || process.env.API_KEY || process.env.GEMINI_API_KEY;
+    if (!keyToUse) return text;
+
+    try {
+        const ai = new GoogleGenAI({ apiKey: keyToUse });
+        const targetName = targetLang === 'vi' ? 'Vietnamese' : 'English';
+        const prompt = `Task: Translate to ${targetName}.
+If the text is already in ${targetName}, return it exactly as is.
+If the text is in another language, translate it to ${targetName}.
+Only return the result text, no explanations.
+
+Text: ${text}`;
+        
+        // @ts-ignore
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.0-flash',
+            contents: { parts: [{ text: prompt }] }
+        });
+        return response.text?.trim() || text;
+    } catch (err) {
+        console.error("Translation failed:", err);
+        return text;
+    }
+}
+
+async function translateMetadata(data: any, targetLang: string) {
+    if (!data) return data;
+    
+    const translatedData = { ...data };
+    
+    if (translatedData.mega) {
+        translatedData.mega = await translateText(translatedData.mega, targetLang);
+    }
+    if (translatedData.lighting) {
+        translatedData.lighting = await translateText(translatedData.lighting, targetLang);
+    }
+    if (translatedData.scene) {
+        translatedData.scene = await translateText(translatedData.scene, targetLang);
+    }
+    if (translatedData.view) {
+        translatedData.view = await translateText(translatedData.view, targetLang);
+    }
+    
+    return translatedData;
+}
+
 // --- DOM Elements ---
 const statusEl = document.querySelector('#status') as HTMLDivElement;
 const outputContainer = document.querySelector('#output-container') as HTMLDivElement;
@@ -952,6 +1006,10 @@ const clearAllRefsBtn = document.querySelector('#clear-all-refs') as HTMLButtonE
 const pngInfoDropZone = document.querySelector('#png-info-drop-zone') as HTMLDivElement;
 const pngInfoInput = document.querySelector('#png-info-input') as HTMLInputElement;
 const pastePngInfoBtn = document.querySelector('#paste-png-info-btn') as HTMLButtonElement;
+const translateDropZone = document.querySelector('#translate-drop-zone') as HTMLDivElement;
+const translateInput = document.querySelector('#translate-input') as HTMLInputElement;
+const translationLangBtn = document.querySelector('#translation-lang-btn') as HTMLButtonElement;
+const translateActiveIndicator = document.querySelector('#translate-active-indicator') as HTMLDivElement;
 
 // Resolution Buttons
 const resBtns = document.querySelectorAll('.res-btn') as NodeListOf<HTMLButtonElement>;
@@ -3261,6 +3319,96 @@ if (pngInfoDropZone) {
         }
     });
 }
+
+async function handleTranslationDrop(file: File) {
+    const targetLang = translationLangBtn.getAttribute('data-lang') || 'vi';
+    if (statusEl) statusEl.innerText = "Đang xử lý và dịch...";
+    
+    // Add visual effect
+    if (translateDropZone) translateDropZone.classList.add('animate-pulse', 'border-blue-400', 'shadow-[0_0_15px_rgba(59,130,246,0.5)]');
+    if (translateActiveIndicator) translateActiveIndicator.classList.replace('opacity-0', 'opacity-100');
+
+    try {
+        let data: any = null;
+        if (file.name.endsWith('.png')) {
+            data = await extractMetadata(file);
+        } else if (file.name.endsWith('.txt')) {
+            const text = await file.text();
+            try {
+                // Try to see if it's JSON metadata
+                const trimmed = text.trim();
+                if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+                    data = JSON.parse(trimmed);
+                } else {
+                    data = { mega: text };
+                }
+            } catch {
+                data = { mega: text };
+            }
+        }
+
+        if (data) {
+            const translatedData = await translateMetadata(data, targetLang);
+            populateMetadata(translatedData);
+            if (statusEl) statusEl.innerText = "Dịch và điền dữ liệu thành công";
+        } else {
+            showCustomAlert("Không tìm thấy dữ liệu trong tệp.", "Error");
+        }
+    } catch (err) {
+        console.error("Translation drop failed:", err);
+        showCustomAlert("Có lỗi xảy ra khi xử lý tệp.", "Error");
+    } finally {
+        // Remove visual effect
+        if (translateDropZone) translateDropZone.classList.remove('animate-pulse', 'border-blue-400', 'shadow-[0_0_15px_rgba(59,130,246,0.5)]');
+        if (translateActiveIndicator) translateActiveIndicator.classList.replace('opacity-100', 'opacity-0');
+        setTimeout(() => { if(statusEl) statusEl.innerText = "System Standby"; }, 2000);
+    }
+}
+
+if (translateDropZone && translateInput) {
+    translateDropZone.addEventListener('click', () => translateInput.click());
+    
+    if (translationLangBtn) {
+        translationLangBtn.addEventListener('click', () => {
+            const currentLang = translationLangBtn.getAttribute('data-lang');
+            if (currentLang === 'vi') {
+                translationLangBtn.setAttribute('data-lang', 'en');
+                translationLangBtn.innerText = 'ENGLISH';
+            } else {
+                translationLangBtn.setAttribute('data-lang', 'vi');
+                translationLangBtn.innerText = 'VIỆT NAM';
+            }
+        });
+    }
+
+    translateInput.addEventListener('change', async () => {
+        if (translateInput.files?.[0]) {
+            await handleTranslationDrop(translateInput.files[0]);
+            translateInput.value = '';
+        }
+    });
+
+    translateDropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        translateDropZone.classList.add('border-blue-500', 'bg-blue-500/10');
+    });
+
+    translateDropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        translateDropZone.classList.remove('border-blue-500', 'bg-blue-500/10');
+    });
+
+    translateDropZone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        translateDropZone.classList.remove('border-blue-500', 'bg-blue-500/10');
+        if (e.dataTransfer?.files?.[0]) {
+            await handleTranslationDrop(e.dataTransfer.files[0]);
+        }
+    });
+}
 if (pngInfoInput) {
     pngInfoInput.addEventListener('change', async () => {
         if (pngInfoInput.files?.[0]) {
@@ -4759,12 +4907,12 @@ downloadUploadBtn?.addEventListener('click', async () => {
         
         const promptData: PromptData = {
             mega: (document.getElementById('prompt-manual') as HTMLTextAreaElement).value || '',
-            lighting: '',
-            scene: '',
-            view: '',
-            inpaint: '',
-            inpaintEnabled: false,
-            cameraProjection: false
+            lighting: (document.getElementById('lighting-manual') as HTMLTextAreaElement).value || '',
+            scene: (document.getElementById('scene-manual') as HTMLTextAreaElement).value || '',
+            view: (document.getElementById('view-manual') as HTMLTextAreaElement).value || '',
+            inpaint: (document.getElementById('inpainting-prompt-text') as HTMLTextAreaElement).value || '',
+            inpaintEnabled: (document.getElementById('inpainting-prompt-toggle') as HTMLInputElement).checked || false,
+            cameraProjection: (document.getElementById('camera-projection-toggle') as HTMLInputElement).checked || false
         };
         
         const finalBase64 = await embedMetadata(base64, promptData);
