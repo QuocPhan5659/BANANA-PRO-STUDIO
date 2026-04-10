@@ -598,6 +598,8 @@ function showCustomPaste(): Promise<string | null> {
         navigator.clipboard.readText().then(text => {
             if (text && text.trim()) {
                 customPasteTextarea.value = text;
+                // If we pre-filled, we might want to wait for the promise to be set up
+                // but since we return the promise after this, we'll handle it inside the promise
             }
         }).catch(() => {
             // Ignore errors, user will paste manually
@@ -610,13 +612,18 @@ function showCustomPaste(): Promise<string | null> {
     }, 150);
     
     return new Promise<string | null>((resolve) => {
+        let isSubmitted = false;
         const handleSubmit = () => {
+            if (isSubmitted) return;
+            isSubmitted = true;
             const val = customPasteTextarea.value;
             customPasteModal.classList.add('hidden');
             cleanup();
             resolve(val);
         };
         const handleClose = () => {
+            if (isSubmitted) return;
+            isSubmitted = true;
             customPasteModal.classList.add('hidden');
             cleanup();
             resolve(null);
@@ -627,6 +634,8 @@ function showCustomPaste(): Promise<string | null> {
                 if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
                     const text = await navigator.clipboard.readText();
                     customPasteTextarea.value = text;
+                    // Trigger auto-submit check after manual paste button click
+                    checkAndSubmit();
                 } else {
                     throw new Error("Clipboard API not available");
                 }
@@ -636,16 +645,30 @@ function showCustomPaste(): Promise<string | null> {
             }
         };
         
+        const checkAndSubmit = () => {
+            if (isSubmitted) return;
+            const val = customPasteTextarea.value.trim();
+            if ((val.startsWith('{') && val.endsWith('}')) || (val.startsWith('[') && val.endsWith(']'))) {
+                // Visual feedback
+                customPasteSubmit.innerText = "Đang xử lý...";
+                customPasteSubmit.classList.add('bg-emerald-600');
+                // It looks like JSON, auto-submit
+                setTimeout(handleSubmit, 150);
+            }
+        };
+
         // Auto-submit on paste if it looks like valid JSON
         const handleAutoPaste = (e: ClipboardEvent) => {
             // We wait a bit for the value to be populated
-            setTimeout(() => {
-                const val = customPasteTextarea.value.trim();
-                if (val.startsWith('{') && val.endsWith('}')) {
-                    // It looks like JSON, auto-submit
-                    handleSubmit();
-                }
-            }, 100);
+            setTimeout(checkAndSubmit, 100);
+        };
+
+        // Also listen to input and keyup for maximum compatibility
+        const handleInput = () => {
+            checkAndSubmit();
+        };
+        const handleKeyUp = () => {
+            checkAndSubmit();
         };
 
         const cleanup = () => {
@@ -653,12 +676,22 @@ function showCustomPaste(): Promise<string | null> {
             closePasteModal.removeEventListener('click', handleClose);
             if (modalPasteBtn) modalPasteBtn.removeEventListener('click', handleModalPaste);
             customPasteTextarea.removeEventListener('paste', handleAutoPaste);
+            customPasteTextarea.removeEventListener('input', handleInput);
+            customPasteTextarea.removeEventListener('keyup', handleKeyUp);
+            // Reset button text
+            customPasteSubmit.innerText = "Thực thi (OK)";
+            customPasteSubmit.classList.remove('bg-emerald-600');
         };
         
         customPasteSubmit.addEventListener('click', handleSubmit);
         closePasteModal.addEventListener('click', handleClose);
         if (modalPasteBtn) modalPasteBtn.addEventListener('click', handleModalPaste);
         customPasteTextarea.addEventListener('paste', handleAutoPaste);
+        customPasteTextarea.addEventListener('input', handleInput);
+        customPasteTextarea.addEventListener('keyup', handleKeyUp);
+
+        // Check immediately in case it was pre-filled
+        setTimeout(checkAndSubmit, 400);
     });
 }
 
@@ -4621,10 +4654,32 @@ async function runGeneration() {
             const i = inpaintingPromptToggle.checked ? inpaintingPromptText.value : '';
             const maskBase64 = getMaskBase64();
             
-            let fullPrompt = `${p}\nLighting: ${l}\nScene: ${s}\nView: ${v}\n${i ? 'Inpainting Instructions: ' + i : ''}\n${cameraProjectionEnabled ? 'Apply Camera Projection correction.' : ''}`.trim();
-            
+            // Build a professional architectural visualization prompt
+            let fullPrompt = `[ARCHITECTURAL VISUALIZATION TASK]\n`;
+            fullPrompt += `Goal: Transform the provided sketch/image into a high-end, photorealistic 3D architectural render.\n`;
+            fullPrompt += `Main Description: ${p || 'Architectural space'}\n`;
+            if (l) fullPrompt += `Lighting: ${l}\n`;
+            if (s) fullPrompt += `Scene Context: ${s}\n`;
+            if (v) fullPrompt += `Camera View: ${v}\n`;
+            if (i) fullPrompt += `Specific Edit Instructions: ${i}\n`;
+            if (cameraProjectionEnabled) fullPrompt += `Correction: Apply Camera Projection correction for accurate perspective.\n`;
+
+            // Enhanced Reference Image Logic for Material Mapping
+            if (referenceImages.length > 0) {
+                fullPrompt += `\n\n[MATERIAL & TEXTURE REFERENCE SYSTEM - CRITICAL]
+I have provided ${referenceImages.length} reference images. These images serve as the "Material Palette" or "Legend" for this project.
+1. ANALYZE REFERENCES: Look for codes such as MS1, MS2, MS3, MS4, MS5, MS6, etc., in the reference images. Each code represents a specific material, texture, or color sample.
+2. IDENTIFY MAPPING: In the main image (the sketch or line drawing), you will find these same codes (MS1, MS2, etc.) labeled on various surfaces (walls, furniture, flooring, etc.).
+3. EXECUTION: You MUST apply the material from the reference sample to the corresponding area in the sketch based on the matching code. 
+   - Example: If MS1 in the reference is a specific wood grain, all areas marked MS1 in the sketch must be rendered with that exact wood grain.
+4. CONSISTENCY: Ensure the materials are rendered with realistic physical properties (reflectivity, roughness, bump) as suggested by the reference samples.`;
+            }
+
             if (maskBase64 && uploadedImageData) {
-                fullPrompt += `\nINPAINTING MODE: The second image provided is a black and white mask for the first image. White pixels in the mask indicate the area to be modified. Black pixels indicate the area to be preserved exactly as it is. Do not change any details outside the white masked area.`;
+                fullPrompt += `\n\n[INPAINTING MODE]
+The provided black and white mask defines the modification area:
+- WHITE pixels: Generate new content based on the prompt and references.
+- BLACK pixels: Preserve the original image content EXACTLY. Do not re-render or change anything in the black areas.`;
             }
 
             const parts: any[] = [];
