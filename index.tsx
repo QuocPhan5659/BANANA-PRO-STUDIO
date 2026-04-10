@@ -635,7 +635,7 @@ function showCustomPaste(): Promise<string | null> {
                     const text = await navigator.clipboard.readText();
                     customPasteTextarea.value = text;
                     // Trigger auto-submit check after manual paste button click
-                    checkAndSubmit();
+                    checkAndSubmit(true);
                 } else {
                     throw new Error("Clipboard API not available");
                 }
@@ -645,30 +645,45 @@ function showCustomPaste(): Promise<string | null> {
             }
         };
         
-        const checkAndSubmit = () => {
+        const checkAndSubmit = (force: boolean = false) => {
             if (isSubmitted) return;
             const val = customPasteTextarea.value.trim();
-            if ((val.startsWith('{') && val.endsWith('}')) || (val.startsWith('[') && val.endsWith(']'))) {
+            if (!val) return;
+
+            const isJson = (val.startsWith('{') && val.endsWith('}')) || (val.startsWith('[') && val.endsWith(']'));
+            
+            if (force || isJson) {
                 // Visual feedback
                 customPasteSubmit.innerText = "Đang xử lý...";
                 customPasteSubmit.classList.add('bg-emerald-600');
-                // It looks like JSON, auto-submit
-                setTimeout(handleSubmit, 150);
+                // Auto-submit
+                setTimeout(handleSubmit, 100);
             }
         };
 
-        // Auto-submit on paste if it looks like valid JSON
+        // Auto-submit on paste
         const handleAutoPaste = (e: ClipboardEvent) => {
             // We wait a bit for the value to be populated
-            setTimeout(checkAndSubmit, 100);
+            setTimeout(() => checkAndSubmit(true), 50);
         };
 
         // Also listen to input and keyup for maximum compatibility
         const handleInput = () => {
-            checkAndSubmit();
+            checkAndSubmit(false); // Only auto-submit if it looks like JSON when typing
         };
-        const handleKeyUp = () => {
-            checkAndSubmit();
+        const handleKeyUp = (e: KeyboardEvent) => {
+            // If user pressed Ctrl+V, we might want to force it if the paste event didn't catch it
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+                setTimeout(() => checkAndSubmit(true), 100);
+            } else {
+                checkAndSubmit(false);
+            }
+        };
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+                // We don't submit here because the value hasn't been pasted yet
+                // but we can ensure the next check is forced
+            }
         };
 
         const cleanup = () => {
@@ -678,6 +693,7 @@ function showCustomPaste(): Promise<string | null> {
             customPasteTextarea.removeEventListener('paste', handleAutoPaste);
             customPasteTextarea.removeEventListener('input', handleInput);
             customPasteTextarea.removeEventListener('keyup', handleKeyUp);
+            customPasteTextarea.removeEventListener('keydown', handleKeyDown);
             // Reset button text
             customPasteSubmit.innerText = "Thực thi (OK)";
             customPasteSubmit.classList.remove('bg-emerald-600');
@@ -689,9 +705,10 @@ function showCustomPaste(): Promise<string | null> {
         customPasteTextarea.addEventListener('paste', handleAutoPaste);
         customPasteTextarea.addEventListener('input', handleInput);
         customPasteTextarea.addEventListener('keyup', handleKeyUp);
+        customPasteTextarea.addEventListener('keydown', handleKeyDown);
 
         // Check immediately in case it was pre-filled
-        setTimeout(checkAndSubmit, 400);
+        setTimeout(() => checkAndSubmit(false), 400);
     });
 }
 
