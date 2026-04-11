@@ -493,6 +493,13 @@ const modalCopyBtn = document.querySelector('#modal-copy-btn') as HTMLButtonElem
 const copyAllBtn = document.querySelector('#copy-all-btn') as HTMLButtonElement;
 const modalPasteBtn = document.querySelector('#modal-paste-btn') as HTMLButtonElement;
 
+const batchReplaceModal = document.querySelector('#batch-replace-modal') as HTMLDivElement;
+const replaceFindInput = document.querySelector('#replace-find-input') as HTMLInputElement;
+const replaceWithInput = document.querySelector('#replace-with-input') as HTMLInputElement;
+const batchReplaceSubmit = document.querySelector('#batch-replace-submit') as HTMLButtonElement;
+const closeReplaceModal = document.querySelector('#close-replace-modal') as HTMLButtonElement;
+const batchReplaceBtn = document.querySelector('#batch-replace-btn') as HTMLButtonElement;
+
 // --- PNG Info Viewport Elements ---
 const pngInfoTabBtn = document.querySelector('#png-info-tab-btn') as HTMLButtonElement;
 const pngInfoViewport = document.querySelector('#png-info-viewport') as HTMLDivElement;
@@ -501,9 +508,11 @@ const pngInfoViewportBottom = document.querySelector('#png-info-viewport-bottom'
 const pngInfoContentTop = document.querySelector('#png-info-content-top') as HTMLDivElement;
 const pngInfoContentBottom = document.querySelector('#png-info-content-bottom') as HTMLDivElement;
 const pngInfoCopyBtnTop = document.querySelector('#png-info-copy-btn-top') as HTMLButtonElement;
+const pngInfoReplaceBtnTop = document.querySelector('#png-info-replace-btn-top') as HTMLButtonElement;
 const pngInfoPasteBtnTop = document.querySelector('#png-info-paste-btn-top') as HTMLButtonElement;
 const pngInfoClearBtnTop = document.querySelector('#png-info-clear-btn-top') as HTMLButtonElement;
 const pngInfoCopyBtnBottom = document.querySelector('#png-info-copy-btn-bottom') as HTMLButtonElement;
+const pngInfoReplaceBtnBottom = document.querySelector('#png-info-replace-btn-bottom') as HTMLButtonElement;
 const pngInfoPasteBtnBottom = document.querySelector('#png-info-paste-btn-bottom') as HTMLButtonElement;
 const pngInfoClearBtnBottom = document.querySelector('#png-info-clear-btn-bottom') as HTMLButtonElement;
 const pngInfoCloseBtn = document.querySelector('#png-info-close-btn') as HTMLButtonElement;
@@ -522,6 +531,72 @@ const collageExtractToggle = document.querySelector('#collage-extract-toggle') a
 const collageExtractControls = document.querySelector('#collage-extract-controls') as HTMLDivElement;
 const collagePositionSelect = document.querySelector('#collage-position-select') as HTMLSelectElement;
 const extractViewBtn = document.querySelector('#extract-view-btn') as HTMLButtonElement;
+
+function showBatchReplace(): Promise<{find: string, replace: string} | null> {
+    if (!batchReplaceModal) return Promise.resolve(null);
+    replaceFindInput.value = '';
+    replaceWithInput.value = '';
+    batchReplaceModal.classList.remove('hidden');
+    
+    // Small delay to ensure focus works after modal transition
+    setTimeout(() => {
+        replaceFindInput.focus();
+    }, 150);
+    
+    return new Promise((resolve) => {
+        const handleSubmit = () => {
+            const find = replaceFindInput.value;
+            const replace = replaceWithInput.value;
+            if (!find) {
+                showCustomAlert("Vui lòng nhập nội dung cần tìm.", "Missing Input");
+                return;
+            }
+            
+            // Perform replacement immediately
+            batchReplaceModal.classList.add('hidden');
+            cleanup();
+            resolve({find, replace});
+        };
+        const handleClose = () => {
+            batchReplaceModal.classList.add('hidden');
+            cleanup();
+            resolve(null);
+        };
+        const cleanup = () => {
+            batchReplaceSubmit.removeEventListener('click', handleSubmit);
+            closeReplaceModal.removeEventListener('click', handleClose);
+        };
+        
+        batchReplaceSubmit.addEventListener('click', handleSubmit);
+        closeReplaceModal.addEventListener('click', handleClose);
+    });
+}
+
+batchReplaceBtn.addEventListener('click', async () => {
+    const result = await showBatchReplace();
+    if (result) {
+        const {find, replace} = result;
+        const fields = [
+            document.querySelector('#prompt-manual') as HTMLTextAreaElement,
+            document.querySelector('#lighting-manual') as HTMLTextAreaElement,
+            document.querySelector('#scene-manual') as HTMLTextAreaElement,
+            document.querySelector('#view-manual') as HTMLTextAreaElement,
+            document.querySelector('#inpainting-prompt-text') as HTMLTextAreaElement
+        ];
+        
+        let count = 0;
+        fields.forEach(field => {
+            if (field && field.value.includes(find)) {
+                field.value = field.value.split(find).join(replace);
+                count++;
+            }
+        });
+        
+        if (count > 0) {
+            // No alert as requested
+        }
+    }
+});
 
 const COLLAGE_EXTRACT_PROMPT_TEMPLATE = `This image is a multi-frame collage. First detect the full collage layout and identify the exact rectangular boundary of every frame, whether the frames are separated by visible borders, thin gaps, or no visible dividing lines at all. Determine boundaries only from the overall collage structure, panel alignment, and layout geometry, not from the visual content inside the images. Then extract only the [ TARGET POSITION ] frame as one complete rectangular image. Strictly exclude all neighboring frames and do not include any pixels, objects, edges, or partial areas from adjacent images. Do not merge across frame boundaries even if colors, lines, or objects visually continue. Preserve the extracted frame exactly at its original internal resolution and original quality, with no resizing, no recompression, no denoise, no blur, no sharpening, no enhancement, and no content alteration.`;
 
@@ -3417,6 +3492,18 @@ if (pngInfoViewportTop) {
         pngInfoClearBtnTop,
         pngInfoTemplateBtnTop
     );
+    // Bind replace button separately
+    if (pngInfoReplaceBtnTop) {
+        pngInfoReplaceBtnTop.addEventListener('click', async () => {
+            const result = await showBatchReplace();
+            if (result) {
+                const {find, replace} = result;
+                if (pngInfoContentTop.innerText.includes(find)) {
+                    pngInfoContentTop.innerText = pngInfoContentTop.innerText.split(find).join(replace);
+                }
+            }
+        });
+    }
 }
 
 if (pngInfoViewportBottom) {
@@ -3428,6 +3515,18 @@ if (pngInfoViewportBottom) {
         pngInfoClearBtnBottom,
         pngInfoTemplateBtnBottom
     );
+    // Bind replace button separately
+    if (pngInfoReplaceBtnBottom) {
+        pngInfoReplaceBtnBottom.addEventListener('click', async () => {
+            const result = await showBatchReplace();
+            if (result) {
+                const {find, replace} = result;
+                if (pngInfoContentBottom.innerText.includes(find)) {
+                    pngInfoContentBottom.innerText = pngInfoContentBottom.innerText.split(find).join(replace);
+                }
+            }
+        });
+    }
 }
 
 if (pngInfoSendBtn) {
