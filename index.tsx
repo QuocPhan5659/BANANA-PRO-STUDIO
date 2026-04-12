@@ -598,6 +598,162 @@ batchReplaceBtn.addEventListener('click', async () => {
     }
 });
 
+// --- Speech Recognition (STT) Logic ---
+const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+let recognition: any = null;
+let activeMicBtn: HTMLButtonElement | null = null;
+
+if (SpeechRecognition) {
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'vi-VN';
+
+    recognition.onresult = (event: any) => {
+        if (!activeMicBtn) return;
+        const targetId = activeMicBtn.getAttribute('data-target');
+        const targetElement = document.getElementById(targetId!);
+        if (!targetElement) return;
+
+        let finalTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+                finalTranscript += event.results[i][0].transcript;
+            }
+        }
+
+        if (finalTranscript) {
+            if (targetElement instanceof HTMLTextAreaElement || targetElement instanceof HTMLInputElement) {
+                const start = targetElement.selectionStart || 0;
+                const end = targetElement.selectionEnd || 0;
+                const text = targetElement.value;
+                const before = text.substring(0, start);
+                const after = text.substring(end);
+                
+                const spacer = (before && !before.endsWith(' ')) ? ' ' : '';
+                targetElement.value = before + spacer + finalTranscript + after;
+                
+                const newPos = start + spacer.length + finalTranscript.length;
+                targetElement.selectionStart = targetElement.selectionEnd = newPos;
+                
+                targetElement.dispatchEvent(new Event('input'));
+                targetElement.focus();
+            } else {
+                // contenteditable div (PNG Info)
+                const text = finalTranscript + ' ';
+                const selection = window.getSelection();
+                if (selection && selection.rangeCount > 0 && targetElement.contains(selection.anchorNode)) {
+                    const range = selection.getRangeAt(0);
+                    range.deleteContents();
+                    const textNode = document.createTextNode(text);
+                    range.insertNode(textNode);
+                    range.setStartAfter(textNode);
+                    range.setEndAfter(textNode);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                } else {
+                    // Just append if not focused
+                    targetElement.innerHTML += (targetElement.innerHTML ? ' ' : '') + text;
+                }
+                targetElement.dispatchEvent(new Event('input'));
+                targetElement.focus();
+            }
+        }
+    };
+
+    recognition.onend = () => {
+        if (activeMicBtn) {
+            activeMicBtn.classList.remove('text-red-500', 'animate-pulse');
+            activeMicBtn.classList.add('text-orange-600');
+            activeMicBtn = null;
+        }
+    };
+
+    recognition.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        if (activeMicBtn) {
+            activeMicBtn.classList.remove('text-red-500', 'animate-pulse');
+            activeMicBtn.classList.add('text-orange-600');
+            activeMicBtn = null;
+        }
+    };
+}
+
+// Global listener for all mic buttons
+document.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest('.mic-stt-btn') as HTMLButtonElement;
+    if (!btn) return;
+
+    if (!recognition) {
+        showCustomAlert("Trình duyệt của bạn không hỗ trợ nhận diện giọng nói.", "Not Supported");
+        return;
+    }
+
+    if (activeMicBtn === btn) {
+        recognition.stop();
+        return;
+    }
+
+    if (activeMicBtn) {
+        recognition.stop();
+        // Wait a bit for the previous one to stop
+        setTimeout(() => startRecognition(btn), 100);
+    } else {
+        startRecognition(btn);
+    }
+});
+
+function startRecognition(btn: HTMLButtonElement) {
+    activeMicBtn = btn;
+    btn.classList.remove('text-orange-600');
+    btn.classList.add('text-red-500', 'animate-pulse');
+    
+    // Detect language from UI state
+    const isVN = document.querySelector('#lang-btn-vn')?.classList.contains('bg-[#262380]');
+    recognition.lang = isVN ? 'vi-VN' : 'en-US';
+    
+    // SketchUp specific: Ensure we have focus and try to keep the session alive
+    if ((window as any).sketchup) {
+        console.log("Running STT in SketchUp environment");
+    }
+
+    try {
+        // Requesting getUserMedia can sometimes "unlock" the mic permission more reliably in embedded browsers
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(() => {
+                recognition.start();
+            })
+            .catch(err => {
+                console.error("Mic permission denied or error:", err);
+                if (activeMicBtn) {
+                    activeMicBtn.classList.remove('text-red-500', 'animate-pulse');
+                    activeMicBtn.classList.add('text-orange-600');
+                    activeMicBtn = null;
+                }
+                showCustomAlert("Không thể truy cập Microphone. Vui lòng kiểm tra quyền truy cập trong cài đặt trình duyệt/SketchUp.", "Permission Error");
+            });
+    } catch (err) {
+        console.error("Failed to start recognition:", err);
+        activeMicBtn.classList.remove('text-red-500', 'animate-pulse');
+        activeMicBtn.classList.add('text-orange-600');
+        activeMicBtn = null;
+    }
+}
+
+// Pre-authorize Mic on first interaction if possible
+document.addEventListener('mousedown', () => {
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        // Just a dummy call to trigger permission prompt early if not already granted
+        // We don't need to keep the stream
+        navigator.mediaDevices.enumerateDevices().then(devices => {
+            const hasMic = devices.some(d => d.kind === 'audioinput');
+            if (hasMic && (window as any).sketchup) {
+                console.log("Microphone detected in SketchUp");
+            }
+        });
+    }
+}, { once: true });
+
 const COLLAGE_EXTRACT_PROMPT_TEMPLATE = `This image is a multi-frame collage. First detect the full collage layout and identify the exact rectangular boundary of every frame, whether the frames are separated by visible borders, thin gaps, or no visible dividing lines at all. Determine boundaries only from the overall collage structure, panel alignment, and layout geometry, not from the visual content inside the images. Then extract only the [ TARGET POSITION ] frame as one complete rectangular image. Strictly exclude all neighboring frames and do not include any pixels, objects, edges, or partial areas from adjacent images. Do not merge across frame boundaries even if colors, lines, or objects visually continue. Preserve the extracted frame exactly at its original internal resolution and original quality, with no resizing, no recompression, no denoise, no blur, no sharpening, no enhancement, and no content alteration.`;
 
 function showCustomAlert(message: string, title: string = "SUCCESS") {

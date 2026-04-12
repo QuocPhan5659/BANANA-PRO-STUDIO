@@ -3,6 +3,7 @@
   "description": "Professional AI Suite for Architecture and Design",
   "requestFramePermissions": [
     "clipboard-read",
-    "display-capture"
+    "display-capture",
+    "microphone"
   ]
 }
