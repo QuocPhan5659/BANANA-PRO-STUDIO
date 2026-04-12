@@ -712,32 +712,44 @@ function startRecognition(btn: HTMLButtonElement) {
     const isVN = document.querySelector('#lang-btn-vn')?.classList.contains('bg-[#262380]');
     recognition.lang = isVN ? 'vi-VN' : 'en-US';
     
-    // SketchUp specific: Ensure we have focus and try to keep the session alive
-    if ((window as any).sketchup) {
-        console.log("Running STT in SketchUp environment");
-    }
-
     try {
-        // Requesting getUserMedia can sometimes "unlock" the mic permission more reliably in embedded browsers
-        navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(() => {
-                recognition.start();
-            })
-            .catch(err => {
-                console.error("Mic permission denied or error:", err);
-                if (activeMicBtn) {
-                    activeMicBtn.classList.remove('text-red-500', 'animate-pulse');
-                    activeMicBtn.classList.add('text-orange-600');
-                    activeMicBtn = null;
-                }
-                showCustomAlert("Không thể truy cập Microphone. Vui lòng kiểm tra quyền truy cập trong cài đặt trình duyệt/SketchUp.", "Permission Error");
-            });
-    } catch (err) {
+        // Start recognition directly. This is more reliable in embedded browsers.
+        recognition.start();
+    } catch (err: any) {
+        if (err.name === 'InvalidStateError') {
+            // Already started, ignore
+            return;
+        }
         console.error("Failed to start recognition:", err);
+        handleMicError(err);
+    }
+}
+
+function handleMicError(err: any) {
+    if (activeMicBtn) {
         activeMicBtn.classList.remove('text-red-500', 'animate-pulse');
         activeMicBtn.classList.add('text-orange-600');
         activeMicBtn = null;
     }
+    
+    let msg = "Không thể truy cập Microphone.";
+    const errorName = typeof err === 'string' ? err : (err.name || err.error);
+
+    if (errorName === 'NotAllowedError' || errorName === 'not-allowed' || errorName === 'PermissionDeniedError') {
+        msg = "Quyền truy cập Microphone đang bị CHẶN. \n\nCÁCH KHẮC PHỤC:\n1. Nếu chạy trong trình duyệt: Nhấn vào biểu tượng Ổ KHÓA trên thanh địa chỉ và chọn 'Cho phép' (Allow) Microphone.\n2. Nếu chạy trong SketchUp: Click chuột phải vào bảng này, chọn 'Settings' hoặc kiểm tra cài đặt Quyền riêng tư (Privacy) của Windows/Mac để cho phép SketchUp dùng Mic.";
+    } else if (errorName === 'NotFoundError' || errorName === 'no-speech') {
+        return; // Ignore no speech or not found for silent failure
+    }
+    
+    showCustomAlert(msg, "PERMISSION ERROR");
+}
+
+// Update recognition error handler
+if (recognition) {
+    recognition.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        handleMicError(event.error);
+    };
 }
 
 // Pre-authorize Mic on first interaction if possible
