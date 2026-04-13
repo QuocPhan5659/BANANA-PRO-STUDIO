@@ -536,13 +536,14 @@ const extractViewBtn = document.querySelector('#extract-view-btn') as HTMLButton
 
 function showBatchReplace(): Promise<{find: string, replace: string} | null> {
     if (!batchReplaceModal) return Promise.resolve(null);
-    replaceFindInput.value = '';
+    replaceFindInput.value = 'SỐ PANEL';
     replaceWithInput.value = '';
     batchReplaceModal.classList.remove('hidden');
     
     // Small delay to ensure focus works after modal transition
     setTimeout(() => {
         replaceFindInput.focus();
+        replaceFindInput.select(); // Select text for easy replacement
     }, 150);
     
     return new Promise((resolve) => {
@@ -564,13 +565,26 @@ function showBatchReplace(): Promise<{find: string, replace: string} | null> {
             cleanup();
             resolve(null);
         };
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSubmit();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                handleClose();
+            }
+        };
         const cleanup = () => {
             batchReplaceSubmit.removeEventListener('click', handleSubmit);
             closeReplaceModal.removeEventListener('click', handleClose);
+            replaceFindInput.removeEventListener('keydown', handleKeyDown);
+            replaceWithInput.removeEventListener('keydown', handleKeyDown);
         };
         
         batchReplaceSubmit.addEventListener('click', handleSubmit);
         closeReplaceModal.addEventListener('click', handleClose);
+        replaceFindInput.addEventListener('keydown', handleKeyDown);
+        replaceWithInput.addEventListener('keydown', handleKeyDown);
     });
 }
 
@@ -3346,6 +3360,13 @@ document.addEventListener('keydown', (e) => {
     if (e.altKey && e.code === 'KeyC') {
         e.preventDefault();
         copyUploadedImageToClipboard();
+        return;
+    }
+
+    // Replace Text Shortcut (F2)
+    if (e.key === 'F2') {
+        e.preventDefault();
+        batchReplaceBtn?.click();
         return;
     }
 
