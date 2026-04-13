@@ -3,6 +3,8 @@ import { GoogleGenAI } from '@google/genai';
 import * as genai from '@google/genai';
 const ThinkingLevel = (genai as any).ThinkingLevel || { LOW: 'LOW' };
 import exifr from 'exifr';
+import { io } from 'socket.io-client';
+import QRCode from 'qrcode';
 
 // --- Global Types & Interfaces ---
 declare global {
@@ -598,10 +600,154 @@ batchReplaceBtn.addEventListener('click', async () => {
     }
 });
 
+// --- Socket.io & Mobile Bridge ---
+const socket = io();
+const sessionId = Math.random().toString(36).substring(2, 10);
+let isBridgeConnected = false;
+
+socket.on('connect', () => {
+    socket.emit('join-session', sessionId);
+});
+
+socket.on('receive-transcript', (data) => {
+    if (data.isFinal) {
+        handleVoiceTranscript(data.transcript);
+    } else {
+        // Handle interim for commands
+        const lower = data.transcript.toLowerCase().trim();
+        if (lower.includes('chạy ảnh') || lower.includes('chạy anh')) {
+            triggerGenerate();
+        }
+    }
+});
+
+function triggerGenerate() {
+    const genBtn = document.getElementById('generate-button') as HTMLButtonElement;
+    if (genBtn) {
+        if (genBtn.disabled) {
+            showCustomAlert("Nút Generate đang bận hoặc chưa sẵn sàng.", "WAIT");
+        } else {
+            genBtn.click();
+            if (recognition) recognition.stop();
+        }
+    }
+}
+
+async function openMicBridge() {
+    const modal = document.getElementById('mic-bridge-modal');
+    const qrEl = document.getElementById('bridge-qr');
+    if (!modal || !qrEl) return;
+
+    modal.classList.remove('hidden');
+    
+    // Use the Shared App URL for the QR code
+    const baseUrl = window.location.origin;
+    const bridgeUrl = `${baseUrl}?session=${sessionId}&mode=mic`;
+    
+    try {
+        const qrDataUrl = await QRCode.toDataURL(bridgeUrl, { width: 256, margin: 2 });
+        qrEl.innerHTML = `<img src="${qrDataUrl}" class="w-full h-full" />`;
+    } catch (err) {
+        console.error("QR Error:", err);
+        qrEl.innerText = "Lỗi tạo mã QR";
+    }
+}
+
+function closeMicBridge() {
+    const modal = document.getElementById('mic-bridge-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+// Attach close event
+document.addEventListener('DOMContentLoaded', () => {
+    const closeBtn = document.getElementById('close-mic-bridge-btn');
+    if (closeBtn) closeBtn.onclick = closeMicBridge;
+});
+
 // --- Speech Recognition (STT) Logic ---
 const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 let recognition: any = null;
 let activeMicBtn: HTMLButtonElement | null = null;
+
+/**
+ * Smartly adds punctuation and capitalization to transcribed text.
+ */
+function smartPunctuate(text: string): string {
+    if (!text) return '';
+    let processed = text.trim();
+    if (!processed) return '';
+
+    // 1. Capitalize first letter
+    processed = processed.charAt(0).toUpperCase() + processed.slice(1);
+
+    // 2. Clean up double spaces and spaces before punctuation
+    processed = processed.replace(/\s+/g, ' ')
+                         .replace(/\s([,.!?:;])/g, '$1')
+                         .trim();
+
+    // 3. Always end with a period if no punctuation exists
+    if (!/[.!?]$/.test(processed)) {
+        processed += '.';
+    }
+
+    return processed;
+}
+
+/**
+ * Handles processed transcript from any source (local or remote)
+ */
+function handleVoiceTranscript(rawTranscript: string) {
+    if (!activeMicBtn || !rawTranscript) return;
+    const targetId = activeMicBtn.getAttribute('data-target');
+    const targetElement = document.getElementById(targetId!);
+    if (!targetElement) return;
+
+    console.log("STT Received:", rawTranscript);
+    const lower = rawTranscript.toLowerCase().trim().replace(/[.!?]$/, '');
+
+    // Voice Command: "Chạy Ảnh"
+    if (lower === 'chạy ảnh' || lower === 'chạy anh' || lower === 'chay anh' || lower === 'chay ảnh' || lower === 'chạy' || lower.includes('chạy ảnh')) {
+        triggerGenerate();
+        return;
+    }
+
+    const finalTranscript = smartPunctuate(rawTranscript);
+    
+    if (targetElement instanceof HTMLTextAreaElement || targetElement instanceof HTMLInputElement) {
+        const start = targetElement.selectionStart || 0;
+        const end = targetElement.selectionEnd || 0;
+        const text = targetElement.value;
+        const before = text.substring(0, start);
+        const after = text.substring(end);
+        
+        const spacer = (before && !before.endsWith(' ') && !before.endsWith('\n')) ? ' ' : '';
+        targetElement.value = before + spacer + finalTranscript + after;
+        
+        const newPos = start + spacer.length + finalTranscript.length;
+        targetElement.selectionStart = targetElement.selectionEnd = newPos;
+        
+        targetElement.dispatchEvent(new Event('input'));
+        targetElement.focus();
+    } else {
+        // contenteditable div (PNG Info)
+        const text = finalTranscript + ' ';
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0 && targetElement.contains(selection.anchorNode)) {
+            const range = selection.getRangeAt(0);
+            range.deleteContents();
+            const textNode = document.createTextNode(text);
+            range.insertNode(textNode);
+            range.setStartAfter(textNode);
+            range.setEndAfter(textNode);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        } else {
+            targetElement.innerHTML += (targetElement.innerHTML && !targetElement.innerHTML.endsWith(' ') ? ' ' : '') + text;
+        }
+        targetElement.dispatchEvent(new Event('input'));
+        targetElement.focus();
+    }
+}
 
 if (SpeechRecognition) {
     recognition = new SpeechRecognition();
@@ -610,54 +756,24 @@ if (SpeechRecognition) {
     recognition.lang = 'vi-VN';
 
     recognition.onresult = (event: any) => {
-        if (!activeMicBtn) return;
-        const targetId = activeMicBtn.getAttribute('data-target');
-        const targetElement = document.getElementById(targetId!);
-        if (!targetElement) return;
-
-        let finalTranscript = '';
+        let rawTranscript = '';
+        let interimTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
             if (event.results[i].isFinal) {
-                finalTranscript += event.results[i][0].transcript;
+                rawTranscript += event.results[i][0].transcript;
+            } else {
+                interimTranscript += event.results[i][0].transcript;
             }
         }
 
-        if (finalTranscript) {
-            if (targetElement instanceof HTMLTextAreaElement || targetElement instanceof HTMLInputElement) {
-                const start = targetElement.selectionStart || 0;
-                const end = targetElement.selectionEnd || 0;
-                const text = targetElement.value;
-                const before = text.substring(0, start);
-                const after = text.substring(end);
-                
-                const spacer = (before && !before.endsWith(' ')) ? ' ' : '';
-                targetElement.value = before + spacer + finalTranscript + after;
-                
-                const newPos = start + spacer.length + finalTranscript.length;
-                targetElement.selectionStart = targetElement.selectionEnd = newPos;
-                
-                targetElement.dispatchEvent(new Event('input'));
-                targetElement.focus();
-            } else {
-                // contenteditable div (PNG Info)
-                const text = finalTranscript + ' ';
-                const selection = window.getSelection();
-                if (selection && selection.rangeCount > 0 && targetElement.contains(selection.anchorNode)) {
-                    const range = selection.getRangeAt(0);
-                    range.deleteContents();
-                    const textNode = document.createTextNode(text);
-                    range.insertNode(textNode);
-                    range.setStartAfter(textNode);
-                    range.setEndAfter(textNode);
-                    selection.removeAllRanges();
-                    selection.addRange(range);
-                } else {
-                    // Just append if not focused
-                    targetElement.innerHTML += (targetElement.innerHTML ? ' ' : '') + text;
-                }
-                targetElement.dispatchEvent(new Event('input'));
-                targetElement.focus();
-            }
+        // Check interim for fast commands
+        if (interimTranscript.toLowerCase().includes('chạy ảnh') || interimTranscript.toLowerCase().includes('chạy anh')) {
+            triggerGenerate();
+            return;
+        }
+
+        if (rawTranscript) {
+            handleVoiceTranscript(rawTranscript);
         }
     };
 
@@ -671,12 +787,86 @@ if (SpeechRecognition) {
 
     recognition.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
+        if (event.error === 'not-allowed') {
+            openMicBridge();
+        }
         if (activeMicBtn) {
             activeMicBtn.classList.remove('text-red-500', 'animate-pulse');
             activeMicBtn.classList.add('text-orange-600');
             activeMicBtn = null;
         }
     };
+}
+
+// --- Mobile Mic Remote Mode ---
+const urlParams = new URLSearchParams(window.location.search);
+const remoteSessionId = urlParams.get('session');
+const isRemoteMicMode = urlParams.get('mode') === 'mic';
+
+if (isRemoteMicMode && remoteSessionId) {
+    // Hide everything and show only a big mic button
+    document.body.innerHTML = `
+        <div class="fixed inset-0 bg-[#0D0D0E] flex flex-col items-center justify-center p-8 text-center">
+            <h1 class="text-2xl font-bold text-white mb-4">Mobile Mic Bridge</h1>
+            <p class="text-gray-400 mb-12">Nói vào điện thoại để nhập liệu vào SketchUp</p>
+            
+            <button id="remote-mic-btn" class="w-48 h-48 rounded-full bg-orange-600 flex items-center justify-center shadow-[0_0_50px_rgba(234,88,12,0.3)] active:scale-95 transition-all">
+                <svg class="w-24 h-24 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+            </button>
+            
+            <div id="remote-status" class="mt-12 text-orange-500 font-medium animate-pulse">Nhấn để bắt đầu nói</div>
+            <div id="remote-transcript" class="mt-8 text-gray-300 italic max-w-xs"></div>
+        </div>
+    `;
+
+    const remoteMicBtn = document.getElementById('remote-mic-btn');
+    const remoteStatus = document.getElementById('remote-status');
+    const remoteTranscript = document.getElementById('remote-transcript');
+    let isListening = false;
+
+    if (SpeechRecognition) {
+        const remoteRecognition = new SpeechRecognition();
+        remoteRecognition.continuous = true;
+        remoteRecognition.interimResults = true;
+        remoteRecognition.lang = 'vi-VN';
+
+        remoteRecognition.onresult = (event: any) => {
+            let transcript = '';
+            let isFinal = false;
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                transcript += event.results[i][0].transcript;
+                if (event.results[i].isFinal) isFinal = true;
+            }
+            
+            if (remoteTranscript) remoteTranscript.innerText = transcript;
+            
+            socket.emit('voice-transcript', {
+                sessionId: remoteSessionId,
+                transcript: transcript,
+                isFinal: isFinal
+            });
+        };
+
+        remoteRecognition.onstart = () => {
+            isListening = true;
+            if (remoteMicBtn) remoteMicBtn.classList.add('bg-red-600', 'animate-pulse');
+            if (remoteStatus) remoteStatus.innerText = "Đang nghe...";
+        };
+
+        remoteRecognition.onend = () => {
+            isListening = false;
+            if (remoteMicBtn) remoteMicBtn.classList.remove('bg-red-600', 'animate-pulse');
+            if (remoteStatus) remoteStatus.innerText = "Đã dừng. Nhấn để nói lại.";
+        };
+
+        remoteMicBtn?.addEventListener('click', () => {
+            if (isListening) {
+                remoteRecognition.stop();
+            } else {
+                remoteRecognition.start();
+            }
+        });
+    }
 }
 
 // Global listener for all mic buttons
