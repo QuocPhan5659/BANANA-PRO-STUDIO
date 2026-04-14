@@ -479,7 +479,7 @@ const comparisonContainer = document.querySelector('#comparison-container') as H
 const compareSlider = document.querySelector('#compare-slider') as HTMLInputElement;
 const compareImg1 = document.querySelector('#compare-img-1') as HTMLImageElement;
 const compareImg2 = document.querySelector('#compare-img-2') as HTMLImageElement;
-const compareImg2Wrapper = document.querySelector('#compare-img-2-wrapper') as HTMLDivElement;
+const compareImg1Wrapper = document.querySelector('#compare-img-1-wrapper') as HTMLDivElement;
 
 const customConfirmModal = document.querySelector('#custom-confirm-modal') as HTMLDivElement;
 const customConfirmTitle = document.querySelector('#custom-confirm-title') as HTMLHeadingElement;
@@ -623,18 +623,6 @@ socket.on('connect', () => {
     socket.emit('join-session', sessionId);
 });
 
-socket.on('receive-transcript', (data) => {
-    if (data.isFinal) {
-        handleVoiceTranscript(data.transcript);
-    } else {
-        // Handle interim for commands
-        const lower = data.transcript.toLowerCase().trim();
-        if (lower.includes('chạy ảnh') || lower.includes('chạy anh')) {
-            triggerGenerate();
-        }
-    }
-});
-
 function triggerGenerate() {
     const genBtn = document.getElementById('generate-button') as HTMLButtonElement;
     if (genBtn) {
@@ -642,333 +630,14 @@ function triggerGenerate() {
             showCustomAlert("Nút Generate đang bận hoặc chưa sẵn sàng.", "WAIT");
         } else {
             genBtn.click();
-            if (recognition) recognition.stop();
         }
     }
 }
 
-async function openMicBridge() {
-    const modal = document.getElementById('mic-bridge-modal');
-    const qrEl = document.getElementById('bridge-qr');
-    if (!modal || !qrEl) return;
+// --- Main Image Handling ---
 
-    modal.classList.remove('hidden');
-    
-    // Use the Shared App URL for the QR code
-    const baseUrl = window.location.origin;
-    const bridgeUrl = `${baseUrl}?session=${sessionId}&mode=mic`;
-    
-    try {
-        const qrDataUrl = await QRCode.toDataURL(bridgeUrl, { width: 256, margin: 2 });
-        qrEl.innerHTML = `<img src="${qrDataUrl}" class="w-full h-full" />`;
-    } catch (err) {
-        console.error("QR Error:", err);
-        qrEl.innerText = "Lỗi tạo mã QR";
-    }
-}
 
-function closeMicBridge() {
-    const modal = document.getElementById('mic-bridge-modal');
-    if (modal) modal.classList.add('hidden');
-}
 
-// Attach close event
-document.addEventListener('DOMContentLoaded', () => {
-    const closeBtn = document.getElementById('close-mic-bridge-btn');
-    if (closeBtn) closeBtn.onclick = closeMicBridge;
-});
-
-// --- Speech Recognition (STT) Logic ---
-const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-let recognition: any = null;
-let activeMicBtn: HTMLButtonElement | null = null;
-
-/**
- * Smartly adds punctuation and capitalization to transcribed text.
- */
-function smartPunctuate(text: string): string {
-    if (!text) return '';
-    let processed = text.trim();
-    if (!processed) return '';
-
-    // 1. Capitalize first letter
-    processed = processed.charAt(0).toUpperCase() + processed.slice(1);
-
-    // 2. Clean up double spaces and spaces before punctuation
-    processed = processed.replace(/\s+/g, ' ')
-                         .replace(/\s([,.!?:;])/g, '$1')
-                         .trim();
-
-    // 3. Always end with a period if no punctuation exists
-    if (!/[.!?]$/.test(processed)) {
-        processed += '.';
-    }
-
-    return processed;
-}
-
-/**
- * Handles processed transcript from any source (local or remote)
- */
-function handleVoiceTranscript(rawTranscript: string) {
-    if (!activeMicBtn || !rawTranscript) return;
-    const targetId = activeMicBtn.getAttribute('data-target');
-    const targetElement = document.getElementById(targetId!);
-    if (!targetElement) return;
-
-    console.log("STT Received:", rawTranscript);
-    const lower = rawTranscript.toLowerCase().trim().replace(/[.!?]$/, '');
-
-    // Voice Command: "Chạy Ảnh"
-    if (lower === 'chạy ảnh' || lower === 'chạy anh' || lower === 'chay anh' || lower === 'chay ảnh' || lower === 'chạy' || lower.includes('chạy ảnh')) {
-        triggerGenerate();
-        return;
-    }
-
-    const finalTranscript = smartPunctuate(rawTranscript);
-    
-    if (targetElement instanceof HTMLTextAreaElement || targetElement instanceof HTMLInputElement) {
-        const start = targetElement.selectionStart || 0;
-        const end = targetElement.selectionEnd || 0;
-        const text = targetElement.value;
-        const before = text.substring(0, start);
-        const after = text.substring(end);
-        
-        const spacer = (before && !before.endsWith(' ') && !before.endsWith('\n')) ? ' ' : '';
-        targetElement.value = before + spacer + finalTranscript + after;
-        
-        const newPos = start + spacer.length + finalTranscript.length;
-        targetElement.selectionStart = targetElement.selectionEnd = newPos;
-        
-        targetElement.dispatchEvent(new Event('input'));
-        targetElement.focus();
-    } else {
-        // contenteditable div (PNG Info)
-        const text = finalTranscript + ' ';
-        const selection = window.getSelection();
-        if (selection && selection.rangeCount > 0 && targetElement.contains(selection.anchorNode)) {
-            const range = selection.getRangeAt(0);
-            range.deleteContents();
-            const textNode = document.createTextNode(text);
-            range.insertNode(textNode);
-            range.setStartAfter(textNode);
-            range.setEndAfter(textNode);
-            selection.removeAllRanges();
-            selection.addRange(range);
-        } else {
-            targetElement.innerHTML += (targetElement.innerHTML && !targetElement.innerHTML.endsWith(' ') ? ' ' : '') + text;
-        }
-        targetElement.dispatchEvent(new Event('input'));
-        targetElement.focus();
-    }
-}
-
-if (SpeechRecognition) {
-    recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'vi-VN';
-
-    recognition.onresult = (event: any) => {
-        let rawTranscript = '';
-        let interimTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-                rawTranscript += event.results[i][0].transcript;
-            } else {
-                interimTranscript += event.results[i][0].transcript;
-            }
-        }
-
-        // Check interim for fast commands
-        if (interimTranscript.toLowerCase().includes('chạy ảnh') || interimTranscript.toLowerCase().includes('chạy anh')) {
-            triggerGenerate();
-            return;
-        }
-
-        if (rawTranscript) {
-            handleVoiceTranscript(rawTranscript);
-        }
-    };
-
-    recognition.onend = () => {
-        if (activeMicBtn) {
-            activeMicBtn.classList.remove('text-red-500', 'animate-pulse');
-            activeMicBtn.classList.add('text-orange-600');
-            activeMicBtn = null;
-        }
-    };
-
-    recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        if (event.error === 'not-allowed') {
-            openMicBridge();
-        }
-        if (activeMicBtn) {
-            activeMicBtn.classList.remove('text-red-500', 'animate-pulse');
-            activeMicBtn.classList.add('text-orange-600');
-            activeMicBtn = null;
-        }
-    };
-}
-
-// --- Mobile Mic Remote Mode ---
-const urlParams = new URLSearchParams(window.location.search);
-const remoteSessionId = urlParams.get('session');
-const isRemoteMicMode = urlParams.get('mode') === 'mic';
-
-if (isRemoteMicMode && remoteSessionId) {
-    // Hide everything and show only a big mic button
-    document.body.innerHTML = `
-        <div class="fixed inset-0 bg-[#0D0D0E] flex flex-col items-center justify-center p-8 text-center">
-            <h1 class="text-2xl font-bold text-white mb-4">Mobile Mic Bridge</h1>
-            <p class="text-gray-400 mb-12">Nói vào điện thoại để nhập liệu vào SketchUp</p>
-            
-            <button id="remote-mic-btn" class="w-48 h-48 rounded-full bg-orange-600 flex items-center justify-center shadow-[0_0_50px_rgba(234,88,12,0.3)] active:scale-95 transition-all">
-                <svg class="w-24 h-24 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
-            </button>
-            
-            <div id="remote-status" class="mt-12 text-orange-500 font-medium animate-pulse">Nhấn để bắt đầu nói</div>
-            <div id="remote-transcript" class="mt-8 text-gray-300 italic max-w-xs"></div>
-        </div>
-    `;
-
-    const remoteMicBtn = document.getElementById('remote-mic-btn');
-    const remoteStatus = document.getElementById('remote-status');
-    const remoteTranscript = document.getElementById('remote-transcript');
-    let isListening = false;
-
-    if (SpeechRecognition) {
-        const remoteRecognition = new SpeechRecognition();
-        remoteRecognition.continuous = true;
-        remoteRecognition.interimResults = true;
-        remoteRecognition.lang = 'vi-VN';
-
-        remoteRecognition.onresult = (event: any) => {
-            let transcript = '';
-            let isFinal = false;
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                transcript += event.results[i][0].transcript;
-                if (event.results[i].isFinal) isFinal = true;
-            }
-            
-            if (remoteTranscript) remoteTranscript.innerText = transcript;
-            
-            socket.emit('voice-transcript', {
-                sessionId: remoteSessionId,
-                transcript: transcript,
-                isFinal: isFinal
-            });
-        };
-
-        remoteRecognition.onstart = () => {
-            isListening = true;
-            if (remoteMicBtn) remoteMicBtn.classList.add('bg-red-600', 'animate-pulse');
-            if (remoteStatus) remoteStatus.innerText = "Đang nghe...";
-        };
-
-        remoteRecognition.onend = () => {
-            isListening = false;
-            if (remoteMicBtn) remoteMicBtn.classList.remove('bg-red-600', 'animate-pulse');
-            if (remoteStatus) remoteStatus.innerText = "Đã dừng. Nhấn để nói lại.";
-        };
-
-        remoteMicBtn?.addEventListener('click', () => {
-            if (isListening) {
-                remoteRecognition.stop();
-            } else {
-                remoteRecognition.start();
-            }
-        });
-    }
-}
-
-// Global listener for all mic buttons
-document.addEventListener('click', (e) => {
-    const btn = (e.target as HTMLElement).closest('.mic-stt-btn') as HTMLButtonElement;
-    if (!btn) return;
-
-    if (!recognition) {
-        showCustomAlert("Trình duyệt của bạn không hỗ trợ nhận diện giọng nói.", "Not Supported");
-        return;
-    }
-
-    if (activeMicBtn === btn) {
-        recognition.stop();
-        return;
-    }
-
-    if (activeMicBtn) {
-        recognition.stop();
-        // Wait a bit for the previous one to stop
-        setTimeout(() => startRecognition(btn), 100);
-    } else {
-        startRecognition(btn);
-    }
-});
-
-function startRecognition(btn: HTMLButtonElement) {
-    activeMicBtn = btn;
-    btn.classList.remove('text-orange-600');
-    btn.classList.add('text-red-500', 'animate-pulse');
-    
-    // Detect language from UI state
-    const isVN = document.querySelector('#lang-btn-vn')?.classList.contains('bg-[#262380]');
-    recognition.lang = isVN ? 'vi-VN' : 'en-US';
-    
-    try {
-        // Start recognition directly. This is more reliable in embedded browsers.
-        recognition.start();
-    } catch (err: any) {
-        if (err.name === 'InvalidStateError') {
-            // Already started, ignore
-            return;
-        }
-        console.error("Failed to start recognition:", err);
-        handleMicError(err);
-    }
-}
-
-function handleMicError(err: any) {
-    if (activeMicBtn) {
-        activeMicBtn.classList.remove('text-red-500', 'animate-pulse');
-        activeMicBtn.classList.add('text-orange-600');
-        activeMicBtn = null;
-    }
-    
-    let msg = "Không thể truy cập Microphone.";
-    const errorName = typeof err === 'string' ? err : (err.name || err.error);
-
-    if (errorName === 'NotAllowedError' || errorName === 'not-allowed' || errorName === 'PermissionDeniedError') {
-        msg = "Quyền truy cập Microphone đang bị CHẶN. \n\nCÁCH KHẮC PHỤC:\n1. Nếu chạy trong trình duyệt: Nhấn vào biểu tượng Ổ KHÓA trên thanh địa chỉ và chọn 'Cho phép' (Allow) Microphone.\n2. Nếu chạy trong SketchUp: Click chuột phải vào bảng này, chọn 'Settings' hoặc kiểm tra cài đặt Quyền riêng tư (Privacy) của Windows/Mac để cho phép SketchUp dùng Mic.";
-    } else if (errorName === 'NotFoundError' || errorName === 'no-speech') {
-        return; // Ignore no speech or not found for silent failure
-    }
-    
-    showCustomAlert(msg, "PERMISSION ERROR");
-}
-
-// Update recognition error handler
-if (recognition) {
-    recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        handleMicError(event.error);
-    };
-}
-
-// Pre-authorize Mic on first interaction if possible
-document.addEventListener('mousedown', () => {
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        // Just a dummy call to trigger permission prompt early if not already granted
-        // We don't need to keep the stream
-        navigator.mediaDevices.enumerateDevices().then(devices => {
-            const hasMic = devices.some(d => d.kind === 'audioinput');
-            if (hasMic && (window as any).sketchup) {
-                console.log("Microphone detected in SketchUp");
-            }
-        });
-    }
-}, { once: true });
 
 const COLLAGE_EXTRACT_PROMPT_TEMPLATE = `This image is a multi-frame collage. First detect the full collage layout and identify the exact rectangular boundary of every frame, whether the frames are separated by visible borders, thin gaps, or no visible dividing lines at all. Determine boundaries only from the overall collage structure, panel alignment, and layout geometry, not from the visual content inside the images. Then extract only the [ TARGET POSITION ] frame as one complete rectangular image. Strictly exclude all neighboring frames and do not include any pixels, objects, edges, or partial areas from adjacent images. Do not merge across frame boundaries even if colors, lines, or objects visually continue. Preserve the extracted frame exactly at its original internal resolution and original quality, with no resizing, no recompression, no denoise, no blur, no sharpening, no enhancement, and no content alteration.`;
 
@@ -2372,17 +2041,13 @@ function handleMainImage(file: File) {
         imgObj.onload = () => {
             const ratio = imgObj.width / imgObj.height;
             const ratios: Record<string, number> = {
-                '1:1': 1,
-                '3:2': 1.5,
-                '2:3': 0.666,
-                '16:9': 1.777,
-                '9:16': 0.5625,
-                '4:3': 1.333,
-                '3:4': 0.75
+                '1:1': 1, '1:4': 0.25, '1:8': 0.125, '2:3': 0.666, '3:2': 1.5,
+                '3:4': 0.75, '4:1': 4, '4:3': 1.333, '4:5': 0.8, '5:4': 1.25,
+                '8:1': 8, '9:16': 0.5625, '16:9': 1.777, '21:9': 2.333
             };
             
-            let closest = '1:1';
-            let minDiff = Infinity;
+            let closest = 'custom';
+            let minDiff = 0.05; // Threshold for standard ratios
             
             for (const [key, val] of Object.entries(ratios)) {
                 const diff = Math.abs(ratio - val);
@@ -2394,7 +2059,7 @@ function handleMainImage(file: File) {
             
             if (sizeSelect) {
                 sizeSelect.value = closest;
-                if(statusEl) statusEl.innerText = `Auto-set Ratio: ${closest}`;
+                if(statusEl) statusEl.innerText = closest === 'custom' ? `Auto-set Ratio: Custom (${imgObj.width}:${imgObj.height})` : `Auto-set Ratio: ${closest}`;
             }
 
             if (uploadPreview) {
@@ -5080,8 +4745,31 @@ async function runGeneration() {
 
         let modelId = '';
         // Config for image generation
+        let currentRatio = sizeSelect.value || '1:1';
+        if (currentRatio === 'custom' && uploadPreview && uploadPreview.naturalWidth) {
+            // Calculate actual ratio for custom
+            const r = uploadPreview.naturalWidth / uploadPreview.naturalHeight;
+            
+            const supportedRatios: Record<string, number> = {
+                '1:1': 1, '1:4': 0.25, '1:8': 0.125, '2:3': 0.666, '3:2': 1.5,
+                '3:4': 0.75, '4:1': 4, '4:3': 1.333, '4:5': 0.8, '5:4': 1.25,
+                '8:1': 8, '9:16': 0.5625, '16:9': 1.777, '21:9': 2.333
+            };
+
+            let closest = '1:1';
+            let minDiff = Infinity;
+            for (const [key, val] of Object.entries(supportedRatios)) {
+                const diff = Math.abs(r - val);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    closest = key;
+                }
+            }
+            currentRatio = closest;
+        }
+
         let imageConfig: any = { 
-            aspectRatio: sizeSelect.value || '1:1' 
+            aspectRatio: currentRatio 
         };
 
         // --- MANUAL MODEL SELECTION ---
@@ -5861,13 +5549,6 @@ if (brushSlider) {
     });
 }
 // --- Comparison Event Listeners ---
-let comparisonZoom = 1;
-let comparisonOffsetX = 0;
-let comparisonOffsetY = 0;
-let isComparePanning = false;
-let compareStartX = 0;
-let compareStartY = 0;
-
 if (compareToggleBtn) {
     compareToggleBtn.addEventListener('click', () => {
         isComparisonMode = !isComparisonMode;
@@ -5877,10 +5558,6 @@ if (compareToggleBtn) {
             outputContainer.classList.add('hidden');
             compareToggleBtn.classList.add('bg-[#262380]');
             compareToggleBtn.classList.remove('bg-white/5');
-            // Reset zoom/pan on open
-            comparisonZoom = 1;
-            comparisonOffsetX = 0;
-            comparisonOffsetY = 0;
             updateComparisonTransform();
         } else {
             comparisonContainer.classList.add('hidden');
@@ -5892,44 +5569,28 @@ if (compareToggleBtn) {
 }
 
 function updateComparisonTransform() {
-    const transform = `translate(${comparisonOffsetX}px, ${comparisonOffsetY}px) scale(${comparisonZoom})`;
-    compareImg1.style.transform = transform;
-    compareImg2.style.transform = transform;
+    // Ensure the inner container of the overlay image matches the full container width
+    // so the image inside it aligns perfectly with the base image.
+    const innerContainer = document.getElementById('compare-img-1-inner-container');
+    if (comparisonContainer && innerContainer) {
+        const containerWidth = comparisonContainer.clientWidth;
+        innerContainer.style.width = `${containerWidth}px`;
+    }
 }
 
-comparisonContainer.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    comparisonZoom = Math.min(Math.max(comparisonZoom * delta, 1), 5);
-    updateComparisonTransform();
-}, { passive: false });
-
-comparisonContainer.addEventListener('mousedown', (e) => {
-    if (e.button === 1) { // Middle mouse button
-        isComparePanning = true;
-        compareStartX = e.clientX - comparisonOffsetX;
-        compareStartY = e.clientY - comparisonOffsetY;
-        comparisonContainer.style.cursor = 'grabbing';
-    }
-});
-
-window.addEventListener('mousemove', (e) => {
-    if (isComparePanning) {
-        comparisonOffsetX = e.clientX - compareStartX;
-        comparisonOffsetY = e.clientY - compareStartY;
-        updateComparisonTransform();
-    }
-});
-
-window.addEventListener('mouseup', () => {
-    isComparePanning = false;
-    comparisonContainer.style.cursor = 'default';
-});
+if (comparisonContainer) {
+    const resizeObserver = new ResizeObserver(() => {
+        if (isComparisonMode) {
+            updateComparisonTransform();
+        }
+    });
+    resizeObserver.observe(comparisonContainer);
+}
 
 if (compareSlider) {
     compareSlider.addEventListener('input', (e) => {
         const value = (e.target as HTMLInputElement).value;
-        compareImg2Wrapper.style.width = `${value}%`;
+        if (compareImg1Wrapper) compareImg1Wrapper.style.width = `${value}%`;
         const handle = document.getElementById('compare-slider-handle');
         if (handle) handle.style.left = `${value}%`;
     });
