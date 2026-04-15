@@ -73,6 +73,36 @@ document.addEventListener("DOMContentLoaded", function () {
           }
       }
   });
+
+  // Toggle Right Panel
+  const toggleRightPanelCheckbox = document.getElementById('toggle-right-panel-checkbox') as HTMLInputElement;
+  const mainLayout = document.getElementById('main-layout');
+  
+  if (toggleRightPanelCheckbox && mainLayout) {
+      // Load saved state
+      const savedVisible = localStorage.getItem('rightPanelVisible');
+      const isVisible = savedVisible !== null ? JSON.parse(savedVisible) : true;
+      
+      toggleRightPanelCheckbox.checked = isVisible;
+      if (isVisible) {
+          mainLayout.classList.remove('right-panel-hidden');
+      } else {
+          mainLayout.classList.add('right-panel-hidden');
+      }
+
+      toggleRightPanelCheckbox.addEventListener('change', () => {
+          const isVisible = toggleRightPanelCheckbox.checked;
+          if (isVisible) {
+              mainLayout.classList.remove('right-panel-hidden');
+          } else {
+              mainLayout.classList.add('right-panel-hidden');
+          }
+          // Save state
+          localStorage.setItem('rightPanelVisible', JSON.stringify(isVisible));
+          // Trigger resize to fix canvas display when showing back
+          window.dispatchEvent(new Event('resize'));
+      });
+  }
 });
 
 interface PromptData {
