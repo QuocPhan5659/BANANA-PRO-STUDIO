@@ -80,14 +80,17 @@ document.addEventListener("DOMContentLoaded", function () {
   
   if (toggleRightPanelCheckbox && mainLayout) {
       // Load saved state
-      const savedVisible = localStorage.getItem('rightPanelVisible');
-      const isVisible = savedVisible !== null ? JSON.parse(savedVisible) : true;
-      
-      toggleRightPanelCheckbox.checked = isVisible;
-      if (isVisible) {
-          mainLayout.classList.remove('right-panel-hidden');
-      } else {
-          mainLayout.classList.add('right-panel-hidden');
+      const savedPanelState = localStorage.getItem('rightPanelVisible');
+      if (savedPanelState !== null) {
+          const isVisible = savedPanelState === 'true';
+          toggleRightPanelCheckbox.checked = isVisible;
+          if (isVisible) {
+              mainLayout.classList.remove('right-panel-hidden');
+          } else {
+              mainLayout.classList.add('right-panel-hidden');
+          }
+          // Trigger resize after initial load if needed
+          setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
       }
 
       toggleRightPanelCheckbox.addEventListener('change', () => {
@@ -98,7 +101,7 @@ document.addEventListener("DOMContentLoaded", function () {
               mainLayout.classList.add('right-panel-hidden');
           }
           // Save state
-          localStorage.setItem('rightPanelVisible', JSON.stringify(isVisible));
+          localStorage.setItem('rightPanelVisible', isVisible.toString());
           // Trigger resize to fix canvas display when showing back
           window.dispatchEvent(new Event('resize'));
       });
@@ -528,6 +531,7 @@ const modalPasteBtn = document.querySelector('#modal-paste-btn') as HTMLButtonEl
 const batchReplaceModal = document.querySelector('#batch-replace-modal') as HTMLDivElement;
 const replaceFindInput = document.querySelector('#replace-find-input') as HTMLInputElement;
 const replaceWithInput = document.querySelector('#replace-with-input') as HTMLInputElement;
+const replaceIncInput = document.querySelector('#replace-inc-input') as HTMLInputElement;
 const batchReplaceSubmit = document.querySelector('#batch-replace-submit') as HTMLButtonElement;
 const closeReplaceModal = document.querySelector('#close-replace-modal') as HTMLButtonElement;
 const batchReplaceBtn = document.querySelector('#batch-replace-btn') as HTMLButtonElement;
@@ -564,22 +568,44 @@ const collageExtractControls = document.querySelector('#collage-extract-controls
 const collagePositionSelect = document.querySelector('#collage-position-select') as HTMLSelectElement;
 const extractViewBtn = document.querySelector('#extract-view-btn') as HTMLButtonElement;
 
-function showBatchReplace(): Promise<{find: string, replace: string} | null> {
+function showBatchReplace(): Promise<{find: string, replace: string, inc: string} | null> {
     if (!batchReplaceModal) return Promise.resolve(null);
     replaceFindInput.value = 'SỐ PANEL';
     replaceWithInput.value = '';
+    replaceIncInput.value = '';
     batchReplaceModal.classList.remove('hidden');
     
+    // Auto-calculate SỐ + 1
+    const updateIncValue = () => {
+        const val = replaceWithInput.value;
+        const num = parseInt(val);
+        if (!isNaN(num)) {
+            replaceIncInput.value = (num + 1).toString();
+        } else {
+            // Try to extract number if it's like "abc 4" -> 5
+            const match = val.match(/(\d+)/);
+            if (match) {
+                const innerNum = parseInt(match[1]);
+                replaceIncInput.value = val.replace(match[1], (innerNum + 1).toString());
+            } else {
+                replaceIncInput.value = '';
+            }
+        }
+    };
+
+    replaceWithInput.addEventListener('input', updateIncValue);
+
     // Small delay to ensure focus works after modal transition
     setTimeout(() => {
-        replaceFindInput.focus();
-        replaceFindInput.select(); // Select text for easy replacement
+        replaceWithInput.focus();
+        replaceWithInput.select(); // Select text for easy replacement
     }, 150);
     
     return new Promise((resolve) => {
         const handleSubmit = () => {
             const find = replaceFindInput.value;
             const replace = replaceWithInput.value;
+            const inc = replaceIncInput.value;
             if (!find) {
                 showCustomAlert("Vui lòng nhập nội dung cần tìm.", "Missing Input");
                 return;
@@ -588,7 +614,7 @@ function showBatchReplace(): Promise<{find: string, replace: string} | null> {
             // Perform replacement immediately
             batchReplaceModal.classList.add('hidden');
             cleanup();
-            resolve({find, replace});
+            resolve({find, replace, inc});
         };
         const handleClose = () => {
             batchReplaceModal.classList.add('hidden');
@@ -609,19 +635,22 @@ function showBatchReplace(): Promise<{find: string, replace: string} | null> {
             closeReplaceModal.removeEventListener('click', handleClose);
             replaceFindInput.removeEventListener('keydown', handleKeyDown);
             replaceWithInput.removeEventListener('keydown', handleKeyDown);
+            replaceIncInput.removeEventListener('keydown', handleKeyDown);
+            replaceWithInput.removeEventListener('input', updateIncValue);
         };
         
         batchReplaceSubmit.addEventListener('click', handleSubmit);
         closeReplaceModal.addEventListener('click', handleClose);
         replaceFindInput.addEventListener('keydown', handleKeyDown);
         replaceWithInput.addEventListener('keydown', handleKeyDown);
+        replaceIncInput.addEventListener('keydown', handleKeyDown);
     });
 }
 
 batchReplaceBtn.addEventListener('click', async () => {
     const result = await showBatchReplace();
     if (result) {
-        const {find, replace} = result;
+        const {find, replace, inc} = result;
         const fields = [
             document.querySelector('#prompt-manual') as HTMLTextAreaElement,
             document.querySelector('#lighting-manual') as HTMLTextAreaElement,
@@ -632,9 +661,17 @@ batchReplaceBtn.addEventListener('click', async () => {
         
         let count = 0;
         fields.forEach(field => {
-            if (field && field.value.includes(find)) {
-                field.value = field.value.split(find).join(replace);
-                count++;
+            if (field) {
+                let changed = false;
+                if (find && field.value.includes(find)) {
+                    field.value = field.value.split(find).join(replace);
+                    changed = true;
+                }
+                if (inc && field.value.includes("SỐ + 1")) {
+                    field.value = field.value.split("SỐ + 1").join(inc);
+                    changed = true;
+                }
+                if (changed) count++;
             }
         });
         
@@ -3571,9 +3608,12 @@ if (pngInfoViewportTop) {
         pngInfoReplaceBtnTop.addEventListener('click', async () => {
             const result = await showBatchReplace();
             if (result) {
-                const {find, replace} = result;
-                if (pngInfoContentTop.innerText.includes(find)) {
+                const {find, replace, inc} = result;
+                if (find && pngInfoContentTop.innerText.includes(find)) {
                     pngInfoContentTop.innerText = pngInfoContentTop.innerText.split(find).join(replace);
+                }
+                if (inc && pngInfoContentTop.innerText.includes("SỐ + 1")) {
+                    pngInfoContentTop.innerText = pngInfoContentTop.innerText.split("SỐ + 1").join(inc);
                 }
             }
         });
@@ -3594,9 +3634,12 @@ if (pngInfoViewportBottom) {
         pngInfoReplaceBtnBottom.addEventListener('click', async () => {
             const result = await showBatchReplace();
             if (result) {
-                const {find, replace} = result;
-                if (pngInfoContentBottom.innerText.includes(find)) {
+                const {find, replace, inc} = result;
+                if (find && pngInfoContentBottom.innerText.includes(find)) {
                     pngInfoContentBottom.innerText = pngInfoContentBottom.innerText.split(find).join(replace);
+                }
+                if (inc && pngInfoContentBottom.innerText.includes("SỐ + 1")) {
+                    pngInfoContentBottom.innerText = pngInfoContentBottom.innerText.split("SỐ + 1").join(inc);
                 }
             }
         });
