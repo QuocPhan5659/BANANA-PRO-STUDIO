@@ -626,9 +626,15 @@ if (sendToGeminiBtn) {
         // 3. Open Gemini Web App in a separate app-like window with prompt
         const safePrompt = promptData.length > 2000 ? promptData.substring(0, 2000) + "..." : promptData;
         const geminiUrl = `https://gemini.google.com/app?q=${encodeURIComponent(safePrompt)}`;
-        const popupFeatures = "width=1200,height=800,popup=yes,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes";
-        const popup = window.open(geminiUrl, "GoogleGeminiPopup", popupFeatures);
-        if (popup) popup.focus();
+
+        if (typeof (window as any).sketchup !== 'undefined') {
+            // Priority 1: Use SketchUp's direct app call
+            (window as any).sketchup.open_gemini(geminiUrl);
+        } else {
+            const popupFeatures = "width=1200,height=800,popup=yes,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes";
+            const popup = window.open(geminiUrl, "GoogleGeminiPopup", popupFeatures);
+            if (popup) popup.focus();
+        }
     });
 }
 function showBatchReplace(): Promise<{find: string, replace: string, inc: string} | null> {
@@ -4120,11 +4126,13 @@ if (sendToFlowBtn) {
         const safePrompt = promptData.length > 2000 ? promptData.substring(0, 2000) : promptData;
         const flowUrl = `https://labs.google/fx/vi/tools/flow?q=${encodeURIComponent(safePrompt)}&prompt=${encodeURIComponent(safePrompt)}&ar=${encodeURIComponent(ar)}`;
         
-        const popupFeatures = "width=1200,height=800,popup=yes,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes";
-        const popup = window.open(flowUrl, "GoogleFlowPopup", popupFeatures);
-        
-        if (popup) {
-            popup.focus();
+        if (typeof (window as any).sketchup !== 'undefined') {
+            // Priority 1: Use SketchUp's direct app call
+            (window as any).sketchup.open_flow(flowUrl);
+        } else {
+            const popupFeatures = "width=1200,height=800,popup=yes,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes";
+            const popup = window.open(flowUrl, "GoogleFlowPopup", popupFeatures);
+            if (popup) popup.focus();
         }
     });
 }
