@@ -1,3 +1,4 @@
+import { GoogleGenerativeAI } from "@google/generative-ai";
 /* tslint:disable */
 import { GoogleGenAI } from '@google/genai';
 import * as genai from '@google/genai';
@@ -567,9 +568,68 @@ const collageExtractToggle = document.querySelector('#collage-extract-toggle') a
 const collageExtractControls = document.querySelector('#collage-extract-controls') as HTMLDivElement;
 const collagePositionSelect = document.querySelector('#collage-position-select') as HTMLSelectElement;
 const extractViewBtn = document.querySelector('#extract-view-btn') as HTMLButtonElement;
+const sendToFlowBtn = document.querySelector('#send-to-flow-btn') as HTMLButtonElement;
+const sendToGeminiBtn = document.querySelector('#send-to-gemini-btn') as HTMLButtonElement;
 
+// --- Send to Flow Logic ---
+// ... (existing logic remains) ...
+
+// --- Send to Gemini Logic ---
+if (sendToGeminiBtn) {
+    sendToGeminiBtn.addEventListener('click', async () => {
+        // 1. Aggregate prompt
+        const sizeSelect = document.getElementById('size-select') as HTMLSelectElement | null;
+        const ar = sizeSelect?.value || '1:1';
+        
+        const promptAreas = document.querySelectorAll('.manual-ctx-entry') as NodeListOf<HTMLTextAreaElement>;
+        let combinedPrompt = "";
+
+        promptAreas.forEach(area => {
+            const val = area.value.trim();
+            if (val && !area.classList.contains('hidden')) {
+                combinedPrompt += `${val}\n`;
+            }
+        });
+        const promptData = `${combinedPrompt.trim()}\nRatio: ${ar}`;
+        
+        // 2. Prepare Image and Text
+        if (uploadedImageData && uploadPreview.src) {
+            const canvas = document.createElement('canvas');
+            canvas.width = uploadPreview.naturalWidth;
+            canvas.height = uploadPreview.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(uploadPreview, 0, 0);
+                if (guideCanvas) ctx.drawImage(guideCanvas, 0, 0);
+                
+                const imageBlob = await new Promise<Blob | null>(r => canvas.toBlob(r, 'image/png'));
+                if (imageBlob) {
+                    try {
+                        await navigator.clipboard.write([
+                            new ClipboardItem({
+                                'image/png': imageBlob,
+                                'text/plain': new Blob([promptData], { type: 'text/plain' })
+                            })
+                        ]);
+                    } catch (e) {
+                         await navigator.clipboard.writeText(promptData);
+                         console.warn("Could not write both; falling back to text only.");
+                    }
+                }
+            }
+        } else {
+            await navigator.clipboard.writeText(promptData);
+        }
+
+        // 3. Open Gemini Web App in a separate app-like window
+        const popupFeatures = "width=1200,height=800,popup=yes,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes";
+        const popup = window.open("https://gemini.google.com/app", "GoogleGeminiPopup", popupFeatures);
+        if (popup) popup.focus();
+    });
+}
 function showBatchReplace(): Promise<{find: string, replace: string, inc: string} | null> {
-    if (!batchReplaceModal) return Promise.resolve(null);
     replaceFindInput.value = 'SỐ PANEL';
     replaceWithInput.value = '';
     replaceIncInput.value = '';
@@ -3994,6 +4054,75 @@ if (canvasContainer) {
         updateBrushCursor(e as MouseEvent);
     });
     canvasContainer.addEventListener('mouseleave', () => { brushCursor.classList.add('hidden'); });
+}
+
+// --- Send to Flow Logic ---
+if (sendToFlowBtn) {
+    sendToFlowBtn.addEventListener('click', async () => {
+        // 1. Aggregate prompt fields & context
+        const promptAreas = document.querySelectorAll('.manual-ctx-entry') as NodeListOf<HTMLTextAreaElement>;
+        let combinedPrompt = "";
+
+        // Add Aspect Ratio context
+        const sizeSelect = document.getElementById('size-select') as HTMLSelectElement | null;
+        const ar = sizeSelect?.value || '1:1';
+        combinedPrompt += `[Target Aspect Ratio]: ${ar}\n`;
+
+        promptAreas.forEach(area => {
+            const val = area.value.trim();
+            if (val && !area.classList.contains('hidden')) {
+                if (area.id === 'lighting-manual') combinedPrompt += `[Lighting]: ${val}\n`;
+                else if (area.id === 'scene-manual') combinedPrompt += `[Scene]: ${val}\n`;
+                else if (area.id === 'view-manual') combinedPrompt += `[Shot View]: ${val}\n`;
+                else if (area.id === 'inpainting-prompt-text') combinedPrompt += `[Inpainting Instructions]: ${val}\n`;
+                else if (area.id === 'prompt-manual') combinedPrompt += `[Main Prompt]: ${val}\n`;
+                else combinedPrompt += `${val}\n`;
+            }
+        });
+
+        const promptData = combinedPrompt.trim();
+        
+        // 2. Copy Image to Clipboard
+        if (uploadedImageData && uploadPreview.src) {
+            const canvas = document.createElement('canvas');
+            canvas.width = uploadPreview.naturalWidth;
+            canvas.height = uploadPreview.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(uploadPreview, 0, 0);
+                if (guideCanvas) ctx.drawImage(guideCanvas, 0, 0);
+                if (maskCanvas) {
+                    ctx.globalAlpha = 0.9;
+                    ctx.globalCompositeOperation = 'screen';
+                    ctx.drawImage(maskCanvas, 0, 0);
+                    ctx.globalAlpha = 1.0;
+                    ctx.globalCompositeOperation = 'source-over';
+                }
+                if (mainTextCanvas) ctx.drawImage(mainTextCanvas, 0, 0);
+                const imageBlob = await new Promise<Blob | null>(r => canvas.toBlob(r, 'image/png'));
+                if (imageBlob) {
+                    await navigator.clipboard.write([
+                        new ClipboardItem({ 'image/png': imageBlob })
+                    ]);
+                }
+            }
+        } else {
+            await navigator.clipboard.writeText(promptData);
+        }
+
+        // 3. Open/Navigate Flow Tool
+        // Using a named window 'GoogleFlowPopup' and navigating directly to ensure the prompt is passed.
+        const flowUrl = `https://labs.google/fx/vi/tools/flow?q=${encodeURIComponent(promptData)}&prompt=${encodeURIComponent(promptData)}&ar=${encodeURIComponent(ar)}`;
+        
+        const popupFeatures = "width=1200,height=800,popup=yes,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes";
+        const popup = window.open(flowUrl, "GoogleFlowPopup", popupFeatures);
+        
+        if (popup) {
+            popup.focus();
+        }
+    });
 }
 
 // Ensure zoom cursor consistency
