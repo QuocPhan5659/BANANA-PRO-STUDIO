@@ -623,9 +623,11 @@ if (sendToGeminiBtn) {
             await navigator.clipboard.writeText(promptData);
         }
 
-        // 3. Open Gemini Web App in a separate app-like window
+        // 3. Open Gemini Web App in a separate app-like window with prompt
+        const safePrompt = promptData.length > 2000 ? promptData.substring(0, 2000) + "..." : promptData;
+        const geminiUrl = `https://gemini.google.com/app?q=${encodeURIComponent(safePrompt)}`;
         const popupFeatures = "width=1200,height=800,popup=yes,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes";
-        const popup = window.open("https://gemini.google.com/app", "GoogleGeminiPopup", popupFeatures);
+        const popup = window.open(geminiUrl, "GoogleGeminiPopup", popupFeatures);
         if (popup) popup.focus();
     });
 }
@@ -4114,7 +4116,9 @@ if (sendToFlowBtn) {
 
         // 3. Open/Navigate Flow Tool
         // Using a named window 'GoogleFlowPopup' and navigating directly to ensure the prompt is passed.
-        const flowUrl = `https://labs.google/fx/vi/tools/flow?q=${encodeURIComponent(promptData)}&prompt=${encodeURIComponent(promptData)}&ar=${encodeURIComponent(ar)}`;
+        // Increased safety truncation to 2000 chars to satisfy both user need for length and URL safety.
+        const safePrompt = promptData.length > 2000 ? promptData.substring(0, 2000) : promptData;
+        const flowUrl = `https://labs.google/fx/vi/tools/flow?q=${encodeURIComponent(safePrompt)}&prompt=${encodeURIComponent(safePrompt)}&ar=${encodeURIComponent(ar)}`;
         
         const popupFeatures = "width=1200,height=800,popup=yes,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes";
         const popup = window.open(flowUrl, "GoogleFlowPopup", popupFeatures);
