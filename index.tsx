@@ -81,25 +81,58 @@ document.addEventListener("DOMContentLoaded", function () {
   const autoOpenGeminiToggle = document.getElementById('auto-open-gemini-toggle') as HTMLInputElement;
   const mainLayout = document.getElementById('main-layout');
   
+  const updateSendButtonsStyle = () => {
+      if (sendToFlowBtn) {
+          if (autoOpenFlow) {
+              sendToFlowBtn.classList.remove('bg-amber-600/10', 'hover:bg-amber-600', 'border-amber-600/40', 'text-amber-500', 'shadow-[0_0_10px_rgba(245,158,11,0.1)]');
+              sendToFlowBtn.classList.add('bg-emerald-600/10', 'hover:bg-emerald-600', 'border-emerald-600/40', 'text-emerald-500', 'shadow-[0_0_10px_rgba(16,185,129,0.1)]');
+          } else {
+              sendToFlowBtn.classList.remove('bg-emerald-600/10', 'hover:bg-emerald-600', 'border-emerald-600/40', 'text-emerald-500', 'shadow-[0_0_10px_rgba(16,185,129,0.1)]');
+              sendToFlowBtn.classList.add('bg-amber-600/10', 'hover:bg-amber-600', 'border-amber-600/40', 'text-amber-500', 'shadow-[0_0_10px_rgba(245,158,11,0.1)]');
+          }
+      }
+      if (sendToGeminiBtn) {
+          if (autoOpenGemini) {
+              sendToGeminiBtn.classList.remove('bg-amber-600/10', 'hover:bg-amber-600', 'border-amber-600/40', 'text-amber-500', 'shadow-[0_0_10px_rgba(245,158,11,0.1)]');
+              sendToGeminiBtn.classList.add('bg-emerald-600/10', 'hover:bg-emerald-600', 'border-emerald-600/40', 'text-emerald-500', 'shadow-[0_0_10px_rgba(16,185,129,0.1)]');
+          } else {
+              sendToGeminiBtn.classList.remove('bg-emerald-600/10', 'hover:bg-emerald-600', 'border-emerald-600/40', 'text-emerald-500', 'shadow-[0_0_10px_rgba(16,185,129,0.1)]');
+              sendToGeminiBtn.classList.add('bg-amber-600/10', 'hover:bg-amber-600', 'border-amber-600/40', 'text-amber-500', 'shadow-[0_0_10px_rgba(245,158,11,0.1)]');
+          }
+      }
+  };
+
   if (autoOpenFlowToggle) {
+      const flowStatusLabel = document.getElementById('auto-open-flow-status');
       const saved = localStorage.getItem('autoOpenFlow');
       autoOpenFlow = saved !== 'false';
       autoOpenFlowToggle.checked = autoOpenFlow;
+      if (flowStatusLabel) flowStatusLabel.innerText = autoOpenFlow ? 'ON' : 'OFF';
+      
       autoOpenFlowToggle.addEventListener('change', () => {
           autoOpenFlow = autoOpenFlowToggle.checked;
+          if (flowStatusLabel) flowStatusLabel.innerText = autoOpenFlow ? 'ON' : 'OFF';
           localStorage.setItem('autoOpenFlow', autoOpenFlow.toString());
+          updateSendButtonsStyle();
       });
   }
 
   if (autoOpenGeminiToggle) {
+      const geminiStatusLabel = document.getElementById('auto-open-gemini-status');
       const saved = localStorage.getItem('autoOpenGemini');
       autoOpenGemini = saved !== 'false';
       autoOpenGeminiToggle.checked = autoOpenGemini;
+      if (geminiStatusLabel) geminiStatusLabel.innerText = autoOpenGemini ? 'ON' : 'OFF';
+
       autoOpenGeminiToggle.addEventListener('change', () => {
           autoOpenGemini = autoOpenGeminiToggle.checked;
+          if (geminiStatusLabel) geminiStatusLabel.innerText = autoOpenGemini ? 'ON' : 'OFF';
           localStorage.setItem('autoOpenGemini', autoOpenGemini.toString());
+          updateSendButtonsStyle();
       });
   }
+
+  updateSendButtonsStyle();
 
   if (toggleRightPanelCheckbox && mainLayout) {
       // Load saved state

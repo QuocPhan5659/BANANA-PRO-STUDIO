@@ -166,6 +166,24 @@
           color: #4ade80;
           text-shadow: 0 0 8px #4ade80;
       }
+      .neon-label-status {
+          font-size: 12px;
+          font-weight: 900;
+          color: #f59e0b;
+          text-shadow: 0 0 8px #f59e0b;
+          transition: .3s;
+          line-height: 1;
+          user-select: none;
+          position: absolute;
+          left: 52px;
+          top: 50%;
+          transform: translateY(-50%);
+          white-space: nowrap;
+      }
+      input:checked ~ .neon-label-status {
+          color: #4ade80;
+          text-shadow: 0 0 8px #4ade80;
+      }
     </style>
 </head>
   <body class="bg-[#0D0D0E] font-['Plus_Jakarta_Sans'] text-gray-200 antialiased h-screen overflow-hidden flex flex-col">
@@ -345,6 +363,7 @@
                         <label class="neon-switch cursor-pointer">
                             <input type="checkbox" id="auto-open-flow-toggle" checked>
                             <span class="neon-slider"></span>
+                            <span id="auto-open-flow-status" class="neon-label-status">ON</span>
                         </label>
                     </div>
                 </div>
@@ -357,6 +376,7 @@
                         <label class="neon-switch cursor-pointer">
                             <input type="checkbox" id="auto-open-gemini-toggle" checked>
                             <span class="neon-slider"></span>
+                            <span id="auto-open-gemini-status" class="neon-label-status">ON</span>
                         </label>
                     </div>
                 </div>
