@@ -77,16 +77,27 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Toggle Right Panel
   const toggleRightPanelCheckbox = document.getElementById('toggle-right-panel-checkbox') as HTMLInputElement;
-  const autoOpenToggle = document.getElementById('auto-open-flow-toggle') as HTMLInputElement;
+  const autoOpenFlowToggle = document.getElementById('auto-open-flow-toggle') as HTMLInputElement;
+  const autoOpenGeminiToggle = document.getElementById('auto-open-gemini-toggle') as HTMLInputElement;
   const mainLayout = document.getElementById('main-layout');
   
-  if (autoOpenToggle) {
-      const saved = localStorage.getItem('autoOpenFlowGemini');
-      autoOpenFlowGemini = saved !== 'false';
-      autoOpenToggle.checked = autoOpenFlowGemini;
-      autoOpenToggle.addEventListener('change', () => {
-          autoOpenFlowGemini = autoOpenToggle.checked;
-          localStorage.setItem('autoOpenFlowGemini', autoOpenFlowGemini.toString());
+  if (autoOpenFlowToggle) {
+      const saved = localStorage.getItem('autoOpenFlow');
+      autoOpenFlow = saved !== 'false';
+      autoOpenFlowToggle.checked = autoOpenFlow;
+      autoOpenFlowToggle.addEventListener('change', () => {
+          autoOpenFlow = autoOpenFlowToggle.checked;
+          localStorage.setItem('autoOpenFlow', autoOpenFlow.toString());
+      });
+  }
+
+  if (autoOpenGeminiToggle) {
+      const saved = localStorage.getItem('autoOpenGemini');
+      autoOpenGemini = saved !== 'false';
+      autoOpenGeminiToggle.checked = autoOpenGemini;
+      autoOpenGeminiToggle.addEventListener('change', () => {
+          autoOpenGemini = autoOpenGeminiToggle.checked;
+          localStorage.setItem('autoOpenGemini', autoOpenGemini.toString());
       });
   }
 
@@ -148,7 +159,8 @@ function updateBrushSizeVisibility() {
 }
 
 // --- Global State Variables ---
-let autoOpenFlowGemini = true;
+let autoOpenFlow = true;
+let autoOpenGemini = true;
 let uploadedImageData: { data: string; mimeType: string } | null = null;
 let referenceImages: ReferenceImage[] = [];
 let loadedFilesContent: Record<string, string> = {};
@@ -590,11 +602,6 @@ if (sendToFlowBtn) {
         const promptAreas = document.querySelectorAll('.manual-ctx-entry') as NodeListOf<HTMLTextAreaElement>;
         let combinedPrompt = "";
 
-        // Add Aspect Ratio context
-        const sizeSelect = document.getElementById('size-select') as HTMLSelectElement | null;
-        const ar = sizeSelect?.value || '1:1';
-        combinedPrompt += `[Target Aspect Ratio]: ${ar}\n`;
-
         promptAreas.forEach(area => {
             const val = area.value.trim();
             if (val && !area.classList.contains('hidden')) {
@@ -640,7 +647,9 @@ if (sendToFlowBtn) {
         }
 
         // 3. Open/Navigate Flow Tool if enabled
-        if (autoOpenFlowGemini) {
+        if (autoOpenFlow) {
+            const sizeSelect = document.getElementById('size-select') as HTMLSelectElement | null;
+            const ar = sizeSelect?.value || '1:1';
             const safePrompt = promptData.length > 2000 ? promptData.substring(0, 2000) : promptData;
             const flowUrl = `https://labs.google/fx/vi/tools/flow?q=${encodeURIComponent(safePrompt)}&prompt=${encodeURIComponent(safePrompt)}&ar=${encodeURIComponent(ar)}`;
             
@@ -650,7 +659,7 @@ if (sendToFlowBtn) {
                 if (popup) popup.focus();
             }
         } else {
-            showCustomAlert("Prompt has been copied to clipboard.", "COPIED");
+            showToast("DATA HAS BEEN COPIED SUCCESSFULY.");
         }
     };
     sendToFlowBtn.addEventListener('click', handleFlowAction);
@@ -718,7 +727,7 @@ if (sendToGeminiBtn) {
         }
 
         // 3. Open Gemini Web App if enabled
-        if (autoOpenFlowGemini) {
+        if (autoOpenGemini) {
             const safePrompt = promptData.length > 2000 ? promptData.substring(0, 2000) + "..." : promptData;
             const geminiUrl = `https://gemini.google.com/app?q=${encodeURIComponent(safePrompt)}`;
             
@@ -728,7 +737,7 @@ if (sendToGeminiBtn) {
                 if (popup) popup.focus();
             }
         } else {
-            showCustomAlert("Prompt has been copied to clipboard.", "COPIED");
+            showToast("DATA HAS BEEN COPIED SUCCESSFULY.");
         }
     };
     sendToGeminiBtn.addEventListener('click', handleGeminiAction);
@@ -871,6 +880,32 @@ function triggerGenerate() {
 
 
 const COLLAGE_EXTRACT_PROMPT_TEMPLATE = `This image is a multi-frame collage. First detect the full collage layout and identify the exact rectangular boundary of every frame, whether the frames are separated by visible borders, thin gaps, or no visible dividing lines at all. Determine boundaries only from the overall collage structure, panel alignment, and layout geometry, not from the visual content inside the images. Then extract only the [ TARGET POSITION ] frame as one complete rectangular image. Strictly exclude all neighboring frames and do not include any pixels, objects, edges, or partial areas from adjacent images. Do not merge across frame boundaries even if colors, lines, or objects visually continue. Preserve the extracted frame exactly at its original internal resolution and original quality, with no resizing, no recompression, no denoise, no blur, no sharpening, no enhancement, and no content alteration.`;
+
+function showToast(message: string, duration: number = 3000) {
+    let toast = document.getElementById('toast-notification');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toast-notification';
+        toast.className = 'fixed bottom-10 left-1/2 -translate-x-1/2 px-6 py-3 bg-[#262380] border border-[#262380]/40 text-[#818cf8] font-black text-xs uppercase tracking-widest rounded-xl shadow-2xl z-[9999] transition-all transform duration-300';
+        document.body.appendChild(toast);
+    }
+    toast.innerText = message;
+    toast.style.display = 'block';
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(-50%) translateY(20px)';
+    
+    // Force reflow
+    toast.offsetHeight;
+    
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateX(-50%) translateY(0)';
+    
+    setTimeout(() => {
+        toast!.style.opacity = '0';
+        toast!.style.transform = 'translateX(-50%) translateY(20px)';
+        setTimeout(() => { toast!.style.display = 'none'; }, 300);
+    }, duration);
+}
 
 function showCustomAlert(message: string, title: string = "SUCCESS") {
     if (!customAlertModal) return;
@@ -5618,6 +5653,11 @@ async function copyUploadedImageToClipboard() {
 }
 
 globalResetBtn?.addEventListener('click', () => {
+    headerResetBtn?.click();
+});
+
+const headerResetBtn = document.querySelector('#header-reset-btn') as HTMLButtonElement;
+headerResetBtn?.addEventListener('click', () => {
     // 1. Reset Text Inputs
     if(promptEl) promptEl.value = ''; 
     manualCtxEntries.forEach(e => { e.value = ''; autoResize(e); });

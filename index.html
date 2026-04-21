@@ -338,12 +338,24 @@
             <div class="space-y-4">
                 <div class="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-all">
                     <div class="flex flex-col">
-                        <span class="text-[11px] font-black text-gray-200 uppercase tracking-tight">Auto-Open Flow/Gemini</span>
-                        <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">ON: Copy + Open | OFF: Copy Only</span>
+                        <span class="text-[11px] font-black text-gray-200 uppercase tracking-tight">Auto-Open Flow</span>
+                        <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">ON: Copy + Open Flow | OFF: Copy Only</span>
                     </div>
                     <div class="neon-switch-container">
                         <label class="neon-switch cursor-pointer">
                             <input type="checkbox" id="auto-open-flow-toggle" checked>
+                            <span class="neon-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-all">
+                    <div class="flex flex-col">
+                        <span class="text-[11px] font-black text-gray-200 uppercase tracking-tight">Auto-Open Gemini</span>
+                        <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">ON: Copy + Open Gemini | OFF: Copy Only</span>
+                    </div>
+                    <div class="neon-switch-container">
+                        <label class="neon-switch cursor-pointer">
+                            <input type="checkbox" id="auto-open-gemini-toggle" checked>
                             <span class="neon-slider"></span>
                         </label>
                     </div>
@@ -501,12 +513,13 @@
                 GPT
             </button>
             <button id="png-info-tab-btn" class="px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-600/40 rounded-lg text-[9px] font-black text-emerald-500 hover:text-white transition-all uppercase tracking-widest shadow-[0_0_10px_rgba(16,185,129,0.1)]">TEXT PROMPT</button>
-            <a href="https://aistudio.google.com/apps/537f84fb-f4c0-4616-a27b-e53e98db56cd?showAssistant=true&showPreview=true&fullscreenApplet=true" target="_blank" class="px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-600/40 rounded-lg text-[9px] font-black text-emerald-500 hover:text-white transition-all uppercase tracking-widest no-underline shadow-[0_0_10px_rgba(16,185,129,0.1)]">REMOVE</a>
-            <div class="flex items-center gap-2 ml-1">
-                <button id="send-to-flow-btn" class="px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-600/40 rounded-lg text-[9px] font-black text-emerald-500 hover:text-white transition-all uppercase tracking-widest flex items-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.1)]" title="Gửi qua Flow AI">
+          <a href="https://aistudio.google.com/apps/537f84fb-f4c0-4616-a27b-e53e98db56cd?showAssistant=true&showPreview=true&fullscreenApplet=true" target="_blank" class="px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-600/40 rounded-lg text-[9px] font-black text-emerald-500 hover:text-white transition-all uppercase tracking-widest no-underline shadow-[0_0_10px_rgba(16,185,129,0.1)]">REMOVE</a>
+
+          <div class="flex items-center gap-2 ml-1">
+                <button id="send-to-flow-btn" class="px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-600/40 rounded-lg text-[9px] font-black text-emerald-500 hover:text-white transition-all uppercase tracking-widest flex items-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.1)]" title="Gửi qua Flow AI (F3)">
                     FLOW
                 </button>
-                <button id="send-to-gemini-btn" class="px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-600/40 rounded-lg text-[9px] font-black text-emerald-500 hover:text-white transition-all uppercase tracking-widest flex items-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.1)]" title="Gửi qua Gemini AI">
+                <button id="send-to-gemini-btn" class="px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-600/40 rounded-lg text-[9px] font-black text-emerald-500 hover:text-white transition-all uppercase tracking-widest flex items-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.1)]" title="Gửi qua Gemini AI (F4)">
                     GEMINI
                 </button>
                 <div class="neon-switch-container ml-1" title="Toggle Right Panel">
@@ -555,10 +568,17 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 3 4 7l4 4M4 7h16m-4 14 4-4-4-4M20 17H4" /></svg>
                     <span class="text-[8px] font-black uppercase tracking-widest">REPLACE</span>
                  </button>
-                 <!-- Language Toggle -->
-                 <div class="flex items-center bg-[#121214] rounded-lg p-0.5 border border-[#27272a]">
-                    <button id="lang-btn-vn" class="px-1.5 py-0.5 text-[8px] font-black rounded bg-[#262380] text-white transition-all">VN</button>
-                    <button id="lang-btn-en" class="px-1.5 py-0.5 text-[8px] font-black rounded text-gray-500 hover:text-white transition-all">EN</button>
+                 <!-- Language Toggle & Reset -->
+                 <div class="flex items-center gap-1 bg-[#121214] rounded-xl p-0.5 border border-[#27272a]">
+                    <div class="flex items-center pr-1 border-r border-[#27272a]">
+                       <button id="lang-btn-vn" class="px-1.5 py-0.5 text-[8px] font-black rounded bg-[#262380] text-white transition-all">VN</button>
+                       <button id="lang-btn-en" class="px-1.5 py-0.5 text-[8px] font-black rounded text-gray-500 hover:text-white transition-all">EN</button>
+                    </div>
+                    <button id="header-reset-btn" class="p-1 text-gray-500 hover:text-red-500 transition-all active:rotate-180 duration-500" title="Reset All">
+                       <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                       </svg>
+                    </button>
                  </div>
               </div>
               <div class="flex items-center gap-1.5">
