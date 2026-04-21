@@ -77,8 +77,19 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Toggle Right Panel
   const toggleRightPanelCheckbox = document.getElementById('toggle-right-panel-checkbox') as HTMLInputElement;
+  const autoOpenToggle = document.getElementById('auto-open-flow-toggle') as HTMLInputElement;
   const mainLayout = document.getElementById('main-layout');
   
+  if (autoOpenToggle) {
+      const saved = localStorage.getItem('autoOpenFlowGemini');
+      autoOpenFlowGemini = saved !== 'false';
+      autoOpenToggle.checked = autoOpenFlowGemini;
+      autoOpenToggle.addEventListener('change', () => {
+          autoOpenFlowGemini = autoOpenToggle.checked;
+          localStorage.setItem('autoOpenFlowGemini', autoOpenFlowGemini.toString());
+      });
+  }
+
   if (toggleRightPanelCheckbox && mainLayout) {
       // Load saved state
       const savedPanelState = localStorage.getItem('rightPanelVisible');
@@ -137,6 +148,7 @@ function updateBrushSizeVisibility() {
 }
 
 // --- Global State Variables ---
+let autoOpenFlowGemini = true;
 let uploadedImageData: { data: string; mimeType: string } | null = null;
 let referenceImages: ReferenceImage[] = [];
 let loadedFilesContent: Record<string, string> = {};
@@ -572,11 +584,93 @@ const sendToFlowBtn = document.querySelector('#send-to-flow-btn') as HTMLButtonE
 const sendToGeminiBtn = document.querySelector('#send-to-gemini-btn') as HTMLButtonElement;
 
 // --- Send to Flow Logic ---
-// ... (existing logic remains) ...
+if (sendToFlowBtn) {
+    const handleFlowAction = async () => {
+        // 1. Aggregate prompt fields & context
+        const promptAreas = document.querySelectorAll('.manual-ctx-entry') as NodeListOf<HTMLTextAreaElement>;
+        let combinedPrompt = "";
+
+        // Add Aspect Ratio context
+        const sizeSelect = document.getElementById('size-select') as HTMLSelectElement | null;
+        const ar = sizeSelect?.value || '1:1';
+        combinedPrompt += `[Target Aspect Ratio]: ${ar}\n`;
+
+        promptAreas.forEach(area => {
+            const val = area.value.trim();
+            if (val && !area.classList.contains('hidden')) {
+                if (area.id === 'lighting-manual') combinedPrompt += `[Lighting]: ${val}\n`;
+                else if (area.id === 'scene-manual') combinedPrompt += `[Scene]: ${val}\n`;
+                else if (area.id === 'view-manual') combinedPrompt += `[Shot View]: ${val}\n`;
+                else if (area.id === 'inpainting-prompt-text') combinedPrompt += `[Inpainting Instructions]: ${val}\n`;
+                else if (area.id === 'prompt-manual') combinedPrompt += `[Main Prompt]: ${val}\n`;
+                else combinedPrompt += `${val}\n`;
+            }
+        });
+
+        const promptData = combinedPrompt.trim();
+        
+        // 2. Copy Image to Clipboard
+        if (uploadedImageData && uploadPreview.src) {
+            const canvas = document.createElement('canvas');
+            canvas.width = uploadPreview.naturalWidth;
+            canvas.height = uploadPreview.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(uploadPreview, 0, 0);
+                if (guideCanvas) ctx.drawImage(guideCanvas, 0, 0);
+                if (maskCanvas) {
+                    ctx.globalAlpha = 0.9;
+                    ctx.globalCompositeOperation = 'screen';
+                    ctx.drawImage(maskCanvas, 0, 0);
+                    ctx.globalAlpha = 1.0;
+                    ctx.globalCompositeOperation = 'source-over';
+                }
+                if (mainTextCanvas) ctx.drawImage(mainTextCanvas, 0, 0);
+                const imageBlob = await new Promise<Blob | null>(r => canvas.toBlob(r, 'image/png'));
+                if (imageBlob) {
+                    await navigator.clipboard.write([
+                        new ClipboardItem({ 'image/png': imageBlob })
+                    ]);
+                }
+            }
+        } else {
+            await navigator.clipboard.writeText(promptData);
+        }
+
+        // 3. Open/Navigate Flow Tool if enabled
+        if (autoOpenFlowGemini) {
+            const safePrompt = promptData.length > 2000 ? promptData.substring(0, 2000) : promptData;
+            const flowUrl = `https://labs.google/fx/vi/tools/flow?q=${encodeURIComponent(safePrompt)}&prompt=${encodeURIComponent(safePrompt)}&ar=${encodeURIComponent(ar)}`;
+            
+            if (!callSkp('open_flow', flowUrl)) {
+                const popupFeatures = "width=1200,height=800,popup=yes,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes";
+                const popup = window.open(flowUrl, "GoogleFlowPopup", popupFeatures);
+                if (popup) popup.focus();
+            }
+        } else {
+            showCustomAlert("Prompt has been copied to clipboard.", "COPIED");
+        }
+    };
+    sendToFlowBtn.addEventListener('click', handleFlowAction);
+}
+
+// --- SketchUp Bridge Helpers ---
+const IS_SKETCHUP = (window as any).IS_SKETCHUP || typeof (window as any).sketchup !== 'undefined';
+
+function callSkp(callbackName: string, data?: any) {
+    if (IS_SKETCHUP && (window as any).sketchup && (window as any).sketchup[callbackName]) {
+        console.log(`[SketchUp Bridge] Calling: ${callbackName}`);
+        (window as any).sketchup[callbackName](data);
+        return true;
+    }
+    return false;
+}
 
 // --- Send to Gemini Logic ---
 if (sendToGeminiBtn) {
-    sendToGeminiBtn.addEventListener('click', async () => {
+    const handleGeminiAction = async () => {
         // 1. Aggregate prompt
         const sizeSelect = document.getElementById('size-select') as HTMLSelectElement | null;
         const ar = sizeSelect?.value || '1:1';
@@ -623,13 +717,21 @@ if (sendToGeminiBtn) {
             await navigator.clipboard.writeText(promptData);
         }
 
-        // 3. Open Gemini Web App in a separate app-like window with prompt
-        const safePrompt = promptData.length > 2000 ? promptData.substring(0, 2000) + "..." : promptData;
-        const geminiUrl = `https://gemini.google.com/app?q=${encodeURIComponent(safePrompt)}`;
-        const popupFeatures = "width=1200,height=800,popup=yes,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes";
-        const popup = window.open(geminiUrl, "GoogleGeminiPopup", popupFeatures);
-        if (popup) popup.focus();
-    });
+        // 3. Open Gemini Web App if enabled
+        if (autoOpenFlowGemini) {
+            const safePrompt = promptData.length > 2000 ? promptData.substring(0, 2000) + "..." : promptData;
+            const geminiUrl = `https://gemini.google.com/app?q=${encodeURIComponent(safePrompt)}`;
+            
+            if (!callSkp('open_gemini', geminiUrl)) {
+                const popupFeatures = "width=1200,height=800,popup=yes,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes";
+                const popup = window.open(geminiUrl, "GoogleGeminiPopup", popupFeatures);
+                if (popup) popup.focus();
+            }
+        } else {
+            showCustomAlert("Prompt has been copied to clipboard.", "COPIED");
+        }
+    };
+    sendToGeminiBtn.addEventListener('click', handleGeminiAction);
 }
 function showBatchReplace(): Promise<{find: string, replace: string, inc: string} | null> {
     replaceFindInput.value = 'SỐ PANEL';
@@ -3014,6 +3116,17 @@ if (zoomMasterBtn && zoomOverlay && zoomedImage && uploadPreview) {
             }
         }
 
+        // F3 for Flow, F4 for Gemini (only if SketchUp or explicitly forced)
+        if (IS_SKETCHUP) {
+            if (e.key === 'F3') {
+                e.preventDefault();
+                sendToFlowBtn?.click();
+            } else if (e.key === 'F4') {
+                e.preventDefault();
+                sendToGeminiBtn?.click();
+            }
+        }
+
         // Tool shortcuts (only if not typing in an input)
         const key = e.key.toLowerCase();
         if (key === 'v') {
@@ -4056,77 +4169,6 @@ if (canvasContainer) {
         updateBrushCursor(e as MouseEvent);
     });
     canvasContainer.addEventListener('mouseleave', () => { brushCursor.classList.add('hidden'); });
-}
-
-// --- Send to Flow Logic ---
-if (sendToFlowBtn) {
-    sendToFlowBtn.addEventListener('click', async () => {
-        // 1. Aggregate prompt fields & context
-        const promptAreas = document.querySelectorAll('.manual-ctx-entry') as NodeListOf<HTMLTextAreaElement>;
-        let combinedPrompt = "";
-
-        // Add Aspect Ratio context
-        const sizeSelect = document.getElementById('size-select') as HTMLSelectElement | null;
-        const ar = sizeSelect?.value || '1:1';
-        combinedPrompt += `[Target Aspect Ratio]: ${ar}\n`;
-
-        promptAreas.forEach(area => {
-            const val = area.value.trim();
-            if (val && !area.classList.contains('hidden')) {
-                if (area.id === 'lighting-manual') combinedPrompt += `[Lighting]: ${val}\n`;
-                else if (area.id === 'scene-manual') combinedPrompt += `[Scene]: ${val}\n`;
-                else if (area.id === 'view-manual') combinedPrompt += `[Shot View]: ${val}\n`;
-                else if (area.id === 'inpainting-prompt-text') combinedPrompt += `[Inpainting Instructions]: ${val}\n`;
-                else if (area.id === 'prompt-manual') combinedPrompt += `[Main Prompt]: ${val}\n`;
-                else combinedPrompt += `${val}\n`;
-            }
-        });
-
-        const promptData = combinedPrompt.trim();
-        
-        // 2. Copy Image to Clipboard
-        if (uploadedImageData && uploadPreview.src) {
-            const canvas = document.createElement('canvas');
-            canvas.width = uploadPreview.naturalWidth;
-            canvas.height = uploadPreview.naturalHeight;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.drawImage(uploadPreview, 0, 0);
-                if (guideCanvas) ctx.drawImage(guideCanvas, 0, 0);
-                if (maskCanvas) {
-                    ctx.globalAlpha = 0.9;
-                    ctx.globalCompositeOperation = 'screen';
-                    ctx.drawImage(maskCanvas, 0, 0);
-                    ctx.globalAlpha = 1.0;
-                    ctx.globalCompositeOperation = 'source-over';
-                }
-                if (mainTextCanvas) ctx.drawImage(mainTextCanvas, 0, 0);
-                const imageBlob = await new Promise<Blob | null>(r => canvas.toBlob(r, 'image/png'));
-                if (imageBlob) {
-                    await navigator.clipboard.write([
-                        new ClipboardItem({ 'image/png': imageBlob })
-                    ]);
-                }
-            }
-        } else {
-            await navigator.clipboard.writeText(promptData);
-        }
-
-        // 3. Open/Navigate Flow Tool
-        // Using a named window 'GoogleFlowPopup' and navigating directly to ensure the prompt is passed.
-        // Increased safety truncation to 2000 chars to satisfy both user need for length and URL safety.
-        const safePrompt = promptData.length > 2000 ? promptData.substring(0, 2000) : promptData;
-        const flowUrl = `https://labs.google/fx/vi/tools/flow?q=${encodeURIComponent(safePrompt)}&prompt=${encodeURIComponent(safePrompt)}&ar=${encodeURIComponent(ar)}`;
-        
-        const popupFeatures = "width=1200,height=800,popup=yes,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes";
-        const popup = window.open(flowUrl, "GoogleFlowPopup", popupFeatures);
-        
-        if (popup) {
-            popup.focus();
-        }
-    });
 }
 
 // Ensure zoom cursor consistency

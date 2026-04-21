@@ -315,9 +315,11 @@
             <button id="close-help-btn" class="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors z-50">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
-            <h2 class="text-xl font-bold text-white mb-6 tracking-tight uppercase italic border-b border-white/10 pb-2">Keyboard Shortcuts</h2>
-            <ul class="space-y-3 text-xs font-medium text-gray-400">
+            <h2 class="text-xl font-bold text-white mb-4 tracking-tight uppercase italic border-b border-white/10 pb-2">Keyboard Shortcuts</h2>
+            <ul class="space-y-3 text-xs font-medium text-gray-400 mb-6">
                  <li class="flex justify-between items-center"><span class="text-gray-200">Generate / Run</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">Ctrl + Enter</span></li>
+                 <li class="flex justify-between items-center"><span class="text-gray-200">Flow (SketchUp Only)</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">F3</span></li>
+                 <li class="flex justify-between items-center"><span class="text-gray-200">Gemini (SketchUp Only)</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">F4</span></li>
                  <li class="flex justify-between items-center"><span class="text-gray-200">Paste Image</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">Ctrl + V</span></li>
                  <li class="flex justify-between items-center"><span class="text-gray-200">Copy Image</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">Alt + C / C</span></li>
                  <li class="flex justify-between items-center"><span class="text-gray-200">Paste PNG Info</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">Alt + V</span></li>
@@ -331,7 +333,23 @@
                  <li class="flex justify-between items-center"><span class="text-gray-200">Zoom Canvas</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">Mouse Wheel</span></li>
                  <li class="flex justify-between items-center"><span class="text-gray-200">Pan Canvas (Zoomed)</span> <span class="text-[#818cf8] font-black bg-[#262380]/20 px-2 py-0.5 rounded border border-[#262380]/30">Middle Click</span></li>
             </ul>
-            <p class="mt-6 text-[10px] text-gray-600 uppercase font-bold tracking-widest text-center">BANANA PRO Studio v2.1</p>
+
+            <h2 class="text-lg font-bold text-white mb-4 tracking-tight uppercase italic border-b border-white/10 pb-2">Settings</h2>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-all">
+                    <div class="flex flex-col">
+                        <span class="text-[11px] font-black text-gray-200 uppercase tracking-tight">Auto-Open Flow/Gemini</span>
+                        <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">ON: Copy + Open | OFF: Copy Only</span>
+                    </div>
+                    <div class="neon-switch-container">
+                        <label class="neon-switch cursor-pointer">
+                            <input type="checkbox" id="auto-open-flow-toggle" checked>
+                            <span class="neon-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <p class="mt-6 text-[10px] text-gray-600 uppercase font-bold tracking-widest text-center">BANANA PRO Studio v2.3</p>
         </div>
     </div>
 
@@ -469,7 +487,7 @@
       <div class="flex items-center gap-6">
         <div>
           <h1 class="text-lg md:text-xl font-extrabold text-white tracking-tight uppercase italic">
-            Banana <span class="text-[#262380]">Pro</span> Studio <span class="text-[10px] text-gray-600 not-italic ml-1">v2.2</span>
+            Banana <span class="text-[#262380]">Pro</span> Studio <span class="text-[10px] text-gray-600 not-italic ml-1">v2.3</span>
           </h1>
         </div>
         
@@ -485,10 +503,10 @@
             <button id="png-info-tab-btn" class="px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-600/40 rounded-lg text-[9px] font-black text-emerald-500 hover:text-white transition-all uppercase tracking-widest shadow-[0_0_10px_rgba(16,185,129,0.1)]">TEXT PROMPT</button>
             <a href="https://aistudio.google.com/apps/537f84fb-f4c0-4616-a27b-e53e98db56cd?showAssistant=true&showPreview=true&fullscreenApplet=true" target="_blank" class="px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-600/40 rounded-lg text-[9px] font-black text-emerald-500 hover:text-white transition-all uppercase tracking-widest no-underline shadow-[0_0_10px_rgba(16,185,129,0.1)]">REMOVE</a>
             <div class="flex items-center gap-2 ml-1">
-                <button id="send-to-flow-btn" class="px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-600/40 rounded-lg text-[9px] font-black text-emerald-500 hover:text-white transition-all uppercase tracking-widest flex items-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.1)]" title="Gửi qua Google Flow">
+                <button id="send-to-flow-btn" class="px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-600/40 rounded-lg text-[9px] font-black text-emerald-500 hover:text-white transition-all uppercase tracking-widest flex items-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.1)]" title="Gửi qua Flow AI">
                     FLOW
                 </button>
-                <button id="send-to-gemini-btn" class="px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-600/40 rounded-lg text-[9px] font-black text-emerald-500 hover:text-white transition-all uppercase tracking-widest flex items-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.1)]" title="Gửi qua Google Gemini (AI Studio)">
+                <button id="send-to-gemini-btn" class="px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-600/40 rounded-lg text-[9px] font-black text-emerald-500 hover:text-white transition-all uppercase tracking-widest flex items-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.1)]" title="Gửi qua Gemini AI">
                     GEMINI
                 </button>
                 <div class="neon-switch-container ml-1" title="Toggle Right Panel">
