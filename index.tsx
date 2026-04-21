@@ -668,11 +668,20 @@ if (sendToFlowBtn) {
                     ctx.globalCompositeOperation = 'source-over';
                 }
                 if (mainTextCanvas) ctx.drawImage(mainTextCanvas, 0, 0);
-                const imageBlob = await new Promise<Blob | null>(r => canvas.toBlob(r, 'image/png'));
+                const imageBlob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/png'));
                 if (imageBlob) {
-                    await navigator.clipboard.write([
-                        new ClipboardItem({ 'image/png': imageBlob })
-                    ]);
+                    try {
+                        await navigator.clipboard.write([
+                            new ClipboardItem({
+                                'image/png': imageBlob,
+                                'text/plain': new Blob([promptData], { type: 'text/plain' })
+                            })
+                        ]);
+                    } catch (err) {
+                        // Fallback if writing multiple items fails
+                        console.error("Clipboard multi-write failed, falling back to text only:", err);
+                        await navigator.clipboard.writeText(promptData);
+                    }
                 }
             }
         } else {
